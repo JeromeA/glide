@@ -1,7 +1,7 @@
 #!/usr/bin/perl -p -0777
 
 # Delete all the directives that NASM doesn't understand.
-s/.*\.(loc|cfi|file|size|type|text|section|p2align|globl|intel_syntax).*\n//g;
+s/.*\.(loc|cfi|file|size|type|text|section|p2align|align|globl|intel_syntax|data).*\n//g;
 
 # Delete the .LFB and .LFE labels.
 s/^\.LF[BE].*\n//gm;
@@ -17,24 +17,35 @@ s/\t/ /g;
 
 # Change the format for strings.
 s/\.string\s(".*")/db $1, 0/g;
+s/\.byte\s(\d+)/db $1/g;
+# s/\.zero\s(\d+)/times $1 db 0/g;
 
 # Replace local labels with global ones.
 s/\.LC(\d+)/LC$1/g;
 
+# Change call/jmp to external symbols.
+s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
+
 # Change the relative addressing syntax.
+# In particular:
+#   call [QWORD PTR f[rip+16]] -> call [f + 16]
+s/\[?QWORD (?:PTR )?(\S+)\[rip(\+\d+)?\]\]?/[$1$2]/g;
 s/(\S+)\[rip\]/[$1]/g;
 s/(?:PTR )?(\d+)\[rsp\]/[rsp + $1]/g;
 s/PTR //g;
 
-# Change call/jmp to external symbols.
-$labels{"exit"} = 1;
-s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
+# Save bss entries.
+if (s/\.bss\n((?:\S+:\n\s+\.zero\s+\d+\n)+)/$bss=$1; ""/e) {
+  while ($bss =~ /(\S+):\n\s+\.zero\s+(\d+)\n/g) {
+    push @bss, "$1: resb $2";
+  }
+}
 
 # Save common bss labels.
 s/\s+\.comm\s+(\S+),(\d+),(\d+)/push @bss, "$1: resb $2"; ""/ge;
 
 # A mov from a GOTPCREL address is just a mov.
-s/\[(\S+)\@GOTPCREL\]/$labels{$1} = 1; "[$1]"/ge;
+s/([a-z0-9_]+)\@GOTPCREL/$labels{$1} = 1; "$1"/ge;
 
 # Add a dynsym section.
 @labels = keys %labels;
