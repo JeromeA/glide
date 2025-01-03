@@ -41,6 +41,10 @@ void on_open_file(GtkWidget *, gpointer data) {
     gtk_widget_destroy(dialog);
 }
 
+void on_save_file(GtkWidget *, gpointer data) {
+  GtkSourceBuffer *source_buffer = GTK_SOURCE_BUFFER(data);
+}
+
 int main(int argc, char *argv[]) {
     // Initialize GTK
     gtk_init(&argc, &argv);
@@ -69,15 +73,18 @@ int main(int argc, char *argv[]) {
     GtkWidget *file_menu = gtk_menu_new();
     GtkWidget *file_menu_item = gtk_menu_item_new_with_label("File");
     GtkWidget *open_menu_item = gtk_menu_item_new_with_label("Open...");
+    GtkWidget *save_menu_item = gtk_menu_item_new_with_label("Save...");
     GtkWidget *quit_menu_item = gtk_menu_item_new_with_label("Quit");
 
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_menu_item), file_menu);
     gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), open_menu_item);
+    gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), save_menu_item);
     gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), quit_menu_item);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_menu_item);
 
     // Connect the Open menu item to the callback
     g_signal_connect(open_menu_item, "activate", G_CALLBACK(on_open_file), source_buffer);
+    g_signal_connect(save_menu_item, "activate", G_CALLBACK(on_save_file), source_buffer);
     g_signal_connect(quit_menu_item, "activate", G_CALLBACK(gtk_main_quit), NULL);
 
     // Create a vertical box to pack the menu and the scrolled window
