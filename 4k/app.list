@@ -1,0 +1,754 @@
+     1                                  
+     2                                  BITS 64
+     3                                  DEFAULT REL
+     4                                  
+     5                                  %define BASE_ADDR 0x400000
+     6                                  
+     7                                  ; =============================================================================
+     8                                  ; ELF Header
+     9                                  ; =============================================================================
+    10                                  
+    11                                      ; -- e_ident (16 bytes) --
+    12 00000000 7F454C46                    db 0x7F, "ELF"          ; ELF magic
+    13 00000004 02                          db 2                    ; EI_CLASS = 64-bit
+    14 00000005 01                          db 1                    ; EI_DATA  = LSB
+    15 00000006 01                          db 1                    ; EI_VERSION
+    16 00000007 00                          db 0                    ; EI_OSABI
+    17 00000008 00                          db 0                    ; EI_ABIVERSION
+    18 00000009 00<rep 7h>                  times 7 db 0            ; EI_PAD
+    19 00000010 0200                        dw 2                    ; e_type = ET_EXEC
+    20 00000012 3E00                        dw 0x3E                 ; e_machine = EM_X86_64
+    21 00000014 01000000                    dd 1                    ; e_version = EV_CURRENT
+    22 00000018 [A801400000000000]          dq BASE_ADDR + start    ; e_entry
+    23 00000020 [4000000000000000]          dq program_headers      ; e_phoff
+    24 00000028 0000000000000000            dq 0
+    25 00000030 00000000                    dd 0                    ; e_flags
+    26 00000034 [4000]                      dw ElfHeader_end        ; e_ehsize
+    27 00000036 3800                        dw 56                   ; e_phentsize for Elf64_Phdr
+    28 00000038 0300                        dw 3                    ; e_phnum (PT_LOAD + PT_DYNAMIC + PT_INTERP)
+    29                                  ; Nothing seems to happen when the following fields are missing are overwritten.
+    30 0000003A 0000                        dw 0                    ; e_shentsize
+    31 0000003C 0000                        dw 0                    ; e_shnum
+    32 0000003E 0000                        dw 0                    ; e_shstrndx = index of .shstrtab
+    33                                  
+    34                                  ElfHeader_end:
+    35                                  
+    36                                  ; =============================================================================
+    37                                  ; Program Headers
+    38                                  ; =============================================================================
+    39                                  
+    40                                  program_headers:
+    41                                  
+    42                                  ph_load:
+    43 00000040 01000000                    dd 1             ; p_type = PT_LOAD
+    44 00000044 07000000                    dd 7             ; p_flags = PF_R + PF_W + PF_X
+    45 00000048 0000000000000000            dq 0             ; p_offset
+    46 00000050 0000400000000000            dq BASE_ADDR     ; p_vaddr
+    47 00000058 0000400000000000            dq BASE_ADDR     ; p_paddr
+    48 00000060 [130F000000000000]          dq eof
+    49 00000068 [3310000000000000]          dq eof + bss_size
+    50 00000070 0010000000000000            dq 0x1000        ; p_align
+    51                                  
+    52                                  ph_dynamic:
+    53 00000078 02000000                    dd 2             ; p_type = PT_DYNAMIC
+    54 0000007C 06000000                    dd 6             ; p_flags = PF_R + PF_W
+    55 00000080 [0801000000000000]          dq dynamic_section
+    56 00000088 [0801400000000000]          dq BASE_ADDR + dynamic_section
+    57 00000090 [0801400000000000]          dq BASE_ADDR + dynamic_section
+    58 00000098 A000000000000000            dq (dynamic_section_end - dynamic_section)
+    59 000000A0 A000000000000000            dq (dynamic_section_end - dynamic_section)
+    60 000000A8 0800000000000000            dq 8
+    61                                  
+    62                                  ph_interp:
+    63 000000B0 03000000                    dd 3                 ; p_type = PT_INTERP
+    64 000000B4 04000000                    dd 4                 ; p_flags = PF_R  (interp is read-only)
+    65 000000B8 [E800000000000000]          dq interp_section    ; p_offset = file offset of the .interp bytes
+    66 000000C0 [E800400000000000]          dq BASE_ADDR + interp_section  ; p_vaddr
+    67 000000C8 [E800400000000000]          dq BASE_ADDR + interp_section  ; p_paddr
+    68 000000D0 1C00000000000000            dq (interp_section_end - interp_section)
+    69 000000D8 1C00000000000000            dq (interp_section_end - interp_section)
+    70 000000E0 0100000000000000            dq 1                 ; p_align
+    71                                  
+    72                                  program_headers_end:
+    73                                  
+    74                                  ; =============================================================================
+    75                                  ; .interp Section
+    76                                  ; =============================================================================
+    77                                  
+    78 000000E8 2F6C696236342F6C64-     interp_section: db "/lib64/ld-linux-x86-64.so.2", 0
+    78 000000F1 2D6C696E75782D7838-
+    78 000000FA 362D36342E736F2E32-
+    78 00000103 00                 
+    79                                  interp_section_end:
+    80                                  
+    81                                  ; =============================================================================
+    82                                  ; .dynamic Section
+    83                                  ; =============================================================================
+    84                                  
+    85 00000104 90<rep 4h>              align 8
+    86                                  dynamic_section:
+    87                                  
+    88                                  ; DT_SYMTAB
+    89 00000108 0600000000000000-           dq 6, BASE_ADDR + dynsym
+    89 00000110 [3905400000000000] 
+    90                                  
+    91                                  ; DT_STRTAB
+    92 00000118 0500000000000000-           dq 5, BASE_ADDR + dynstr
+    92 00000120 [B108400000000000] 
+    93                                  
+    94                                  ; DT_RELA
+    95 00000128 0700000000000000-           dq 7, BASE_ADDR + rela_text
+    95 00000130 [B30B400000000000] 
+    96                                  
+    97                                  ; DT_RELASZ
+    98 00000138 080000000000000060-         dq 8, (rela_text_end - rela_text)
+    98 00000141 03000000000000     
+    99                                  
+   100                                  ; DT_RELAENT
+   101 00000148 090000000000000018-         dq 9, 24 ; sizeof(Elf64_Rela)=24
+   101 00000151 00000000000000     
+   102                                  
+   103                                  ; DT_NEEDED
+   104 00000158 0100000000000000BE-         dq 1, str_libc - dynstr
+   104 00000161 02000000000000     
+   105 00000168 0100000000000000C8-         dq 1, str_libgtk - dynstr
+   105 00000171 02000000000000     
+   106 00000178 0100000000000000D6-         dq 1, str_libgobject - dynstr
+   106 00000181 02000000000000     
+   107 00000188 0100000000000000EA-         dq 1, str_libgtksource - dynstr
+   107 00000191 02000000000000     
+   108                                  
+   109                                  ; The remaining entries are supposed to be mandatory, but nothing happens when they're missing.
+   110                                  ; DT_SYMENT
+   111                                  ;    dq 11               ; d_tag = DT_SYMENT
+   112                                  ;    dq 24               ; sizeof(Elf64_Sym)=24
+   113                                  ; DT_STRSZ
+   114                                  ;    dq 10               ; d_tag = DT_STRSZ
+   115                                  ;    dq (dynstr_end - dynstr)
+   116                                  
+   117                                  ; DT_NULL
+   118 00000198 000000000000000000-         dq 0, 0
+   118 000001A1 00000000000000     
+   119                                  
+   120                                  dynamic_section_end:
+   121                                  
+   122                                  ; =============================================================================
+   123                                  ; .text Section
+   124                                  ; =============================================================================
+   125                                  
+   126                                  start:
+   127                                      ; Extract argc (number of arguments)
+   128 000001A8 488B3C24                    mov rdi, [rsp]     ; First item on the stack is argc
+   129                                  
+   130                                      ; Extract argv (pointer to the array of arguments)
+   131 000001AC 488D742408                  lea rsi, [rsp + 8] ; Next item on the stack is a pointer to argv[0]
+   132                                  
+   133                                      ; Call main(argc, argv)
+   134 000001B1 E89B010000                  call main
+   135                                  
+   136                                  LC0:
+   137 000001B6 5F4F70656E00                db "_Open", 0
+   138                                  LC1:
+   139 000001BC 5F43616E63656C00            db "_Cancel", 0
+   140                                  LC2:
+   141 000001C4 4F70656E2046696C65-         db "Open File", 0
+   141 000001CD 00                 
+   142                                  LC3:
+   143 000001CE 7200                        db "r", 0
+   144                                  LC4:
+   145 000001D0 4661696C656420746F-         db "Failed to open file: %s\n", 0
+   145 000001D9 206F70656E2066696C-
+   145 000001E2 653A2025735C6E00   
+   146                                  on_open_file:
+   147 000001EA F30F1EFA                    endbr64
+   148 000001EE 4157                        push r15
+   149 000001F0 488D0DC5FFFFFF              lea rcx, [LC1]
+   150 000001F7 31D2                        xor edx, edx
+   151 000001F9 31C0                        xor eax, eax
+   152 000001FB 4156                        push r14
+   153 000001FD 4C8D0DB2FFFFFF              lea r9, [LC0]
+   154 00000204 41B8FAFFFFFF                mov r8d, -6
+   155 0000020A 488D3DB3FFFFFF              lea rdi, [LC2]
+   156 00000211 4155                        push r13
+   157 00000213 4154                        push r12
+   158 00000215 55                          push rbp
+   159 00000216 4889F5                      mov rbp, rsi
+   160 00000219 31F6                        xor esi, esi
+   161 0000021B 53                          push rbx
+   162 0000021C 4883EC18                    sub rsp, 24
+   163 00000220 6A00                        push 0
+   164 00000222 6AFD                        push -3
+   165 00000224 FF15(30000000)              call [gtk_file_chooser_dialog_new]
+   166 0000022A 4889C7                      mov rdi, rax
+   167 0000022D 4889C3                      mov rbx, rax
+   168 00000230 FF15(58000000)              call [gtk_dialog_run]
+   169 00000236 5A                          pop rdx
+   170 00000237 59                          pop rcx
+   171 00000238 83F8FD                      cmp eax, -3
+   172 0000023B 7417                        je .L7
+   173                                  .L2:
+   174 0000023D 4883C418                    add rsp, 24
+   175 00000241 4889DF                      mov rdi, rbx
+   176 00000244 5B                          pop rbx
+   177 00000245 5D                          pop rbp
+   178 00000246 415C                        pop r12
+   179 00000248 415D                        pop r13
+   180 0000024A 415E                        pop r14
+   181 0000024C 415F                        pop r15
+   182 0000024E FF25(38000000)              jmp [gtk_widget_destroy]
+   183                                  .L7:
+   184 00000254 4889DF                      mov rdi, rbx
+   185 00000257 FF15(10010000)              call [gtk_file_chooser_get_filename]
+   186 0000025D 488D356AFFFFFF              lea rsi, [LC3]
+   187 00000264 4889C7                      mov rdi, rax
+   188 00000267 4989C6                      mov r14, rax
+   189 0000026A FF15(F8000000)              call [fopen]
+   190 00000270 4989C4                      mov r12, rax
+   191 00000273 4885C0                      test rax, rax
+   192 00000276 0F848E000000                je .L3
+   193 0000027C BA02000000                  mov edx, 2
+   194 00000281 31F6                        xor esi, esi
+   195 00000283 4889C7                      mov rdi, rax
+   196 00000286 FF15(48000000)              call [fseek]
+   197 0000028C 4C89E7                      mov rdi, r12
+   198 0000028F FF15(80000000)              call [ftell]
+   199 00000295 31D2                        xor edx, edx
+   200 00000297 31F6                        xor esi, esi
+   201 00000299 4C89E7                      mov rdi, r12
+   202 0000029C 4989C7                      mov r15, rax
+   203 0000029F FF15(48000000)              call [fseek]
+   204 000002A5 498D7701                    lea rsi, 1[r15]
+   205 000002A9 4889F7                      mov rdi, rsi
+   206 000002AC 4889742408                  mov QWORD [rsp + 8], rsi
+   207 000002B1 FF15(20000000)              call [g_malloc]
+   208 000002B7 488B742408                  mov rsi, QWORD [rsp + 8]
+   209 000002BC 4D89E0                      mov r8, r12
+   210 000002BF 4C89F9                      mov rcx, r15
+   211 000002C2 BA01000000                  mov edx, 1
+   212 000002C7 4889C7                      mov rdi, rax
+   213 000002CA 4989C5                      mov r13, rax
+   214 000002CD FF15(68000000)              call [__fread_chk]
+   215 000002D3 4C89E7                      mov rdi, r12
+   216 000002D6 41C644050000                mov BYTE 0[r13+rax], 0
+   217 000002DC FF15(50000000)              call [fclose]
+   218 000002E2 4889EF                      mov rdi, rbp
+   219 000002E5 BAFFFFFFFF                  mov edx, -1
+   220 000002EA 4C89EE                      mov rsi, r13
+   221 000002ED FF15(A0000000)              call [gtk_text_buffer_set_text]
+   222 000002F3 4C89EF                      mov rdi, r13
+   223 000002F6 FF15(00000000)              call [g_free]
+   224                                  .L4:
+   225 000002FC 4C89F7                      mov rdi, r14
+   226 000002FF FF15(00000000)              call [g_free]
+   227 00000305 E933FFFFFF                  jmp .L2
+   228                                  .L3:
+   229 0000030A 4C89F6                      mov rsi, r14
+   230 0000030D 488D3DBCFEFFFF              lea rdi, [LC4]
+   231 00000314 31C0                        xor eax, eax
+   232 00000316 FF15(90000000)              call [g_printerr]
+   233 0000031C EBDE                        jmp .L4
+   234                                  LC5:
+   235 0000031E 64656C6574652D6576-         db "delete-event", 0
+   235 00000327 656E7400           
+   236                                  LC6:
+   237 0000032B 636F6D6D6F6E6C6973-         db "commonlisp", 0
+   237 00000334 7000               
+   238                                  LC7:
+   239 00000336 46696C6500                  db "File", 0
+   240                                  LC8:
+   241 0000033B 4F70656E2E2E2E00            db "Open...", 0
+   242                                  LC9:
+   243 00000343 5175697400                  db "Quit", 0
+   244                                  LC10:
+   245 00000348 616374697661746500          db "activate", 0
+   246                                  main:
+   247 00000351 F30F1EFA                    endbr64
+   248 00000355 4157                        push r15
+   249 00000357 4156                        push r14
+   250 00000359 4155                        push r13
+   251 0000035B 4154                        push r12
+   252 0000035D 55                          push rbp
+   253 0000035E 53                          push rbx
+   254 0000035F 4883EC28                    sub rsp, 40
+   255 00000363 897C241C                    mov DWORD [rsp + 28], edi
+   256 00000367 488D7C241C                  lea rdi, [rsp + 28]
+   257 0000036C 4889742410                  mov QWORD [rsp + 16], rsi
+   258 00000371 488D742410                  lea rsi, [rsp + 16]
+   259 00000376 FF15(B8000000)              call [gtk_init]
+   260 0000037C 31FF                        xor edi, edi
+   261 0000037E FF15(18010000)              call [gtk_window_new]
+   262 00000384 BA58020000                  mov edx, 600
+   263 00000389 BE20030000                  mov esi, 800
+   264 0000038E 4889C7                      mov rdi, rax
+   265 00000391 4889C3                      mov rbx, rax
+   266 00000394 FF15(88000000)              call [gtk_window_set_default_size]
+   267 0000039A 4531C9                      xor r9d, r9d
+   268 0000039D 4531C0                      xor r8d, r8d
+   269 000003A0 31C9                        xor ecx, ecx
+   270 000003A2 488B15(60000000)            mov rdx, QWORD [gtk_main_quit]
+   271 000003A9 488D356EFFFFFF              lea rsi, [LC5]
+   272 000003B0 4889DF                      mov rdi, rbx
+   273 000003B3 FF15(A8000000)              call [g_signal_connect_data]
+   274 000003B9 31F6                        xor esi, esi
+   275 000003BB 31FF                        xor edi, edi
+   276 000003BD FF15(98000000)              call [gtk_scrolled_window_new]
+   277 000003C3 BA01000000                  mov edx, 1
+   278 000003C8 BE01000000                  mov esi, 1
+   279 000003CD 4889C7                      mov rdi, rax
+   280 000003D0 4889C5                      mov rbp, rax
+   281 000003D3 FF15(40000000)              call [gtk_scrolled_window_set_policy]
+   282 000003D9 FF15(08000000)              call [gtk_source_language_manager_get_default]
+   283 000003DF 488D3545FFFFFF              lea rsi, [LC6]
+   284 000003E6 4889C7                      mov rdi, rax
+   285 000003E9 FF15(F0000000)              call [gtk_source_language_manager_get_language]
+   286 000003EF 4889C7                      mov rdi, rax
+   287 000003F2 FF15(E8000000)              call [gtk_source_buffer_new_with_language]
+   288 000003F8 4889C7                      mov rdi, rax
+   289 000003FB 4889442408                  mov QWORD [rsp + 8], rax
+   290 00000400 FF15(B0000000)              call [gtk_source_view_new_with_buffer]
+   291 00000406 BE01000000                  mov esi, 1
+   292 0000040B 4989C4                      mov r12, rax
+   293 0000040E 4889C7                      mov rdi, rax
+   294 00000411 FF15(10000000)              call [gtk_source_view_set_show_line_numbers]
+   295 00000417 4C89E6                      mov rsi, r12
+   296 0000041A 4889EF                      mov rdi, rbp
+   297 0000041D FF15(78000000)              call [gtk_container_add]
+   298 00000423 FF15(C0000000)              call [gtk_menu_bar_new]
+   299 00000429 48890424                    mov QWORD [rsp], rax
+   300 0000042D FF15(70000000)              call [gtk_menu_new]
+   301 00000433 488D3DFCFEFFFF              lea rdi, [LC7]
+   302 0000043A 4989C4                      mov r12, rax
+   303 0000043D FF15(18000000)              call [gtk_menu_item_new_with_label]
+   304 00000443 488D3DF1FEFFFF              lea rdi, [LC8]
+   305 0000044A 4989C7                      mov r15, rax
+   306 0000044D FF15(18000000)              call [gtk_menu_item_new_with_label]
+   307 00000453 488D3DE9FEFFFF              lea rdi, [LC9]
+   308 0000045A 4989C6                      mov r14, rax
+   309 0000045D FF15(18000000)              call [gtk_menu_item_new_with_label]
+   310 00000463 4C89E6                      mov rsi, r12
+   311 00000466 4C89FF                      mov rdi, r15
+   312 00000469 4989C5                      mov r13, rax
+   313 0000046C FF15(00010000)              call [gtk_menu_item_set_submenu]
+   314 00000472 4C89E7                      mov rdi, r12
+   315 00000475 4C89F6                      mov rsi, r14
+   316 00000478 FF15(28000000)              call [gtk_menu_shell_append]
+   317 0000047E 4C89E7                      mov rdi, r12
+   318 00000481 4C89EE                      mov rsi, r13
+   319 00000484 4C8D25BDFEFFFF              lea r12, [LC10]
+   320 0000048B FF15(28000000)              call [gtk_menu_shell_append]
+   321 00000491 4C89FE                      mov rsi, r15
+   322 00000494 4C8B3C24                    mov r15, QWORD [rsp]
+   323 00000498 4C89FF                      mov rdi, r15
+   324 0000049B FF15(28000000)              call [gtk_menu_shell_append]
+   325 000004A1 488B4C2408                  mov rcx, QWORD [rsp + 8]
+   326 000004A6 4531C9                      xor r9d, r9d
+   327 000004A9 4C89E6                      mov rsi, r12
+   328 000004AC 4531C0                      xor r8d, r8d
+   329 000004AF 488D1534FDFFFF              lea rdx, [on_open_file]
+   330 000004B6 4C89F7                      mov rdi, r14
+   331 000004B9 FF15(A8000000)              call [g_signal_connect_data]
+   332 000004BF 4531C9                      xor r9d, r9d
+   333 000004C2 4C89E6                      mov rsi, r12
+   334 000004C5 4531C0                      xor r8d, r8d
+   335 000004C8 488B15(60000000)            mov rdx, QWORD [gtk_main_quit]
+   336 000004CF 31C9                        xor ecx, ecx
+   337 000004D1 4C89EF                      mov rdi, r13
+   338 000004D4 FF15(A8000000)              call [g_signal_connect_data]
+   339 000004DA 31F6                        xor esi, esi
+   340 000004DC BF01000000                  mov edi, 1
+   341 000004E1 FF15(D8000000)              call [gtk_box_new]
+   342 000004E7 4531C0                      xor r8d, r8d
+   343 000004EA 31C9                        xor ecx, ecx
+   344 000004EC 31D2                        xor edx, edx
+   345 000004EE 4989C4                      mov r12, rax
+   346 000004F1 4889C7                      mov rdi, rax
+   347 000004F4 4C89FE                      mov rsi, r15
+   348 000004F7 FF15(D0000000)              call [gtk_box_pack_start]
+   349 000004FD 4531C0                      xor r8d, r8d
+   350 00000500 B901000000                  mov ecx, 1
+   351 00000505 4889EE                      mov rsi, rbp
+   352 00000508 BA01000000                  mov edx, 1
+   353 0000050D 4C89E7                      mov rdi, r12
+   354 00000510 FF15(D0000000)              call [gtk_box_pack_start]
+   355 00000516 4C89E6                      mov rsi, r12
+   356 00000519 4889DF                      mov rdi, rbx
+   357 0000051C FF15(78000000)              call [gtk_container_add]
+   358 00000522 4889DF                      mov rdi, rbx
+   359 00000525 FF15(08010000)              call [gtk_widget_show_all]
+   360 0000052B FF15(C8000000)              call [gtk_main]
+   361 00000531 31FF                        xor edi, edi
+   362 00000533 FF15(E0000000)              call [exit]
+   363                                  
+   364                                  dynsym:
+   365 00000539 000000000000000000-         dq 0, 0, 0
+   365 00000542 000000000000000000-
+   365 0000054B 000000000000       
+   366 00000551 010000001200000000-         dd str_g_free - dynstr, 0x12, 0, 0, 0, 0
+   366 0000055A 000000000000000000-
+   366 00000563 000000000000       
+   367 00000569 080000001200000000-         dd str_gtk_source_language_manager_get_default - dynstr, 0x12, 0, 0, 0, 0
+   367 00000572 000000000000000000-
+   367 0000057B 000000000000       
+   368 00000581 300000001200000000-         dd str_gtk_source_view_set_show_line_numbers - dynstr, 0x12, 0, 0, 0, 0
+   368 0000058A 000000000000000000-
+   368 00000593 000000000000       
+   369 00000599 560000001200000000-         dd str_gtk_menu_item_new_with_label - dynstr, 0x12, 0, 0, 0, 0
+   369 000005A2 000000000000000000-
+   369 000005AB 000000000000       
+   370 000005B1 730000001200000000-         dd str_g_malloc - dynstr, 0x12, 0, 0, 0, 0
+   370 000005BA 000000000000000000-
+   370 000005C3 000000000000       
+   371 000005C9 7C0000001200000000-         dd str_gtk_menu_shell_append - dynstr, 0x12, 0, 0, 0, 0
+   371 000005D2 000000000000000000-
+   371 000005DB 000000000000       
+   372 000005E1 920000001200000000-         dd str_gtk_file_chooser_dialog_new - dynstr, 0x12, 0, 0, 0, 0
+   372 000005EA 000000000000000000-
+   372 000005F3 000000000000       
+   373 000005F9 AE0000001200000000-         dd str_gtk_widget_destroy - dynstr, 0x12, 0, 0, 0, 0
+   373 00000602 000000000000000000-
+   373 0000060B 000000000000       
+   374 00000611 C10000001200000000-         dd str_gtk_scrolled_window_set_policy - dynstr, 0x12, 0, 0, 0, 0
+   374 0000061A 000000000000000000-
+   374 00000623 000000000000       
+   375 00000629 E00000001200000000-         dd str_fseek - dynstr, 0x12, 0, 0, 0, 0
+   375 00000632 000000000000000000-
+   375 0000063B 000000000000       
+   376 00000641 E60000001200000000-         dd str_fclose - dynstr, 0x12, 0, 0, 0, 0
+   376 0000064A 000000000000000000-
+   376 00000653 000000000000       
+   377 00000659 ED0000001200000000-         dd str_gtk_dialog_run - dynstr, 0x12, 0, 0, 0, 0
+   377 00000662 000000000000000000-
+   377 0000066B 000000000000       
+   378 00000671 FC0000001200000000-         dd str_gtk_main_quit - dynstr, 0x12, 0, 0, 0, 0
+   378 0000067A 000000000000000000-
+   378 00000683 000000000000       
+   379 00000689 0A0100001200000000-         dd str___fread_chk - dynstr, 0x12, 0, 0, 0, 0
+   379 00000692 000000000000000000-
+   379 0000069B 000000000000       
+   380 000006A1 160100001200000000-         dd str_gtk_menu_new - dynstr, 0x12, 0, 0, 0, 0
+   380 000006AA 000000000000000000-
+   380 000006B3 000000000000       
+   381 000006B9 230100001200000000-         dd str_gtk_container_add - dynstr, 0x12, 0, 0, 0, 0
+   381 000006C2 000000000000000000-
+   381 000006CB 000000000000       
+   382 000006D1 350100001200000000-         dd str_ftell - dynstr, 0x12, 0, 0, 0, 0
+   382 000006DA 000000000000000000-
+   382 000006E3 000000000000       
+   383 000006E9 3B0100001200000000-         dd str_gtk_window_set_default_size - dynstr, 0x12, 0, 0, 0, 0
+   383 000006F2 000000000000000000-
+   383 000006FB 000000000000       
+   384 00000701 570100001200000000-         dd str_g_printerr - dynstr, 0x12, 0, 0, 0, 0
+   384 0000070A 000000000000000000-
+   384 00000713 000000000000       
+   385 00000719 620100001200000000-         dd str_gtk_scrolled_window_new - dynstr, 0x12, 0, 0, 0, 0
+   385 00000722 000000000000000000-
+   385 0000072B 000000000000       
+   386 00000731 7A0100001200000000-         dd str_gtk_text_buffer_set_text - dynstr, 0x12, 0, 0, 0, 0
+   386 0000073A 000000000000000000-
+   386 00000743 000000000000       
+   387 00000749 930100001200000000-         dd str_g_signal_connect_data - dynstr, 0x12, 0, 0, 0, 0
+   387 00000752 000000000000000000-
+   387 0000075B 000000000000       
+   388 00000761 A90100001200000000-         dd str_gtk_source_view_new_with_buffer - dynstr, 0x12, 0, 0, 0, 0
+   388 0000076A 000000000000000000-
+   388 00000773 000000000000       
+   389 00000779 C90100001200000000-         dd str_gtk_init - dynstr, 0x12, 0, 0, 0, 0
+   389 00000782 000000000000000000-
+   389 0000078B 000000000000       
+   390 00000791 D20100001200000000-         dd str_gtk_menu_bar_new - dynstr, 0x12, 0, 0, 0, 0
+   390 0000079A 000000000000000000-
+   390 000007A3 000000000000       
+   391 000007A9 E30100001200000000-         dd str_gtk_main - dynstr, 0x12, 0, 0, 0, 0
+   391 000007B2 000000000000000000-
+   391 000007BB 000000000000       
+   392 000007C1 EC0100001200000000-         dd str_gtk_box_pack_start - dynstr, 0x12, 0, 0, 0, 0
+   392 000007CA 000000000000000000-
+   392 000007D3 000000000000       
+   393 000007D9 FF0100001200000000-         dd str_gtk_box_new - dynstr, 0x12, 0, 0, 0, 0
+   393 000007E2 000000000000000000-
+   393 000007EB 000000000000       
+   394 000007F1 0B0200001200000000-         dd str_exit - dynstr, 0x12, 0, 0, 0, 0
+   394 000007FA 000000000000000000-
+   394 00000803 000000000000       
+   395 00000809 100200001200000000-         dd str_gtk_source_buffer_new_with_language - dynstr, 0x12, 0, 0, 0, 0
+   395 00000812 000000000000000000-
+   395 0000081B 000000000000       
+   396 00000821 340200001200000000-         dd str_gtk_source_language_manager_get_language - dynstr, 0x12, 0, 0, 0, 0
+   396 0000082A 000000000000000000-
+   396 00000833 000000000000       
+   397 00000839 5D0200001200000000-         dd str_fopen - dynstr, 0x12, 0, 0, 0, 0
+   397 00000842 000000000000000000-
+   397 0000084B 000000000000       
+   398 00000851 630200001200000000-         dd str_gtk_menu_item_set_submenu - dynstr, 0x12, 0, 0, 0, 0
+   398 0000085A 000000000000000000-
+   398 00000863 000000000000       
+   399 00000869 7D0200001200000000-         dd str_gtk_widget_show_all - dynstr, 0x12, 0, 0, 0, 0
+   399 00000872 000000000000000000-
+   399 0000087B 000000000000       
+   400 00000881 910200001200000000-         dd str_gtk_file_chooser_get_filename - dynstr, 0x12, 0, 0, 0, 0
+   400 0000088A 000000000000000000-
+   400 00000893 000000000000       
+   401 00000899 AF0200001200000000-         dd str_gtk_window_new - dynstr, 0x12, 0, 0, 0, 0
+   401 000008A2 000000000000000000-
+   401 000008AB 000000000000       
+   402                                  
+   403                                  dynstr:
+   404 000008B1 00                          db 0
+   405 000008B2 675F6672656500          str_g_free: db "g_free", 0
+   406 000008B9 67746B5F736F757263-     str_gtk_source_language_manager_get_default: db "gtk_source_language_manager_get_default", 0
+   406 000008C2 655F6C616E67756167-
+   406 000008CB 655F6D616E61676572-
+   406 000008D4 5F6765745F64656661-
+   406 000008DD 756C7400           
+   407 000008E1 67746B5F736F757263-     str_gtk_source_view_set_show_line_numbers: db "gtk_source_view_set_show_line_numbers", 0
+   407 000008EA 655F766965775F7365-
+   407 000008F3 745F73686F775F6C69-
+   407 000008FC 6E655F6E756D626572-
+   407 00000905 7300               
+   408 00000907 67746B5F6D656E755F-     str_gtk_menu_item_new_with_label: db "gtk_menu_item_new_with_label", 0
+   408 00000910 6974656D5F6E65775F-
+   408 00000919 776974685F6C616265-
+   408 00000922 6C00               
+   409 00000924 675F6D616C6C6F6300      str_g_malloc: db "g_malloc", 0
+   410 0000092D 67746B5F6D656E755F-     str_gtk_menu_shell_append: db "gtk_menu_shell_append", 0
+   410 00000936 7368656C6C5F617070-
+   410 0000093F 656E6400           
+   411 00000943 67746B5F66696C655F-     str_gtk_file_chooser_dialog_new: db "gtk_file_chooser_dialog_new", 0
+   411 0000094C 63686F6F7365725F64-
+   411 00000955 69616C6F675F6E6577-
+   411 0000095E 00                 
+   412 0000095F 67746B5F7769646765-     str_gtk_widget_destroy: db "gtk_widget_destroy", 0
+   412 00000968 745F64657374726F79-
+   412 00000971 00                 
+   413 00000972 67746B5F7363726F6C-     str_gtk_scrolled_window_set_policy: db "gtk_scrolled_window_set_policy", 0
+   413 0000097B 6C65645F77696E646F-
+   413 00000984 775F7365745F706F6C-
+   413 0000098D 69637900           
+   414 00000991 667365656B00            str_fseek: db "fseek", 0
+   415 00000997 66636C6F736500          str_fclose: db "fclose", 0
+   416 0000099E 67746B5F6469616C6F-     str_gtk_dialog_run: db "gtk_dialog_run", 0
+   416 000009A7 675F72756E00       
+   417 000009AD 67746B5F6D61696E5F-     str_gtk_main_quit: db "gtk_main_quit", 0
+   417 000009B6 7175697400         
+   418 000009BB 5F5F66726561645F63-     str___fread_chk: db "__fread_chk", 0
+   418 000009C4 686B00             
+   419 000009C7 67746B5F6D656E755F-     str_gtk_menu_new: db "gtk_menu_new", 0
+   419 000009D0 6E657700           
+   420 000009D4 67746B5F636F6E7461-     str_gtk_container_add: db "gtk_container_add", 0
+   420 000009DD 696E65725F61646400 
+   421 000009E6 6674656C6C00            str_ftell: db "ftell", 0
+   422 000009EC 67746B5F77696E646F-     str_gtk_window_set_default_size: db "gtk_window_set_default_size", 0
+   422 000009F5 775F7365745F646566-
+   422 000009FE 61756C745F73697A65-
+   422 00000A07 00                 
+   423 00000A08 675F7072696E746572-     str_g_printerr: db "g_printerr", 0
+   423 00000A11 7200               
+   424 00000A13 67746B5F7363726F6C-     str_gtk_scrolled_window_new: db "gtk_scrolled_window_new", 0
+   424 00000A1C 6C65645F77696E646F-
+   424 00000A25 775F6E657700       
+   425 00000A2B 67746B5F746578745F-     str_gtk_text_buffer_set_text: db "gtk_text_buffer_set_text", 0
+   425 00000A34 6275666665725F7365-
+   425 00000A3D 745F7465787400     
+   426 00000A44 675F7369676E616C5F-     str_g_signal_connect_data: db "g_signal_connect_data", 0
+   426 00000A4D 636F6E6E6563745F64-
+   426 00000A56 61746100           
+   427 00000A5A 67746B5F736F757263-     str_gtk_source_view_new_with_buffer: db "gtk_source_view_new_with_buffer", 0
+   427 00000A63 655F766965775F6E65-
+   427 00000A6C 775F776974685F6275-
+   427 00000A75 6666657200         
+   428 00000A7A 67746B5F696E697400      str_gtk_init: db "gtk_init", 0
+   429 00000A83 67746B5F6D656E755F-     str_gtk_menu_bar_new: db "gtk_menu_bar_new", 0
+   429 00000A8C 6261725F6E657700   
+   430 00000A94 67746B5F6D61696E00      str_gtk_main: db "gtk_main", 0
+   431 00000A9D 67746B5F626F785F70-     str_gtk_box_pack_start: db "gtk_box_pack_start", 0
+   431 00000AA6 61636B5F7374617274-
+   431 00000AAF 00                 
+   432 00000AB0 67746B5F626F785F6E-     str_gtk_box_new: db "gtk_box_new", 0
+   432 00000AB9 657700             
+   433 00000ABC 6578697400              str_exit: db "exit", 0
+   434 00000AC1 67746B5F736F757263-     str_gtk_source_buffer_new_with_language: db "gtk_source_buffer_new_with_language", 0
+   434 00000ACA 655F6275666665725F-
+   434 00000AD3 6E65775F776974685F-
+   434 00000ADC 6C616E677561676500 
+   435 00000AE5 67746B5F736F757263-     str_gtk_source_language_manager_get_language: db "gtk_source_language_manager_get_language", 0
+   435 00000AEE 655F6C616E67756167-
+   435 00000AF7 655F6D616E61676572-
+   435 00000B00 5F6765745F6C616E67-
+   435 00000B09 7561676500         
+   436 00000B0E 666F70656E00            str_fopen: db "fopen", 0
+   437 00000B14 67746B5F6D656E755F-     str_gtk_menu_item_set_submenu: db "gtk_menu_item_set_submenu", 0
+   437 00000B1D 6974656D5F7365745F-
+   437 00000B26 7375626D656E7500   
+   438 00000B2E 67746B5F7769646765-     str_gtk_widget_show_all: db "gtk_widget_show_all", 0
+   438 00000B37 745F73686F775F616C-
+   438 00000B40 6C00               
+   439 00000B42 67746B5F66696C655F-     str_gtk_file_chooser_get_filename: db "gtk_file_chooser_get_filename", 0
+   439 00000B4B 63686F6F7365725F67-
+   439 00000B54 65745F66696C656E61-
+   439 00000B5D 6D6500             
+   440 00000B60 67746B5F77696E646F-     str_gtk_window_new: db "gtk_window_new", 0
+   440 00000B69 775F6E657700       
+   441 00000B6F 6C6962632E736F2E36-     str_libc:  db "libc.so.6", 0
+   441 00000B78 00                 
+   442 00000B79 6C696267746B2D332E-     str_libgtk:  db "libgtk-3.so.0", 0
+   442 00000B82 736F2E3000         
+   443 00000B87 6C6962676F626A6563-     str_libgobject:  db "libgobject-2.0.so.0", 0
+   443 00000B90 742D322E302E736F2E-
+   443 00000B99 3000               
+   444 00000B9B 6C696267746B736F75-     str_libgtksource: db "libgtksourceview-4.so.0", 0
+   444 00000BA4 726365766965772D34-
+   444 00000BAD 2E736F2E3000       
+   445                                  dynstr_end:
+   446                                  
+   447                                  rela_text:
+   448 00000BB3 [0000400000000000]-         dq (BASE_ADDR + g_free), (1 << 32) | 1, 0
+   448 00000BBB 010000000100000000-
+   448 00000BC4 00000000000000     
+   449 00000BCB [0800400000000000]-         dq (BASE_ADDR + gtk_source_language_manager_get_default), (2 << 32) | 1, 0
+   449 00000BD3 010000000200000000-
+   449 00000BDC 00000000000000     
+   450 00000BE3 [1000400000000000]-         dq (BASE_ADDR + gtk_source_view_set_show_line_numbers), (3 << 32) | 1, 0
+   450 00000BEB 010000000300000000-
+   450 00000BF4 00000000000000     
+   451 00000BFB [1800400000000000]-         dq (BASE_ADDR + gtk_menu_item_new_with_label), (4 << 32) | 1, 0
+   451 00000C03 010000000400000000-
+   451 00000C0C 00000000000000     
+   452 00000C13 [2000400000000000]-         dq (BASE_ADDR + g_malloc), (5 << 32) | 1, 0
+   452 00000C1B 010000000500000000-
+   452 00000C24 00000000000000     
+   453 00000C2B [2800400000000000]-         dq (BASE_ADDR + gtk_menu_shell_append), (6 << 32) | 1, 0
+   453 00000C33 010000000600000000-
+   453 00000C3C 00000000000000     
+   454 00000C43 [3000400000000000]-         dq (BASE_ADDR + gtk_file_chooser_dialog_new), (7 << 32) | 1, 0
+   454 00000C4B 010000000700000000-
+   454 00000C54 00000000000000     
+   455 00000C5B [3800400000000000]-         dq (BASE_ADDR + gtk_widget_destroy), (8 << 32) | 1, 0
+   455 00000C63 010000000800000000-
+   455 00000C6C 00000000000000     
+   456 00000C73 [4000400000000000]-         dq (BASE_ADDR + gtk_scrolled_window_set_policy), (9 << 32) | 1, 0
+   456 00000C7B 010000000900000000-
+   456 00000C84 00000000000000     
+   457 00000C8B [4800400000000000]-         dq (BASE_ADDR + fseek), (10 << 32) | 1, 0
+   457 00000C93 010000000A00000000-
+   457 00000C9C 00000000000000     
+   458 00000CA3 [5000400000000000]-         dq (BASE_ADDR + fclose), (11 << 32) | 1, 0
+   458 00000CAB 010000000B00000000-
+   458 00000CB4 00000000000000     
+   459 00000CBB [5800400000000000]-         dq (BASE_ADDR + gtk_dialog_run), (12 << 32) | 1, 0
+   459 00000CC3 010000000C00000000-
+   459 00000CCC 00000000000000     
+   460 00000CD3 [6000400000000000]-         dq (BASE_ADDR + gtk_main_quit), (13 << 32) | 1, 0
+   460 00000CDB 010000000D00000000-
+   460 00000CE4 00000000000000     
+   461 00000CEB [6800400000000000]-         dq (BASE_ADDR + __fread_chk), (14 << 32) | 1, 0
+   461 00000CF3 010000000E00000000-
+   461 00000CFC 00000000000000     
+   462 00000D03 [7000400000000000]-         dq (BASE_ADDR + gtk_menu_new), (15 << 32) | 1, 0
+   462 00000D0B 010000000F00000000-
+   462 00000D14 00000000000000     
+   463 00000D1B [7800400000000000]-         dq (BASE_ADDR + gtk_container_add), (16 << 32) | 1, 0
+   463 00000D23 010000001000000000-
+   463 00000D2C 00000000000000     
+   464 00000D33 [8000400000000000]-         dq (BASE_ADDR + ftell), (17 << 32) | 1, 0
+   464 00000D3B 010000001100000000-
+   464 00000D44 00000000000000     
+   465 00000D4B [8800400000000000]-         dq (BASE_ADDR + gtk_window_set_default_size), (18 << 32) | 1, 0
+   465 00000D53 010000001200000000-
+   465 00000D5C 00000000000000     
+   466 00000D63 [9000400000000000]-         dq (BASE_ADDR + g_printerr), (19 << 32) | 1, 0
+   466 00000D6B 010000001300000000-
+   466 00000D74 00000000000000     
+   467 00000D7B [9800400000000000]-         dq (BASE_ADDR + gtk_scrolled_window_new), (20 << 32) | 1, 0
+   467 00000D83 010000001400000000-
+   467 00000D8C 00000000000000     
+   468 00000D93 [A000400000000000]-         dq (BASE_ADDR + gtk_text_buffer_set_text), (21 << 32) | 1, 0
+   468 00000D9B 010000001500000000-
+   468 00000DA4 00000000000000     
+   469 00000DAB [A800400000000000]-         dq (BASE_ADDR + g_signal_connect_data), (22 << 32) | 1, 0
+   469 00000DB3 010000001600000000-
+   469 00000DBC 00000000000000     
+   470 00000DC3 [B000400000000000]-         dq (BASE_ADDR + gtk_source_view_new_with_buffer), (23 << 32) | 1, 0
+   470 00000DCB 010000001700000000-
+   470 00000DD4 00000000000000     
+   471 00000DDB [B800400000000000]-         dq (BASE_ADDR + gtk_init), (24 << 32) | 1, 0
+   471 00000DE3 010000001800000000-
+   471 00000DEC 00000000000000     
+   472 00000DF3 [C000400000000000]-         dq (BASE_ADDR + gtk_menu_bar_new), (25 << 32) | 1, 0
+   472 00000DFB 010000001900000000-
+   472 00000E04 00000000000000     
+   473 00000E0B [C800400000000000]-         dq (BASE_ADDR + gtk_main), (26 << 32) | 1, 0
+   473 00000E13 010000001A00000000-
+   473 00000E1C 00000000000000     
+   474 00000E23 [D000400000000000]-         dq (BASE_ADDR + gtk_box_pack_start), (27 << 32) | 1, 0
+   474 00000E2B 010000001B00000000-
+   474 00000E34 00000000000000     
+   475 00000E3B [D800400000000000]-         dq (BASE_ADDR + gtk_box_new), (28 << 32) | 1, 0
+   475 00000E43 010000001C00000000-
+   475 00000E4C 00000000000000     
+   476 00000E53 [E000400000000000]-         dq (BASE_ADDR + exit), (29 << 32) | 1, 0
+   476 00000E5B 010000001D00000000-
+   476 00000E64 00000000000000     
+   477 00000E6B [E800400000000000]-         dq (BASE_ADDR + gtk_source_buffer_new_with_language), (30 << 32) | 1, 0
+   477 00000E73 010000001E00000000-
+   477 00000E7C 00000000000000     
+   478 00000E83 [F000400000000000]-         dq (BASE_ADDR + gtk_source_language_manager_get_language), (31 << 32) | 1, 0
+   478 00000E8B 010000001F00000000-
+   478 00000E94 00000000000000     
+   479 00000E9B [F800400000000000]-         dq (BASE_ADDR + fopen), (32 << 32) | 1, 0
+   479 00000EA3 010000002000000000-
+   479 00000EAC 00000000000000     
+   480 00000EB3 [0001400000000000]-         dq (BASE_ADDR + gtk_menu_item_set_submenu), (33 << 32) | 1, 0
+   480 00000EBB 010000002100000000-
+   480 00000EC4 00000000000000     
+   481 00000ECB [0801400000000000]-         dq (BASE_ADDR + gtk_widget_show_all), (34 << 32) | 1, 0
+   481 00000ED3 010000002200000000-
+   481 00000EDC 00000000000000     
+   482 00000EE3 [1001400000000000]-         dq (BASE_ADDR + gtk_file_chooser_get_filename), (35 << 32) | 1, 0
+   482 00000EEB 010000002300000000-
+   482 00000EF4 00000000000000     
+   483 00000EFB [1801400000000000]-         dq (BASE_ADDR + gtk_window_new), (36 << 32) | 1, 0
+   483 00000F03 010000002400000000-
+   483 00000F0C 00000000000000     
+   484                                  rela_text_end:
+   485                                  
+   486                                  eof:
+   487                                      section .bss
+   488                                  bss:
+   489 00000000 ????????????????        g_free: resq 1
+   490 00000008 ????????????????        gtk_source_language_manager_get_default: resq 1
+   491 00000010 ????????????????        gtk_source_view_set_show_line_numbers: resq 1
+   492 00000018 ????????????????        gtk_menu_item_new_with_label: resq 1
+   493 00000020 ????????????????        g_malloc: resq 1
+   494 00000028 ????????????????        gtk_menu_shell_append: resq 1
+   495 00000030 ????????????????        gtk_file_chooser_dialog_new: resq 1
+   496 00000038 ????????????????        gtk_widget_destroy: resq 1
+   497 00000040 ????????????????        gtk_scrolled_window_set_policy: resq 1
+   498 00000048 ????????????????        fseek: resq 1
+   499 00000050 ????????????????        fclose: resq 1
+   500 00000058 ????????????????        gtk_dialog_run: resq 1
+   501 00000060 ????????????????        gtk_main_quit: resq 1
+   502 00000068 ????????????????        __fread_chk: resq 1
+   503 00000070 ????????????????        gtk_menu_new: resq 1
+   504 00000078 ????????????????        gtk_container_add: resq 1
+   505 00000080 ????????????????        ftell: resq 1
+   506 00000088 ????????????????        gtk_window_set_default_size: resq 1
+   507 00000090 ????????????????        g_printerr: resq 1
+   508 00000098 ????????????????        gtk_scrolled_window_new: resq 1
+   509 000000A0 ????????????????        gtk_text_buffer_set_text: resq 1
+   510 000000A8 ????????????????        g_signal_connect_data: resq 1
+   511 000000B0 ????????????????        gtk_source_view_new_with_buffer: resq 1
+   512 000000B8 ????????????????        gtk_init: resq 1
+   513 000000C0 ????????????????        gtk_menu_bar_new: resq 1
+   514 000000C8 ????????????????        gtk_main: resq 1
+   515 000000D0 ????????????????        gtk_box_pack_start: resq 1
+   516 000000D8 ????????????????        gtk_box_new: resq 1
+   517 000000E0 ????????????????        exit: resq 1
+   518 000000E8 ????????????????        gtk_source_buffer_new_with_language: resq 1
+   519 000000F0 ????????????????        gtk_source_language_manager_get_language: resq 1
+   520 000000F8 ????????????????        fopen: resq 1
+   521 00000100 ????????????????        gtk_menu_item_set_submenu: resq 1
+   522 00000108 ????????????????        gtk_widget_show_all: resq 1
+   523 00000110 ????????????????        gtk_file_chooser_get_filename: resq 1
+   524 00000118 ????????????????        gtk_window_new: resq 1
+   525                                  bss_end:
+   526                                  bss_size equ bss_end - bss
