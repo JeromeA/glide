@@ -24,7 +24,7 @@ s/\.LC(\d+)/LC$1/g;
 # Change the relative addressing syntax.
 s/(\S+)\[rip\]/[$1]/g;
 s/(?:PTR )?(\d+)\[rsp\]/[rsp + $1]/g;
-s/PTR \[/[/g;
+s/PTR //g;
 
 # Change call/jmp to external symbols.
 $labels{"exit"} = 1;

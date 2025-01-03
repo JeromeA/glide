@@ -30,6 +30,9 @@ s/PTR //g;
 $labels{"exit"} = 1;
 s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
 
+# Save common bss labels.
+s/\s+\.comm\s+(\S+),(\d+),(\d+)/push @bss, "$1: resb $2"; ""/ge;
+
 # A mov from a GOTPCREL address is just a mov.
 s/\[(\S+)\@GOTPCREL\]/$labels{$1} = 1; "[$1]"/ge;
 
@@ -37,13 +40,13 @@ s/\[(\S+)\@GOTPCREL\]/$labels{$1} = 1; "[$1]"/ge;
 @labels = keys %labels;
 $_ .= "\ndynsym:\n    dq 0, 0, 0\n";
 for my $label (@labels) {
-    $_ .= "    dd str_$label - dynstr, 0x12, 0, 0, 0, 0\n";
+  $_ .= "    dd str_$label - dynstr, 0x12, 0, 0, 0, 0\n";
 }
 
 # Add a dynstr section.
 $_ .= "\ndynstr:\n    db 0\n";
 for my $label (@labels) {
-    $_ .= "str_$label: db \"$label\", 0\n";
+  $_ .= "str_$label: db \"$label\", 0\n";
 }
 $_ .= "str_libc:  db \"libc.so.6\", 0\n";
 $_ .= "str_libgtk:  db \"libgtk-3.so.0\", 0\n";
@@ -55,15 +58,18 @@ $_ .= "dynstr_end:\n";
 $_ .= "\nrela_text:\n";
 my $counter = 1;
 for my $label (@labels) {
-    $_ .= "    dq (BASE_ADDR + $label), ($counter << 32) | 1, 0\n";
-    $counter++;
+  $_ .= "    dq (BASE_ADDR + $label), ($counter << 32) | 1, 0\n";
+  $counter++;
 }
 $_ .= "rela_text_end:\n";
 
 # Add a bss section.
 $_ .= "\neof:\n    section .bss\nbss:\n";
 for my $label (@labels) {
-    $_ .= "$label: resq 1\n";
+  $_ .= "$label: resq 1\n";
+}
+for my $bss (@bss) {
+  $_ .= "$bss\n";
 }
 $_ .= "bss_end:\n";
 $_ .= "bss_size equ bss_end - bss\n";
