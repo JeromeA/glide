@@ -27,8 +27,8 @@ DEFAULT REL
     dw 56                   ; e_phentsize for Elf64_Phdr
     dw 3                    ; e_phnum (PT_LOAD + PT_DYNAMIC + PT_INTERP)
 ; Nothing seems to happen when the following fields are missing are overwritten.
-;    dw 0                    ; e_shentsize
-;    dw 0                    ; e_shnum
+    dw 0                    ; e_shentsize
+    dw 0                    ; e_shnum
 ;    dw 0                    ; e_shstrndx = index of .shstrtab
 
 ElfHeader_end:
@@ -114,7 +114,6 @@ dynamic_section:
 ;    dq (dynstr_end - dynstr)
 
 ; DT_NULL
-    dq 0
     dq 0
 
 dynamic_section_end:
