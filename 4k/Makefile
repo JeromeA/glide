@@ -1,15 +1,18 @@
-CFLAGS=-Wall -Wextra `pkg-config --cflags gtk+-3.0 gtksourceview-4` -O2
+CFLAGS=-Wall -Wextra `pkg-config --cflags gtk+-3.0 gtksourceview-4`
 LDLIBS=`pkg-config --libs gtk+-3.0 gtksourceview-4`
 
-TARGETS=app-debug app
+TARGETS=app-debug app-debug-reloc app
 
 all: $(TARGETS)
 
 app-debug: app.c
 	$(CC) $(CFLAGS) $< -o $@ -g $(LDLIBS)
 
+app-debug-reloc: app.c
+	$(CC) $(CFLAGS) $< -o $@ -g $(LDLIBS) -DRELOC
+
 app-source.s: app.c
-	$(CC) $(CFLAGS) $< -S -masm=intel -o $@
+	$(CC) $(CFLAGS) $< -S -masm=intel -o $@ -DRELOC -O2
 
 app-source.asm: app-source.s
 	./intel2nasm.pl $< > $@
