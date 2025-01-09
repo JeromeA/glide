@@ -59,10 +59,7 @@ $_ .= "\ndynstr:\n    db 0\n";
 for my $label (@labels) {
   $_ .= "str_$label: db \"$label\", 0\n";
 }
-$_ .= "str_libc:  db \"libc.so.6\", 0\n";
-$_ .= "str_libgtk:  db \"libgtk-3.so.0\", 0\n";
-$_ .= "str_libgobject:  db \"libgobject-2.0.so.0\", 0\n";
-# $_ .= "str_libgtksource: db \"libgtksourceview-4.so.0\", 0\n";
+$_ .= `cat libraries.asm`;
 $_ .= "dynstr_end:\n";
 
 # Add a rela.text section.
