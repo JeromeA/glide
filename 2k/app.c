@@ -65,10 +65,10 @@ int main(int argc, char *argv[]) {
   char *p = (char *)&reloc;
   for(int i=0 ; i<15 ; i++) {
     f[i] = dlsym(RTLD_DEFAULT, p+1);
-    if (!f[i]) {
-      printf("dlsym: %s\n", dlerror());
-      exit(1);
-    }
+//    if (!f[i]) {
+//      printf("dlsym: %s\n", dlerror());
+//      exit(1);
+//    }
     p += *p;
   }
 
