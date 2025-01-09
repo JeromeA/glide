@@ -20,7 +20,7 @@ app-source.s: app.c
 	$(CC) $(CFLAGS) $< -S -masm=intel -o $@
 
 app-source.asm: app-source.s libraries.asm
-	./intel2nasm.pl $< > $@
+	../common/intel2nasm.pl $< > $@
 
 app.asm: template.asm app-source.asm
 	cat $^ > $@
