@@ -59,7 +59,7 @@ $_ .= "\ndynstr:\n    db 0\n";
 for my $label (@labels) {
   $_ .= "str_$label: db \"$label\", 0\n";
 }
-$_ .= `cat libraries.asm`;
+$_ .= "%include \"libraries.asm\"\n";
 $_ .= "dynstr_end:\n";
 
 # Add a rela.text section.
