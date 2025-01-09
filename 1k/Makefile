@@ -1,13 +1,21 @@
-CFLAGS=-Wall -Wextra `pkg-config --cflags gtk+-3.0` -O2
-LDLIBS=`pkg-config --libs gtk+-3.0`
+LIBS=gtk+-3.0
+CFLAGS=-Wall -Wextra `pkg-config --cflags $(LIBS)` -O2
+LDLIBS=`pkg-config --libs $(LIBS)`
 
 TARGETS=app-debug app
+SOURCES=app.c reloc.c
+DEBUG_OBJECTS=$(SOURCES:.c=.o)
 
 all: $(TARGETS)
 
-app-debug: app.c
-	$(CC) $(CFLAGS) $< -o $@ -g $(LDLIBS)
+$(DEBUG_OBJECTS): CFLAGS += -g
+app.o: app.c reloc.h symbols.inc
+reloc.o: reloc.c reloc.h symbols.inc
 
+app-debug: $(DEBUG_OBJECTS)
+	$(CC) $(CFLAGS) $^ -g -o $@ $(LDLIBS)
+
+app-source.s: CFLAGS += -DRELOC -DINLINE
 app-source.s: app.c
 	$(CC) $(CFLAGS) $< -S -masm=intel -o $@
 
@@ -22,5 +30,5 @@ app: app.asm
 	chmod +x $@
 
 clean:
-	rm -f $(TARGETS) *.list app-source.* app.asm
+	rm -f $(TARGETS) $(DEBUG_OBJECTS) *.list app-source.* app.asm
 

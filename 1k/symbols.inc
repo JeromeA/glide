@@ -1,0 +1,5 @@
+S(exit, NORETURN, void, (int status), (status))
+S(gtk_main, VOID, void, (void), ())
+S(gtk_main_quit, VOID, void, (void), ())
+S(gtk_widget_show_all, VOID, void, (GtkWidget *widget), (widget))
+S(gtk_window_new, RETURN, GtkWidget *, (GtkWindowType type), (type))
