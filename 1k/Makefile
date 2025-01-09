@@ -1,5 +1,6 @@
+VPATH=../common
 LIBS=gtk+-3.0
-CFLAGS=-Wall -Wextra `pkg-config --cflags $(LIBS)` -O2
+CFLAGS=-Wall -Wextra `pkg-config --cflags $(LIBS)` -O2 -I../common -I.
 LDLIBS=`pkg-config --libs $(LIBS)`
 
 TARGETS=app-debug app
