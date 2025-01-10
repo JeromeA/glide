@@ -3,21 +3,33 @@ LIBS=gtk+-3.0
 CFLAGS=-Wall -Wextra `pkg-config --cflags $(LIBS)` -O2 -I../common -I.
 LDLIBS=`pkg-config --libs $(LIBS)`
 
-TARGETS=app-debug app
+TARGETS=app-debug app-reloc app
 SOURCES=app.c reloc.c
-DEBUG_OBJECTS=$(SOURCES:.c=.o)
+DEBUG_OBJECTS=$(SOURCES:.c=.debug.o)
+RELOC_OBJECTS=$(SOURCES:.c=.reloc.o)
+
+app-debug $(DEBUG_OBJECTS): CFLAGS += -g -DDEBUG
+app-reloc $(RELOC_OBJECTS): CFLAGS += -DRELOC -DDEBUG
 
 all: $(TARGETS)
 
-$(DEBUG_OBJECTS): CFLAGS += -g
-app.o: app.c reloc.h symbols.inc
-reloc.o: reloc.c reloc.h symbols.inc
+app.debug.o app.reloc.o: app.c reloc.h symbols.inc
+reloc.debug.o app.reloc.o: reloc.c reloc.h symbols.inc
+
+%.debug.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+%.reloc.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
 
 app-debug: $(DEBUG_OBJECTS)
-	$(CC) $(CFLAGS) $^ -g -o $@ $(LDLIBS)
+	$(CC) $^ -o $@ $(LDLIBS)
+
+app-reloc: $(RELOC_OBJECTS)
+	$(CC) $^ -o $@ $(LDLIBS)
 
 app-source.s: CFLAGS += -DRELOC -DINLINE
-app-source.s: app.c
+app-source.s: $(SOURCES)
 	$(CC) $(CFLAGS) $< -S -masm=intel -o $@
 
 app-source.asm: app-source.s libraries.asm
@@ -31,5 +43,5 @@ app: app.asm
 	chmod +x $@
 
 clean:
-	rm -f $(TARGETS) $(DEBUG_OBJECTS) *.list app-source.* app.asm
+	rm -f $(TARGETS) $(DEBUG_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm
 

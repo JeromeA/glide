@@ -10,6 +10,8 @@
 
 #ifdef RELOC
 
+#include <dlfcn.h>
+
 enum {
 #define S(symbol, a1, a2, a3, a4) IDX_##symbol,
 #include "symbols.inc"
@@ -23,7 +25,7 @@ extern long (*reloc_functions[NUM_FUNCTIONS])();
 #define VOID(RTYPE, e) e
 #define NORETURN(RTYPE, e) e; __builtin_unreachable()
 #define S(symbol, RETURNVOID, RTYPE, DECL_PARAMS, CALL_PARAMS)         \
-  inline RTYPE symbol DECL_PARAMS {               \
+  extern inline __attribute__((gnu_inline)) RTYPE symbol DECL_PARAMS {               \
     RETURNVOID(RTYPE, reloc_functions[IDX_##symbol] CALL_PARAMS);  \
   }
 #include "symbols.inc"
@@ -43,6 +45,12 @@ static inline void relocate() {
   char *p = (char *)&reloc_names;
   for(int i=0 ; i<5 ; i++) {
     reloc_functions[i] = dlsym(RTLD_DEFAULT, p+1);
+#ifdef DEBUG
+    if (reloc_functions[i] == NULL) {
+      printf("Failed to find symbol %s\n", p+1);
+      exit(1);
+    }
+#endif
     p += *p;
   }
 #endif
