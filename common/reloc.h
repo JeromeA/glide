@@ -43,7 +43,7 @@ extern reloc_name_type reloc_names;
 static inline void relocate() {
 #ifdef RELOC
   char *p = (char *)&reloc_names;
-  for(int i=0 ; i<5 ; i++) {
+  for(int i=0 ; i<NUM_FUNCTIONS ; i++) {
     reloc_functions[i] = dlsym(RTLD_DEFAULT, p+1);
 #ifdef DEBUG
     if (reloc_functions[i] == NULL) {
