@@ -1,6 +1,6 @@
 VPATH=../common
 LIBS=gtk+-3.0
-CFLAGS=-Wall -Wextra `pkg-config --cflags $(LIBS)` -O2 -I../common -I.
+CFLAGS=-Wall -Wextra `pkg-config --cflags $(LIBS)` -I../common -I.
 LDLIBS=`pkg-config --libs $(LIBS)`
 
 TARGETS=app-debug app-reloc app
@@ -9,7 +9,7 @@ DEBUG_OBJECTS=$(SOURCES:.c=.debug.o)
 RELOC_OBJECTS=$(SOURCES:.c=.reloc.o)
 
 app-debug $(DEBUG_OBJECTS): CFLAGS += -g -DDEBUG
-app-reloc $(RELOC_OBJECTS): CFLAGS += -DRELOC -DDEBUG
+app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC
 
 all: $(TARGETS)
 
@@ -28,7 +28,7 @@ app-debug: $(DEBUG_OBJECTS)
 app-reloc: $(RELOC_OBJECTS)
 	$(CC) $^ -o $@ $(LDLIBS)
 
-app-source.s: CFLAGS += -DRELOC -DINLINE
+app-source.s: CFLAGS += -O2 -DRELOC -DINLINE
 app-source.s: $(SOURCES)
 	$(CC) $(CFLAGS) $< -S -masm=intel -o $@
 
