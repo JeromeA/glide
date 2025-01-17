@@ -1,5 +1,4 @@
-#include <gtk/gtk.h>
-#include "reloc.h"
+#include "includes.h"
 
 #ifdef INLINE
 #include "reloc.c"

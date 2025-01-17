@@ -1,6 +1,4 @@
-#include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h>
-#include <dlfcn.h>
+#include "includes.h"
 #include "reloc.h"
 
 #ifdef INLINE
