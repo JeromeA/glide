@@ -29,7 +29,9 @@ s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
 # Change the relative addressing syntax.
 # In particular:
 #   call [QWORD PTR f[rip+16]] -> call [f + 16]
-s/\[?QWORD (?:PTR )?(\S+)\[rip(\+\d+)?\]\]?/[$1$2]/g;
+#   call [QWORD PTR [r12]] -> call [r12]
+s/\[?QWORD (?:PTR )?(\S+)\[rip(\+\d+)?\]\]?/QWORD [$1$2]/g;
+s/\[QWORD PTR \[(r12)\]\]?/QWORD [$1]/g;
 s/(\S+)\[rip\]/[$1]/g;
 s/(?:PTR )?(\d+)\[rsp\]/[rsp + $1]/g;
 s/PTR //g;
@@ -59,7 +61,7 @@ $_ .= "\ndynstr:\n    db 0\n";
 for my $label (@labels) {
   $_ .= "str_$label: db \"$label\", 0\n";
 }
-$_ .= "%include \"libraries.asm\"\n";
+$_ .= "    libraries_strings\n";
 $_ .= "dynstr_end:\n";
 
 # Add a rela.text section.

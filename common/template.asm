@@ -1,4 +1,41 @@
 
+%macro define_libs 1-*
+    ; We'll store the number of parameters in a variable
+    ; and define library_nameX for each parameter.
+
+    %assign i 1
+    %rep %0
+        ; %1 is the first parameter of the current iteration
+        ; library_name<i> is a text definition that expands to the string
+        %xdefine library_name%[i] %1
+
+        ; Move on to the next parameter
+        %rotate 1
+        %assign i i+1
+    %endrep
+
+    ; i-1 is how many parameters we processed
+    %assign library_count i-1
+%endmacro
+
+%macro libraries_strings 0
+    %assign i 1
+    %rep library_count
+        str_library_name%[i]: db library_name%[i], 0
+        %assign i i+1
+    %endrep
+%endmacro
+
+%macro libraries_needed 0
+    %assign i 1
+    %rep library_count
+        dq 1, str_library_name%[i] - dynstr
+        %assign i i+1
+    %endrep
+%endmacro
+
+%include "libraries.asm"
+
 BITS 64
 DEFAULT REL
 
@@ -101,17 +138,7 @@ dynamic_section:
     dq 9, 24 ; sizeof(Elf64_Rela)=24
 
 ; DT_NEEDED
-    dq 1, str_libc - dynstr
-    dq 1, str_libgtk - dynstr
-    dq 1, str_libgobject - dynstr
-
-; The remaining entries are supposed to be mandatory, but nothing happens when they're missing.
-; DT_SYMENT
-;    dq 11               ; d_tag = DT_SYMENT
-;    dq 24               ; sizeof(Elf64_Sym)=24
-; DT_STRSZ
-;    dq 10               ; d_tag = DT_STRSZ
-;    dq (dynstr_end - dynstr)
+    libraries_needed
 
 ; DT_NULL
     dq 0
