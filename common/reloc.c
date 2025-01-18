@@ -1,5 +1,4 @@
 #include "includes.h"
-#include "reloc.h"
 
 #ifdef RELOC
 reloc_name_type reloc_names = {
