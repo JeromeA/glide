@@ -1,12 +1,12 @@
-VPATH=../common
-LIBS=gtk+-3.0
-CFLAGS=-Wall -Wextra `pkg-config --cflags $(LIBS)` -I../common -I.
-LDLIBS=`pkg-config --libs $(LIBS)`
+VPATH = ../common
+LIBS += gtk+-3.0
+CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I../common -I.
+LDLIBS += `pkg-config --libs $(LIBS)`
 
-TARGETS=app-debug app-reloc app
-SOURCES=app.c reloc.c
-DEBUG_OBJECTS=$(SOURCES:.c=.debug.o)
-RELOC_OBJECTS=$(SOURCES:.c=.reloc.o)
+TARGETS += app-debug app-reloc app
+SOURCES += app.c reloc.c
+DEBUG_OBJECTS = $(SOURCES:.c=.debug.o)
+RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
 
 app-debug $(DEBUG_OBJECTS): CFLAGS += -g -DDEBUG
 app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC
@@ -28,9 +28,9 @@ app-debug: $(DEBUG_OBJECTS)
 app-reloc: $(RELOC_OBJECTS)
 	$(CC) $^ -o $@ $(LDLIBS)
 
-app-source.s: CFLAGS += -O2 -DRELOC -DINLINE
+app-source.s: CFLAGS += -O2 -DRELOC -DINLINE -DINTEL_SYNTAX
 app-source.s: $(SOURCES)
-	$(CC) $(CFLAGS) $< -S -masm=intel -o $@
+	$(CC) $(CFLAGS) app.c -S -masm=intel -o $@
 
 app-source.asm: app-source.s libraries.asm
 	../common/intel2nasm.pl $< > $@
