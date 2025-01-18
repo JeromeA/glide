@@ -9,6 +9,9 @@ s/^\.LF[BE].*\n//gm;
 # Delete everything after the .ident directive.
 s/^\s*\.ident.*//ms;
 
+# Delete all lines starting with #.
+s/^#.*\n//gm;
+
 # Replace indentation tabs with 4 spaces.
 s/^\t/    /mg;
 
