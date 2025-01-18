@@ -46,8 +46,9 @@ static inline void relocate() {
   for(int i=0 ; i<NUM_FUNCTIONS ; i++) {
     reloc_functions[i] = dlsym(RTLD_DEFAULT, p+1);
 #ifdef DEBUG
+    printf("Relocating symbol %d/%d: %s\n", i+1, NUM_FUNCTIONS, p+1);
     if (reloc_functions[i] == NULL) {
-      printf("Failed to find symbol %s\n", p+1);
+      printf("Failed to find symbol\n");
       exit(1);
     }
 #endif
