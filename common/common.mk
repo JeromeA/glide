@@ -1,4 +1,4 @@
-VPATH = ../common
+VPATH += ../common
 LIBS += gtk+-3.0
 CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I../common -I.
 LDLIBS += `pkg-config --libs $(LIBS)`
