@@ -32,7 +32,7 @@ static inline long sys_open(const char *pathname, int flags, int mode)
         "movq %3, %%rdx \n\t"   // 3rd arg -> rdx
         "movq $%c4, %%rax \n\t" // syscall number -> rax
 #endif
-        "syscall           \n\t"
+        "syscall"
         : "=a" (ret)
         : "r" (pathname), "r" ((long)flags), "r" ((long)mode), "i" (SYS_open)
         : "rdi", "rsi", "rdx", "rcx", "r11", "memory"
@@ -59,7 +59,7 @@ static inline long sys_read(int fd, void *buf, unsigned long count)
         "movq %3, %%rdx \n\t"   // count -> rdx
         "movq $%c4, %%rax \n\t" // syscall number -> rax
 #endif
-        "syscall           \n\t"
+        "syscall"
         : "=a" (ret)
         : "r" ((long)fd), "r" (buf), "r" (count), "i" (SYS_read)
         : "rdi", "rsi", "rdx", "rcx", "r11", "memory"
@@ -86,7 +86,7 @@ static inline long sys_write(int fd, const void *buf, unsigned long count)
         "movq %3, %%rdx \n\t"   // count -> rdx
         "movq $%c4, %%rax \n\t" // syscall number -> rax
 #endif
-        "syscall           \n\t"
+        "syscall"
         : "=a" (ret)
         : "r" ((long)fd), "r" (buf), "r" (count), "i" (SYS_write)
         : "rdi", "rsi", "rdx", "rcx", "r11", "memory"
@@ -109,7 +109,7 @@ static inline long sys_close(int fd)
         "movq %1, %%rdi \n\t"   // fd -> rdi
         "movq $%c2, %%rax \n\t" // syscall number -> rax
 #endif
-        "syscall           \n\t"
+        "syscall"
         : "=a" (ret)
         : "r" ((long)fd), "i" (SYS_close)
         : "rdi", "rcx", "r11", "memory"
@@ -134,7 +134,7 @@ static inline long sys_fstat(int fd, struct stat *buf)
         "movq %2, %%rsi \n\t"   // buf -> rsi
         "movq $%c3, %%rax \n\t" // syscall number -> rax
 #endif
-        "syscall           \n\t"
+        "syscall"
         : "=a" (ret)
         : "r" ((long)fd), "r" (buf), "i" (SYS_fstat)
         : "rdi", "rsi", "rcx", "r11", "memory"
