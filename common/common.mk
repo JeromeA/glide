@@ -1,6 +1,7 @@
 VPATH += ../common
+INCLUDE_DIRS := $(addprefix -I, $(VPATH))
 LIBS += gtk+-3.0
-CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I../common -I.
+CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` $(INCLUDE_DIRS) -I.
 LDLIBS += `pkg-config --libs $(LIBS)`
 
 TARGETS += app-debug app-reloc app
@@ -9,7 +10,7 @@ DEBUG_OBJECTS = $(SOURCES:.c=.debug.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
 
 app-debug $(DEBUG_OBJECTS): CFLAGS += -g -DDEBUG
-app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC
+app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
 
 all: $(TARGETS)
 
@@ -28,7 +29,7 @@ app-debug: $(DEBUG_OBJECTS)
 app-reloc: $(RELOC_OBJECTS)
 	$(CC) $^ -o $@ $(LDLIBS)
 
-app-source.s: CFLAGS += -O2 -DRELOC -DINLINE -DINTEL_SYNTAX
+app-source.s: CFLAGS += -O2 -DRELOC -DINLINE -DSYSCALLS -DINTEL_SYNTAX
 app-source.s: $(SOURCES)
 	$(CC) $(CFLAGS) app.c -S -masm=intel -o $@
 

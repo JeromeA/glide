@@ -4,6 +4,8 @@
 #include <sys/stat.h> // For struct stat used by fstat
 #include <stddef.h>
 
+#ifdef SYSCALLS
+
 // The system call numbers on x86_64 Linux:
 #define SYS_read   0
 #define SYS_write  1
@@ -139,5 +141,15 @@ static inline long sys_fstat(int fd, struct stat *buf)
     );
     return ret;
 }
+
+#else
+
+#define sys_open open
+#define sys_read read
+#define sys_write write
+#define sys_close close
+#define sys_fstat fstat
+
+#endif // SYSCALLS
 
 #endif
