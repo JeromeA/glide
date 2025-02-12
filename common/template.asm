@@ -66,7 +66,7 @@ DEFAULT REL
 ; Nothing seems to happen when the following fields are missing are overwritten.
     dw 0                    ; e_shentsize
     dw 0                    ; e_shnum
-;    dw 0                    ; e_shstrndx = index of .shstrtab
+    dw 0                    ; e_shstrndx = index of .shstrtab (required by gdb)
 
 ElfHeader_end:
 
