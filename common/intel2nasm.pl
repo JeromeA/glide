@@ -1,7 +1,7 @@
 #!/usr/bin/perl -p -0777
 
 # Delete all the directives that NASM doesn't understand.
-s/.*\.(loc|cfi|file|size|type|text|section|p2align|align|globl|intel_syntax|data).*\n//g;
+s/.*\.(loc|cfi|file|size|type|text|section|p2align|align|globl|intel_syntax|data|bss).*\n//g;
 
 # Delete the .LFB and .LFE labels.
 s/^\.LF[BE].*\n//gm;
@@ -40,17 +40,13 @@ s/(?:PTR )?(\d+)\[rsp\]/[rsp + $1]/g;
 s/PTR //g;
 
 # Save bss entries.
-if (s/\.bss\n((?:\S+:\n\s+\.zero\s+\d+\n)+)/$bss=$1; ""/e) {
-  while ($bss =~ /(\S+):\n\s+\.zero\s+(\d+)\n/g) {
-    push @bss, "$1: resb $2";
-  }
-}
+s/(\S+):\n\s+\.zero\s+(\d+)\n/push @bss, "$1: resb $2"; ""/ge;
 
 # Save common bss labels.
 s/\s+\.comm\s+(\S+),(\d+),(\d+)/push @bss, "$1: resb $2"; ""/ge;
 
 # A mov from a GOTPCREL address is just a mov.
-s/([a-z0-9_]+)\@GOTPCREL/$labels{$1} = 1; "$1"/ge;
+s/([A-Za-z0-9_]+)\@GOTPCREL/$labels{$1} = 1; "$1"/ge;
 
 # Add a dynsym section.
 @labels = keys %labels;
