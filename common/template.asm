@@ -140,10 +140,39 @@ dynamic_section:
 ; DT_NEEDED
     libraries_needed
 
+%ifdef GDB
+; DT_HASH
+    dq 4, BASE_ADDR + hash
+
+; DT_STRSZ
+    dq 10, dynstr_end - dynstr
+%endif
+
 ; DT_NULL
     dq 0
 
 dynamic_section_end:
+
+; =============================================================================
+; HASH Section
+; =============================================================================
+
+%ifdef GDB
+hash:
+    dd 1               ; nbucket
+    dd library_count+1 ; nchain
+    dd 1 ; bucket[0]
+    dd 0 ; chain[0]
+    %assign i 2
+    %rep library_count
+        %if i = library_count+1
+            dd 0 ; last bucket
+        %else
+            dd i
+        %endif
+        %assign i i+1
+    %endrep
+%endif
 
 ; =============================================================================
 ; .text Section

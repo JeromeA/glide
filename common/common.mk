@@ -1,13 +1,14 @@
 VPATH += ../common
 INCLUDE_DIRS := $(addprefix -I, $(VPATH))
 LIBS += gtk+-3.0
-CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` $(INCLUDE_DIRS) -I.
+CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS)
 LDLIBS += `pkg-config --libs $(LIBS)`
 
-TARGETS += app-debug app-reloc app
+TARGETS += app-debug app-reloc app-gdb app
 SOURCES += app.c reloc.c
 DEBUG_OBJECTS = $(SOURCES:.c=.debug.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
+CLEANABLES += $(TARGETS) $(DEBUG_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm
 
 app-debug $(DEBUG_OBJECTS): CFLAGS += -g -DDEBUG
 app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
@@ -39,10 +40,14 @@ app-source.asm: app-source.s libraries.asm
 app.asm: template.asm app-source.asm
 	cat $^ > $@
 
+app-gdb: app.asm
+	nasm -DGDB $< -o $@ -l $@.list
+	chmod +x $@
+
 app: app.asm
 	nasm -l app.list $<
 	chmod +x $@
 
 clean:
-	rm -f $(TARGETS) $(DEBUG_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm
+	rm -f $(CLEANABLES)
 
