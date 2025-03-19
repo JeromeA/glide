@@ -45,7 +45,6 @@ DEFAULT REL
 ; ELF Header
 ; =============================================================================
 
-    ; -- e_ident (16 bytes) --
     db 0x7F, "ELF"          ; ELF magic
     db 2                    ; EI_CLASS = 64-bit
     db 1                    ; EI_DATA  = LSB
@@ -58,15 +57,21 @@ DEFAULT REL
     dd 1                    ; e_version = EV_CURRENT
     dq BASE_ADDR + start    ; e_entry
     dq program_headers      ; e_phoff
-    dq 0
+%ifdef GDB
+    dq section_headers      ; e_shoff
+%else
+    dq 0                    ; e_shoff
+%endif
     dd 0                    ; e_flags
     dw ElfHeader_end        ; e_ehsize
     dw 56                   ; e_phentsize for Elf64_Phdr
     dw 3                    ; e_phnum (PT_LOAD + PT_DYNAMIC + PT_INTERP)
 ; Nothing seems to happen when the following fields are missing are overwritten.
-    dw 0                    ; e_shentsize
-    dw 0                    ; e_shnum
-    dw 0                    ; e_shstrndx = index of .shstrtab (required by gdb)
+%ifdef GDB
+    dw 64                   ; e_shentsize
+    dw 3                    ; e_shnum
+    dw 2                    ; e_shstrndx = index of .shstrtab
+%endif
 
 ElfHeader_end:
 
@@ -153,11 +158,11 @@ dynamic_section:
 
 dynamic_section_end:
 
+%ifdef GDB
 ; =============================================================================
 ; HASH Section
 ; =============================================================================
 
-%ifdef GDB
 hash:
     dd 1               ; nbucket
     dd library_count+1 ; nchain
@@ -172,7 +177,49 @@ hash:
         %endif
         %assign i i+1
     %endrep
-%endif
+
+; =============================================================================
+; Section headers
+; =============================================================================
+
+section_headers:
+; null
+    times 64 db 0
+
+; .text
+    dd str_text - shstrtab    ; sh_name: offset of ".text" in shstrtab
+    dd 1                      ; sh_type: SHT_PROGBITS (1)
+    dq 6                      ; sh_flags: SHF_ALLOC (0x2) | SHF_EXECINSTR (0x4) = 6
+    dq BASE_ADDR + start      ; sh_addr: Virtual address where .text is loaded
+    dq start                  ; sh_offset: File offset of the .text section (assuming your code starts at 'start')
+    dq eof - start            ; sh_size: Size of the .text section (from start to eof)
+    dd 0                      ; sh_link: No link
+    dd 0                      ; sh_info: No extra info
+    dq 16                     ; sh_addralign: 16-byte alignment (typical for code)
+    dq 0                      ; sh_entsize: 0 (not a table)
+
+; .shstrtab
+    dd str_shstrtab-shstrtab ; sh_name:     Section name (index into .shstrtab)
+    dd 3           ; sh_type:     Section type SHT_STRTAB
+    dq 0           ; sh_flags:    Section flags
+    dq 0           ; sh_addr:     Virtual address in memory
+    dq shstrtab    ; sh_offset:   Offset of section in file
+    dq shstrtab_end-shstrtab ; sh_size:     Section size in bytes
+    dd 0           ; sh_link:     Link to another section
+    dd 0           ; sh_info:     Additional section information
+    dq 1           ; sh_addralign: Section alignment
+    dq 0           ; sh_entsize:  Size of each entry (if section holds a table)
+
+; =============================================================================
+; STRTAB Section
+; =============================================================================
+shstrtab:
+    db 0 ; The first string must be null
+str_text: db ".text",0
+str_shstrtab: db ".shstrtab",0
+shstrtab_end:
+
+%endif ; GDB
 
 ; =============================================================================
 ; .text Section
