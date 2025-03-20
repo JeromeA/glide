@@ -4,27 +4,27 @@ LIBS += gtk+-3.0
 CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS)
 LDLIBS += `pkg-config --libs $(LIBS)`
 
-TARGETS += app-debug app-reloc app-gdb app
+TARGETS += app-full app-reloc app-gdb app
 SOURCES += app.c reloc.c
-DEBUG_OBJECTS = $(SOURCES:.c=.debug.o)
+FULL_OBJECTS = $(SOURCES:.c=.full.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
-CLEANABLES += $(TARGETS) $(DEBUG_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm
+CLEANABLES += $(TARGETS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm
 
-app-debug $(DEBUG_OBJECTS): CFLAGS += -g -DDEBUG
+app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG
 app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
 
 all: $(TARGETS)
 
-app.debug.o app.reloc.o: app.c reloc.h symbols.inc
-reloc.debug.o app.reloc.o: reloc.c reloc.h symbols.inc
+app.full.o app.reloc.o: app.c reloc.h symbols.inc
+reloc.full.o app.reloc.o: reloc.c reloc.h symbols.inc
 
-%.debug.o: %.c
+%.full.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %.reloc.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-app-debug: $(DEBUG_OBJECTS)
+app-full: $(FULL_OBJECTS)
 	$(CC) $^ -o $@ $(LDLIBS)
 
 app-reloc: $(RELOC_OBJECTS)

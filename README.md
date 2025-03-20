@@ -17,7 +17,7 @@ Running `make` in each directory will build 4 binaries:
 * app-reloc, which uses a standard binary, as produced by the C compiler, but still uses custom library loading code.
   It has debug information, so it can be used to debug code relocation issues.
 
-* app-debug, which is a standard binary, using C and standard linking, and contains all the debug information.
+* app-full, which is a standard binary, using C and standard linking, and contains all the debug information.
 
 ## 1k
 
