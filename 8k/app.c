@@ -1,61 +1,20 @@
-#include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h>
-#include <stdio.h>
-
+#include "includes.h"
+#include "file_open.h"
+#include "file_save.h"
 #include "settings_dialog.h"
 
-#ifdef INLINE_ALL
+#ifdef INLINE
+#include "reloc.c"
+#include "file_open.c"
+#include "file_save.c"
 #include "settings.c"
 #include "settings_dialog.c"
 #endif
 
-void on_open_file(GtkWidget *, gpointer data) {
-  GtkSourceBuffer *source_buffer = GTK_SOURCE_BUFFER(data);
-
-  // Create a file chooser dialog
-  GtkWidget *dialog = gtk_file_chooser_dialog_new(
-      "Open File",
-      NULL,
-      GTK_FILE_CHOOSER_ACTION_OPEN,
-      "_Cancel", GTK_RESPONSE_CANCEL,
-      "_Open", GTK_RESPONSE_ACCEPT,
-      NULL);
-
-  if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-    char *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-
-    // Open and read the file
-    FILE *file = fopen(filename, "r");
-    if (file) {
-      fseek(file, 0, SEEK_END);
-      long length = ftell(file);
-      fseek(file, 0, SEEK_SET);
-
-      char *content = g_malloc(length + 1);
-      length = fread(content, 1, length, file);
-      content[length] = '\0';
-      fclose(file);
-
-      // Set the content to the buffer
-      gtk_text_buffer_set_text(GTK_TEXT_BUFFER(source_buffer), content, -1);
-      g_free(content);
-    } else {
-      g_printerr("Failed to open file: %s\n", filename);
-    }
-    g_free(filename);
-  }
-
-  gtk_widget_destroy(dialog);
-}
-
-void on_settings(GtkWidget *, gpointer data) {
-  GtkWindow *main_window = GTK_WINDOW(data);
-  GtkWidget *settings_dialog = create_settings_dialog(main_window);
-  gtk_dialog_run(GTK_DIALOG(settings_dialog));
-  gtk_widget_destroy(settings_dialog);
-}
+gchar *filename = NULL;
 
 int main(int argc, char *argv[]) {
+  relocate();
 
   // Initialize GTK
   gtk_init(&argc, &argv);
@@ -84,26 +43,23 @@ int main(int argc, char *argv[]) {
   GtkWidget *file_menu = gtk_menu_new();
   GtkWidget *file_menu_item = gtk_menu_item_new_with_label("File");
   GtkWidget *open_menu_item = gtk_menu_item_new_with_label("Open...");
+  GtkWidget *save_menu_item = gtk_menu_item_new_with_label("Save");
+  GtkWidget *saveas_menu_item = gtk_menu_item_new_with_label("Save as...");
   GtkWidget *settings_menu_item = gtk_menu_item_new_with_label("Settings...");
   GtkWidget *quit_menu_item = gtk_menu_item_new_with_label("Quit");
-  GtkWidget *edit_menu = gtk_menu_new();
-  GtkWidget *edit_menu_item = gtk_menu_item_new_with_label("Edit");
-  GtkWidget *copy_menu_item = gtk_menu_item_new_with_label("Copy");
-  GtkWidget *paste_menu_item = gtk_menu_item_new_with_label("Paste");
 
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_menu_item), file_menu);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), open_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), save_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), saveas_menu_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), settings_menu_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), quit_menu_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_menu_item);
 
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit_menu_item), edit_menu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(edit_menu), copy_menu_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(edit_menu), paste_menu_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), edit_menu_item);
-
   // Connect the Open menu item to the callback
-  g_signal_connect(open_menu_item, "activate", G_CALLBACK(on_open_file), source_buffer);
+  g_signal_connect(open_menu_item, "activate", G_CALLBACK(file_open), source_buffer);
+  g_signal_connect(save_menu_item, "activate", G_CALLBACK(file_save), source_buffer);
+  g_signal_connect(saveas_menu_item, "activate", G_CALLBACK(file_saveas), source_buffer);
   g_signal_connect(settings_menu_item, "activate", G_CALLBACK(on_settings), window);
   g_signal_connect(quit_menu_item, "activate", G_CALLBACK(gtk_main_quit), NULL);
 

@@ -32,3 +32,11 @@ GtkWidget *create_settings_dialog(GtkWindow *parent) {
   return dialog;
 }
 
+void on_settings(GtkWidget *, gpointer data) {
+  GtkWindow *main_window = GTK_WINDOW(data);
+  GtkWidget *settings_dialog = create_settings_dialog(main_window);
+  gtk_dialog_run(GTK_DIALOG(settings_dialog));
+  gtk_widget_destroy(settings_dialog);
+}
+
+
