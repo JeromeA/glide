@@ -1,13 +1,13 @@
 
 LIBS += gtksourceview-4
-SOURCES += file_open.c file_save.c settings.c settings_dialog.c
-TARGETS += test_settings
+SOURCES += file_open.c file_save.c preferences.c preferences_dialog.c
+TARGETS += test_preferences
 VPATH += ../4k
 
-TEST_SETTINGS_OBJS = test_settings.o settings.o
-CLEANABLES += $(TEST_SETTINGS_OBJS)
+TEST_PREFERENCES_OBJS = test_preferences.o preferences.o
+CLEANABLES += $(TEST_PREFERENCES_OBJS)
 
 include ../common/common.mk
 
-test_settings: $(TEST_SETTINGS_OBJS)
+test_preferences: $(TEST_PREFERENCES_OBJS)
 

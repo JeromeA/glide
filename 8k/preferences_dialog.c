@@ -1,8 +1,8 @@
 
 #include <gtk/gtk.h>
 
-GtkWidget *create_settings_dialog(GtkWindow *parent) {
-  GtkWidget *dialog = gtk_dialog_new_with_buttons("Settings",
+GtkWidget *create_preferences_dialog(GtkWindow *parent) {
+  GtkWidget *dialog = gtk_dialog_new_with_buttons("Preferences",
       parent,
       GTK_DIALOG_MODAL,
       "_Close",
@@ -32,11 +32,11 @@ GtkWidget *create_settings_dialog(GtkWindow *parent) {
   return dialog;
 }
 
-void on_settings(GtkWidget *, gpointer data) {
+void on_preferences(GtkWidget *, gpointer data) {
   GtkWindow *main_window = GTK_WINDOW(data);
-  GtkWidget *settings_dialog = create_settings_dialog(main_window);
-  gtk_dialog_run(GTK_DIALOG(settings_dialog));
-  gtk_widget_destroy(settings_dialog);
+  GtkWidget *preferences_dialog = create_preferences_dialog(main_window);
+  gtk_dialog_run(GTK_DIALOG(preferences_dialog));
+  gtk_widget_destroy(preferences_dialog);
 }
 
 

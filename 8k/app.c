@@ -1,14 +1,14 @@
 #include "includes.h"
 #include "file_open.h"
 #include "file_save.h"
-#include "settings_dialog.h"
+#include "preferences_dialog.h"
 
 #ifdef INLINE
 #include "reloc.c"
 #include "file_open.c"
 #include "file_save.c"
-#include "settings.c"
-#include "settings_dialog.c"
+#include "preferences.c"
+#include "preferences_dialog.c"
 #endif
 
 gchar *filename = NULL;
@@ -45,14 +45,14 @@ int main(int argc, char *argv[]) {
   GtkWidget *open_menu_item = gtk_menu_item_new_with_label("Open...");
   GtkWidget *save_menu_item = gtk_menu_item_new_with_label("Save");
   GtkWidget *saveas_menu_item = gtk_menu_item_new_with_label("Save as...");
-  GtkWidget *settings_menu_item = gtk_menu_item_new_with_label("Settings...");
+  GtkWidget *preferences_menu_item = gtk_menu_item_new_with_label("Preferences...");
   GtkWidget *quit_menu_item = gtk_menu_item_new_with_label("Quit");
 
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_menu_item), file_menu);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), open_menu_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), save_menu_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), saveas_menu_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), settings_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), preferences_menu_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), quit_menu_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_menu_item);
 
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
   g_signal_connect(open_menu_item, "activate", G_CALLBACK(file_open), source_buffer);
   g_signal_connect(save_menu_item, "activate", G_CALLBACK(file_save), source_buffer);
   g_signal_connect(saveas_menu_item, "activate", G_CALLBACK(file_saveas), source_buffer);
-  g_signal_connect(settings_menu_item, "activate", G_CALLBACK(on_settings), window);
+  g_signal_connect(preferences_menu_item, "activate", G_CALLBACK(on_preferences), window);
   g_signal_connect(quit_menu_item, "activate", G_CALLBACK(gtk_main_quit), NULL);
 
   // Create a vertical box to pack the menu and the scrolled window
