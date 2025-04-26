@@ -4,11 +4,13 @@
 #include "preferences_dialog.h"
 
 #ifdef INLINE
+#define STATIC static
 #include "reloc.c"
 #include "file_open.c"
 #include "file_save.c"
 #include "preferences.c"
 #include "preferences_dialog.c"
+#include "find_executables.c"
 #endif
 
 gchar *filename = NULL;

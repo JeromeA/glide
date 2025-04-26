@@ -18,10 +18,11 @@ s/^\t/    /mg;
 # Replace all other tabs with spaces.
 s/\t/ /g;
 
-# Change the format for strings.
+# Change the format for litterals.
 s/\.string\s(".*")/db $1, 0/g;
 s/\.byte\s(\d+)/db $1/g;
-# s/\.zero\s(\d+)/times $1 db 0/g;
+s/\.quad\s(\d+)/dq $1/gm;
+s/\.quad\s(\S+)/dq BASE_ADDR + $1/gm;
 
 # Replace local labels with global ones.
 s/\.LC(\d+)/LC$1/g;
@@ -33,9 +34,10 @@ s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
 # In particular:
 #   call [QWORD PTR f[rip+16]] -> call [f + 16]
 #   call [QWORD PTR [r12]] -> call [r12]
+#   lea rbp, LISP_NAMES[rip+16] -> lea rbp, [LISP_NAMES + 16]
 s/\[?QWORD (?:PTR )?(\S+)\[rip(\+\d+)?\]\]?/QWORD [$1$2]/g;
 s/\[QWORD PTR \[(r12)\]\]?/QWORD [$1]/g;
-s/(\S+)\[rip\]/[$1]/g;
+s/(\S+)\[rip(\+\d+)?\]/[$1$2]/g;
 s/(?:PTR )?(\d+)\[rsp\]/[rsp + $1]/g;
 s/PTR //g;
 

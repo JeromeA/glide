@@ -1,6 +1,7 @@
 
 #include <gtk/gtk.h>
 #include "preferences.h"
+#include "find_executables.h"
 
 typedef struct {
   GtkWidget *dialog;
@@ -32,8 +33,12 @@ PreferencesDialog *preferences_dialog_new(GtkWindow *parent) {
 
   GtkWidget *binary_label = gtk_label_new("Lisp binary:");
   prefs->binary_combo_box = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(prefs->binary_combo_box), "sbcl", "SBCL");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(prefs->binary_combo_box), "clisp", "CLisp");
+  GPtrArray *executables = find_lisp_executables();
+  for (guint i = 0; i < executables->len; i++) {
+    const gchar *executable = g_ptr_array_index(executables, i);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(prefs->binary_combo_box), executable, executable);
+  }
+  g_ptr_array_free(executables, TRUE);
 
   gtk_grid_attach(GTK_GRID(grid), binary_label, 0, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), prefs->binary_combo_box, 1, 0, 1, 1);
@@ -63,13 +68,12 @@ void preferences_dialog_save(PreferencesDialog *prefs) {
 
 gboolean preferences_dialog_run(PreferencesDialog *prefs) {
     preferences_dialog_load(prefs);
-
-    gboolean result = (gtk_dialog_run(GTK_DIALOG(prefs->dialog)) == GTK_RESPONSE_OK);
-    if (result) {
+    gboolean confirmed = gtk_dialog_run(GTK_DIALOG(prefs->dialog)) == GTK_RESPONSE_OK;
+    if (confirmed) {
         preferences_dialog_save(prefs);
     }
     gtk_widget_hide(prefs->dialog);
-    return result;
+    return confirmed;
 }
 
 void on_preferences(GtkWidget *, gpointer data) {
