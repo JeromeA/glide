@@ -5,6 +5,7 @@
 struct _Preferences {
     GObject parent_instance;
     gchar *sdk;
+    guint16 swank_port;
 };
 
 /* Define the Preferences class */
@@ -23,7 +24,7 @@ enum {
 static guint preferences_signals[SIGNAL_COUNT] = { 0 };
 
 /* Static variable to hold the singleton instance */
-static Preferences *singleton_instance = NULL;
+static Preferences *preference_instance = NULL;
 
 static void preferences_finalize(GObject *object) {
     Preferences *self = PREFERENCES_CLASS(object);
@@ -89,15 +90,16 @@ static void preferences_save(Preferences *self) {
 /* Internal instance initialization */
 static void preferences_init(Preferences *self) {
   self->sdk = NULL;
+  self->swank_port = 4005;
   preferences_load(self);
 }
 
 /* Public API: Get the singleton instance */
 Preferences *preferences_get_instance(void) {
-  if (!singleton_instance) {
-    singleton_instance = g_object_new(PREFERENCES_TYPE, NULL);
+  if (!preference_instance) {
+    preference_instance = g_object_new(PREFERENCES_TYPE, NULL);
   }
-  return singleton_instance;
+  return preference_instance;
 }
 
 const gchar *preferences_get_sdk(Preferences *self) {
@@ -110,6 +112,17 @@ void preferences_set_sdk(Preferences *self, const gchar *new_sdk) {
     self->sdk = g_strdup(new_sdk);
     preferences_save(self);
     g_signal_emit(self, preferences_signals[SDK_CHANGED], 0, new_sdk);
+  }
+}
+
+guint16 preferences_get_swank_port(Preferences *self) {
+  return self->swank_port;
+}
+
+void preferences_set_swank_port(Preferences *self, guint16 new_port) {
+  if (self->swank_port != new_port) {
+    self->swank_port = new_port;
+    preferences_save(self);
   }
 }
 

@@ -19,9 +19,10 @@ s/^\t/    /mg;
 s/\t/ /g;
 
 # Change the format for litterals.
-s/\.string\s(".*")/db $1, 0/g;
-s/\.byte\s(\d+)/db $1/g;
-s/\.quad\s(\d+)/dq $1/gm;
+s/\.string\s"(.*)"/db `$1`, 0/g;
+s/\.byte\s(-?\d+)/db $1/g;
+s/\.long\s(-?\d+)/dd $1/g;
+s/\.quad\s(-?\d+)/dq $1/gm;
 s/\.quad\s(\S+)/dq BASE_ADDR + $1/gm;
 
 # Replace local labels with global ones.
@@ -35,11 +36,17 @@ s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
 #   call [QWORD PTR f[rip+16]] -> call [f + 16]
 #   call [QWORD PTR [r12]] -> call [r12]
 #   lea rbp, LISP_NAMES[rip+16] -> lea rbp, [LISP_NAMES + 16]
-s/\[?QWORD (?:PTR )?(\S+)\[rip(\+\d+)?\]\]?/QWORD [$1$2]/g;
-s/\[QWORD PTR \[(r12)\]\]?/QWORD [$1]/g;
-s/(\S+)\[rip(\+\d+)?\]/[$1$2]/g;
-s/(?:PTR )?(\d+)\[rsp\]/[rsp + $1]/g;
+#   movups XMMWORD 24[rdi], xmm0 -> movups XMMWORD [rdi+24], xmm0
 s/PTR //g;
+s/\[?QWORD (\S+)\[rip(\+\d+)?\]\]?/QWORD [$1$2]/g;
+s/\[QWORD \[(r12)\]\]?/QWORD [$1]/g;
+s/(\S+)\[rip(\+\d+)?\]/[$1$2]/g;
+s/-(\d+)\[([A-Za-z0-9_]+)\]/[$2-$1]/g;
+s/(\d+)\[([A-Za-z0-9_]+)\]/[$2+$1]/g;
+s/XMMWORD/OWORD/g;
+
+# moveabs is just a mov.
+s/movabs\s+(.*)$/mov $1, $2/mg;
 
 # Save bss entries.
 s/(\S+):\n\s+\.zero\s+(\d+)\n/push @bss, "$1: resb $2"; ""/ge;

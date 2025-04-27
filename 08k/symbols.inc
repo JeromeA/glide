@@ -53,6 +53,13 @@ S(gtk_widget_set_margin_top, VOID, void, (GtkWidget *widget, gint margin), (widg
 S(gtk_widget_show_all, VOID, void, (GtkWidget *widget), (widget))
 S(gtk_window_new, RETURN, GtkWidget *, (GtkWindowType type), (type))
 S(gtk_window_set_default_size, VOID, void, (GtkWindow *window, gint width, gint height), (window, width, height))
+S(g_file_test, RETURN, gboolean, (const char *filename, GFileTest test), (filename, test))
 S(g_type_class_peek_parent, RETURN, gpointer, (gpointer type), (type))
 S(g_type_register_static_simple, RETURN, GType, (GType parent_type, const gchar *type_name, guint class_size, GClassInitFunc class_init, guint instance_size, GInstanceInitFunc instance_init, GTypeFlags flags), (parent_type, type_name, class_size, class_init, instance_size, instance_init, flags))
 S(strlen, RETURN, size_t, (const char *s), (s))
+S(g_type_class_adjust_private_offset, VOID, void, (gpointer class, gint *private_size), (class, private_size))
+S(g_key_file_save_to_file, RETURN, gboolean, (GKeyFile *key_file, const gchar *file, GError **error), (key_file, file, error))
+S(g_ptr_array_add, VOID, void, (GPtrArray *array, gpointer data), (array, data))
+S(gtk_widget_hide, VOID, void, (GtkWidget *widget), (widget))
+S(g_ptr_array_new_with_free_func, RETURN, GPtrArray *, (GDestroyNotify element_free_func), (element_free_func))
+
