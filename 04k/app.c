@@ -1,11 +1,11 @@
 #include "includes.h"
-#include "file_open.h"
-#include "file_save.h"
+#include "simple_file_open.h"
+#include "simple_file_save.h"
 
 #if INLINE
 #include "reloc.c"
-#include "file_open.c"
-#include "file_save.c"
+#include "simple_file_open.c"
+#include "simple_file_save.c"
 #endif
 
 gchar *filename = NULL;

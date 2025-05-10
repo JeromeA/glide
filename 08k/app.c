@@ -1,13 +1,13 @@
 #include "includes.h"
-#include "file_open.h"
-#include "file_save.h"
+#include "simple_file_open.h"
+#include "simple_file_save.h"
 #include "preferences_dialog.h"
 
 #ifdef INLINE
 #define STATIC static
 #include "reloc.c"
-#include "file_open.c"
-#include "file_save.c"
+#include "simple_file_open.c"
+#include "simple_file_save.c"
 #include "preferences.c"
 #include "preferences_dialog.c"
 #include "find_executables.c"

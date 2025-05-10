@@ -1,6 +1,6 @@
 
 LIBS += gtksourceview-4
-SOURCES += file_open.c file_save.c
+SOURCES += simple_file_open.c simple_file_save.c
 
 include ../common/common.mk
 
