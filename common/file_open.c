@@ -7,6 +7,7 @@
 #include "reloc.h"
 #include "syscalls.h"
 #include "file_open.h"
+#include "glide.h"
 
 void file_open(GtkWidget *, gpointer data) {
   Glide *app = (Glide *) data;

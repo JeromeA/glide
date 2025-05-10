@@ -7,11 +7,12 @@
 #include "reloc.h"
 #include "syscalls.h"
 #include "file_save.h"
+#include "glide.h"
 
 void file_save(GtkWidget *, gpointer data) {
   Glide *app = (Glide *) data;
   GtkSourceBuffer *source_buffer = glide_get_source_buffer (app);
-  gchar *filename = glide_get_filename (app);
+  const gchar *filename = glide_get_filename (app);
 
   // Check if we already have a filename
   if (!filename) {
@@ -87,7 +88,7 @@ void file_saveas(GtkWidget *widget, gpointer data) {
 
   file_save(widget, app);
 
-  char *new_filename = glide_get_filename (app);
+  const char *new_filename = glide_get_filename (app);
   if (!new_filename) {
     glide_set_filename (app, old_filename);
   }
