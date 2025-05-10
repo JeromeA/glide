@@ -1,0 +1,104 @@
+#include "includes.h"
+#include "file_open.h"
+#include "file_save.h"
+#include "preferences_dialog.h"
+
+#ifdef INLINE
+#define STATIC static
+#include "reloc.c"
+#include "file_open.c"
+#include "file_save.c"
+#include "preferences.c"
+#include "preferences_dialog.c"
+#include "find_executables.c"
+#include "swank.c"
+#endif
+
+gchar *filename = NULL;
+
+/* Empty evaluation handler to be implemented */
+static void on_evaluate(void) {
+  g_warning("on_evaluate");
+  // TODO: implement evaluation logic
+}
+
+/* Key press callback to catch Alt+Enter */
+static gboolean
+on_key_press (GtkWidget *, GdkEventKey *event, gpointer)
+{
+  g_warning("on_key_press: %d", event->keyval);
+  /* Check for Alt+Enter */
+  if (event->keyval == GDK_KEY_Return && (event->state & GDK_MOD1_MASK)) {
+    on_evaluate();
+    return TRUE; /* stop further handling */
+  }
+  return FALSE; /* propagate other keys */
+}
+
+int main(int argc, char *argv[]) {
+  relocate();
+
+  // Initialize GTK
+  gtk_init(&argc, &argv);
+
+  // Create the main application window
+  GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
+  g_signal_connect(window, "delete-event", G_CALLBACK(gtk_main_quit), NULL);
+
+  // Create a scrolled window
+  GtkWidget *scrolled_window = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled_window), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+
+  // Create a GtkSourceBuffer with syntax highlighting
+  GtkSourceLanguageManager *lang_manager = gtk_source_language_manager_get_default();
+  GtkSourceLanguage *language = gtk_source_language_manager_get_language(lang_manager, "commonlisp");
+  GtkSourceBuffer *source_buffer = gtk_source_buffer_new_with_language(language);
+
+  // Add the GtkSourceView to the window
+  GtkWidget *source_view = gtk_source_view_new_with_buffer(source_buffer);
+  gtk_source_view_set_show_line_numbers(GTK_SOURCE_VIEW(source_view), TRUE);
+  gtk_container_add(GTK_CONTAINER(scrolled_window), source_view);
+  /* Connect Alt+Enter handler on the source view */
+  g_signal_connect(source_view, "key-press-event", G_CALLBACK(on_key_press), source_buffer);
+
+  // Create a menu bar
+  GtkWidget *menu_bar = gtk_menu_bar_new();
+  GtkWidget *file_menu = gtk_menu_new();
+  GtkWidget *file_menu_item = gtk_menu_item_new_with_label("File");
+  GtkWidget *open_menu_item = gtk_menu_item_new_with_label("Open...");
+  GtkWidget *save_menu_item = gtk_menu_item_new_with_label("Save");
+  GtkWidget *saveas_menu_item = gtk_menu_item_new_with_label("Save as...");
+  GtkWidget *preferences_menu_item = gtk_menu_item_new_with_label("Preferences...");
+  GtkWidget *quit_menu_item = gtk_menu_item_new_with_label("Quit");
+
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_menu_item), file_menu);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), open_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), save_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), saveas_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), preferences_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), quit_menu_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_menu_item);
+
+  // Connect the Open menu item to the callback
+  g_signal_connect(open_menu_item, "activate", G_CALLBACK(file_open), source_buffer);
+  g_signal_connect(save_menu_item, "activate", G_CALLBACK(file_save), source_buffer);
+  g_signal_connect(saveas_menu_item, "activate", G_CALLBACK(file_saveas), source_buffer);
+  g_signal_connect(preferences_menu_item, "activate", G_CALLBACK(on_preferences), window);
+  g_signal_connect(quit_menu_item, "activate", G_CALLBACK(gtk_main_quit), NULL);
+
+  // Create a vertical box to pack the menu and the scrolled window
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), scrolled_window, TRUE, TRUE, 0);
+  gtk_container_add(GTK_CONTAINER(window), vbox);
+
+  // Show all widgets
+  gtk_widget_show_all(window);
+
+  // Start the GTK main loop
+  gtk_main();
+
+  exit(0);
+}
+
