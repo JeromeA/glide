@@ -138,7 +138,7 @@ glide_init (Glide *self)
   self->filename = NULL;
 }
 
-Glide *
+STATIC Glide *
 glide_new (void)
 {
   return g_object_new (GLIDE_TYPE,
@@ -148,21 +148,21 @@ glide_new (void)
       NULL);
 }
 
-GtkSourceBuffer *
+STATIC GtkSourceBuffer *
 glide_get_source_buffer (Glide *self)
 {
   g_return_val_if_fail (GLIDE_APP (self), NULL);
   return self->buffer;
 }
 
-const gchar *
+STATIC const gchar *
 glide_get_filename (Glide *self)
 {
   g_return_val_if_fail (GLIDE_APP (self), NULL);
   return self->filename;
 }
 
-void
+STATIC void
 glide_set_filename (Glide *self, const gchar *new_filename)
 {
   g_return_if_fail (GLIDE_APP (self));

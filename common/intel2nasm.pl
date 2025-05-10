@@ -38,8 +38,7 @@ s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
 #   lea rbp, LISP_NAMES[rip+16] -> lea rbp, [LISP_NAMES + 16]
 #   movups XMMWORD 24[rdi], xmm0 -> movups XMMWORD [rdi+24], xmm0
 s/PTR //g;
-s/\[?QWORD (\S+)\[rip(\+\d+)?\]\]?/QWORD [$1$2]/g;
-s/\[QWORD \[(r12)\]\]?/QWORD [$1]/g;
+s/\[(.*\[.*\])\]/$1/g;
 s/(\S+)\[rip(\+\d+)?\]/[$1$2]/g;
 s/-(\d+)\[([A-Za-z0-9_]+)\]/[$2-$1]/g;
 s/(\d+)\[([A-Za-z0-9_]+)\]/[$2+$1]/g;

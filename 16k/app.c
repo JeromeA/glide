@@ -1,5 +1,3 @@
-#include "includes.h"
-#include "glide.h"
 
 #ifdef INLINE
 #define STATIC static
@@ -11,7 +9,11 @@
 #include "find_executables.c"
 #include "swank.c"
 #include "evaluate.c"
+#include "glide.c"
 #endif
+
+#include "includes.h"
+#include "glide.h"
 
 int
 main (int argc, char *argv[])

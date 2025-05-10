@@ -56,3 +56,68 @@ S(gtk_window_set_default_size, VOID, void, (GtkWindow *window, gint width, gint 
 S(g_type_class_peek_parent, RETURN, gpointer, (gpointer type), (type))
 S(g_type_register_static_simple, RETURN, GType, (GType parent_type, const gchar *type_name, guint class_size, GClassInitFunc class_init, guint instance_size, GInstanceInitFunc instance_init, GTypeFlags flags), (parent_type, type_name, class_size, class_init, instance_size, instance_init, flags))
 S(strlen, RETURN, size_t, (const char *s), (s))
+S(g_type_class_adjust_private_offset, VOID, void, (gpointer class, gint *private_size), (class, private_size))
+S(g_key_file_save_to_file, RETURN, gboolean, (GKeyFile *key_file, const gchar *file, GError **error), (key_file, file, error))
+S(g_ptr_array_add, VOID, void, (GPtrArray *array, gpointer data), (array, data))
+S(gtk_widget_hide, VOID, void, (GtkWidget *widget), (widget))
+S(g_ptr_array_new_with_free_func, RETURN, GPtrArray *, (GDestroyNotify element_free_func), (element_free_func))
+S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), (combo_box))
+
+// We need this one to load everybody else:
+//   dlsym
+//
+// These have varargs:
+//   gtk_dialog_new_with_buttons
+//   gtk_file_chooser_dialog_new
+//   g_printerr
+//
+// These have weird macro expansion issues:
+//   g_once_init_enter_pointer
+//   g_once_init_leave_pointer
+
+
+
+//   memmove
+//   g_log
+//   gtk_text_iter_forward_to_line_end
+//   g_return_if_fail_warning
+//   g_socket_connection_get_socket
+//   g_string_free
+//   __stack_chk_fail
+//   g_socket_client_connect_to_host
+//   write
+//   g_string_insert_len
+//   memcpy
+//   g_build_filename
+//   g_snprintf
+//   __errno_location
+//   g_thread_new
+//   g_free
+//   g_cclosure_marshal_VOID__STRING
+//   gtk_text_iter_set_line_offset
+//   g_socket_get_fd
+//   g_object_new
+//   g_strdup_printf
+//   g_string_new
+//   strerror
+//   g_signal_emit
+//   g_socket_client_new
+//   g_ptr_array_free
+//   g_print
+//   g_string_insert_c
+//   gtk_text_buffer_get_iter_at_mark
+//   g_string_append_len
+//   g_string_free_and_steal
+//   read
+//   strstr
+//   g_spawn_async_with_pipes
+//   g_strdup
+//   __snprintf_chk
+//   g_file_test
+//   g_object_unref
+//   g_malloc0
+//   g_signal_new
+//   g_application_run
+//   gtk_text_buffer_get_insert
+//   g_type_check_instance_is_a
+
