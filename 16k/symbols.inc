@@ -75,8 +75,7 @@ S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), 
 //   g_once_init_enter_pointer
 //   g_once_init_leave_pointer
 
-
-
+// TODO: investigate these symbols:
 //   memmove
 //   g_log
 //   gtk_text_iter_forward_to_line_end
