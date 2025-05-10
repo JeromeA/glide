@@ -62,4 +62,31 @@ S(g_key_file_save_to_file, RETURN, gboolean, (GKeyFile *key_file, const gchar *f
 S(g_ptr_array_add, VOID, void, (GPtrArray *array, gpointer data), (array, data))
 S(gtk_widget_hide, VOID, void, (GtkWidget *widget), (widget))
 S(g_ptr_array_new_with_free_func, RETURN, GPtrArray *, (GDestroyNotify element_free_func), (element_free_func))
+S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), (combo_box))
+
+// We need this one to load everybody else:
+//   dlsym
+//
+// These have varargs:
+//   gtk_dialog_new_with_buttons
+//   gtk_file_chooser_dialog_new
+//   g_printerr
+//
+// These have weird macro expansion issues:
+//   g_once_init_enter_pointer
+//   g_once_init_leave_pointer
+
+// TODO: sort out the following ones:
+//   g_strdup: resq 1
+//   g_cclosure_marshal_VOID__STRING: resq 1
+//   g_build_filename: resq 1
+//   g_malloc0: resq 1
+//   __errno_location: resq 1
+//   gtk_main_quit: resq 1
+//   g_signal_emit: resq 1
+//   g_ptr_array_free: resq 1
+//   g_object_new: resq 1
+//   __stack_chk_fail: resq 1
+//   g_signal_new: resq 1
+//   g_free: resq 1
 
