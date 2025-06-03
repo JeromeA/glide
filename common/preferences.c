@@ -29,7 +29,7 @@ static guint preferences_signals[SIGNAL_COUNT] = { 0 };
 static Preferences *preference_instance = NULL;
 
 static void preferences_finalize(GObject *object) {
-    Preferences *self = PREFERENCES(object);
+    Preferences *self = PREFERENCES_CLASS(object);
     g_free(self->sdk);
     G_OBJECT_CLASS(preferences_parent_class)->finalize(object);
 }
