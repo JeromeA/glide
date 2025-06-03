@@ -24,7 +24,7 @@ void file_open(GtkWidget *, gpointer data) {
 
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     gchar* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-    glide_set_filename (app, "/path/to/file.lisp");
+    glide_set_filename (app, filename);
 
     // Open the file using syscalls
     int fd = sys_open(filename, O_RDONLY, 0);
@@ -76,6 +76,8 @@ void file_open(GtkWidget *, gpointer data) {
         }
       }
     }
+
+    g_free(filename);
   }
 
   // Destroy the dialog
