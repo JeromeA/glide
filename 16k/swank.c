@@ -291,7 +291,7 @@ swank_init(Swank *self)
 static void
 swank_init_function(Swank *self)
 {
-  g_return_if_fail(SWANK_IS_OBJECT(self));
+  g_return_if_fail(GLIDE_IS_SWANK(self));
   if (self->connection)
     return;
 
@@ -319,7 +319,7 @@ swank_get_instance(void)
  */
 STATIC void swank_remote_execution(Swank *self, const char *expr)
 {
-  g_return_if_fail(SWANK_IS_OBJECT(self));
+  g_return_if_fail(GLIDE_IS_SWANK(self));
 
   if (!self->connection)
     swank_init_function(self);
