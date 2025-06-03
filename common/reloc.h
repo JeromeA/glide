@@ -3,7 +3,7 @@
 
 // In addition to the symbol name, each symbol from the ELF relocation table has a 48 byte overhead:
 // - 24 bytes in the rela section
-// - 24 byte in the dynsym section.
+// - 24 bytes in the dynsym section.
 // - the relocation table itself is in the bss section, so it is not included in the binary.
 // Our reloc function consumes 100 bytes, but saves 48 bytes per symbol, so it is worth it if we have at least 3
 // symbols.
