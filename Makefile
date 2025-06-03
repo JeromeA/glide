@@ -1,5 +1,5 @@
 
-SUBDIRS = 01k 02k 04k 08k
+SUBDIRS = 01k 02k 04k 08k 16k
 
 .PHONY: all clean $(SUBDIRS)
 

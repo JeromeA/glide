@@ -9,7 +9,7 @@
 
 /* Type definition for Swank class */
 #define SWANK_TYPE (swank_get_type())
-G_DECLARE_FINAL_TYPE(Swank, swank, SWANK, OBJECT, GObject)
+G_DECLARE_FINAL_TYPE(Swank, swank, GLIDE, SWANK, GObject)
 
 /* Public API */
 STATIC Swank *swank_get_instance(void);  // Get the singleton instance
