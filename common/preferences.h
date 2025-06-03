@@ -6,7 +6,7 @@
 
 /* Type definition for Preferences class */
 #define PREFERENCES_TYPE (preferences_get_type())
-G_DECLARE_FINAL_TYPE(Preferences, preferences, PREFERENCES, CLASS, GObject)
+G_DECLARE_FINAL_TYPE(Preferences, preferences, GLIDE, PREFERENCES, GObject)
 
 /* Public API */
 Preferences *preferences_get_instance(void);
