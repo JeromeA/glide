@@ -342,6 +342,7 @@ STATIC void swank_remote_execution(Swank *self, const char *expr)
   int hdr = g_snprintf(msg, HDR_LEN + 1, "%06zx", len);
 
   memcpy(msg + hdr, rpc, len);
+  msg[HDR_LEN + len] = '\0';           /* for g_print below */
 
   /* Send the header (6 bytes) + payload (len bytes); skip the NUL */
   if (write(self->swank_fd, msg, HDR_LEN + len) < 0)
