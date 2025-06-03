@@ -14,6 +14,8 @@ void file_save(GtkWidget *, gpointer data) {
   GtkSourceBuffer *source_buffer = glide_get_source_buffer (app);
   const gchar *filename = glide_get_filename (app);
 
+  gchar *chosen_filename = NULL;
+
   // Check if we already have a filename
   if (!filename) {
     // We do not have a known filename -> use a "Save As" dialog
@@ -30,8 +32,9 @@ void file_save(GtkWidget *, gpointer data) {
     gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-      filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-      glide_set_filename(app, filename);
+      chosen_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+      glide_set_filename(app, chosen_filename);
+      filename = chosen_filename;
     }
 
     gtk_widget_destroy(dialog);
@@ -79,6 +82,7 @@ void file_save(GtkWidget *, gpointer data) {
   }
 
   g_free(buffer_text);
+  g_free(chosen_filename);
 }
 
 void file_saveas(GtkWidget *widget, gpointer data) {
