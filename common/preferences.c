@@ -1,5 +1,7 @@
 
 #include "preferences.h"
+#include <glib/gstdio.h>
+#include <errno.h>
 
 /* Define the Preferences class structure */
 struct _Preferences {
@@ -72,6 +74,14 @@ static void preferences_load(Preferences *self) {
 
 static void preferences_save(Preferences *self) {
   char *filename = preferences_get_filename();
+
+  /* Ensure that the configuration directory exists */
+  char *dir = g_path_get_dirname(filename);
+  if (g_mkdir_with_parents(dir, 0700) != 0 && errno != EEXIST) {
+    g_printerr("Failed to create config directory '%s': %s\n", dir,
+               g_strerror(errno));
+  }
+  g_free(dir);
 
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
