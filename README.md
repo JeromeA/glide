@@ -53,13 +53,14 @@ Same as 8k, plus:
 ## Linux
 
 ```bash
-sudo apt-get install libgtk-3-dev
-sudo apt-get install libgtksourceview-4-dev
+sudo apt-get install build-essential pkg-config nasm \
+    libgtk-3-dev libgtksourceview-4-dev
 ```
 
 ## MacOS
 
 ```bash
+brew install nasm pkg-config
 brew install gtk+3
 brew install gtksourceview4
 ```
