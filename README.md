@@ -32,9 +32,7 @@ saving files.
 
 ## 4k
 
-Same as 2k, plus:
-
-* menu bar
+Same as 2k, plus open and save features, with the matching menu:
 * `open...`
 * `save`
 * `save as...`
@@ -46,6 +44,9 @@ Same as 4k, plus:
 * a settings dialog
 
 ## 16k
+
+Same as 8k, plus:
+* can evaluate current line of code with alt-enter.
 
 # Installation instructions
 

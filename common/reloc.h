@@ -1,7 +1,7 @@
 #ifndef __RELOC_H__
 #define __RELOC_H__
 
-// In addition the the symbol name, each symbol from the ELF relocation table has a 48 byte overhead:
+// In addition to the symbol name, each symbol from the ELF relocation table has a 48 byte overhead:
 // - 24 bytes in the rela section
 // - 24 byte in the dynsym section.
 // - the relocation table itself is in the bss section, so it is not included in the binary.
