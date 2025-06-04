@@ -86,9 +86,9 @@ void on_preferences(GtkWidget *widget, gpointer data) {
 
 #ifdef GLIDE_TYPE
   if (GLIDE_IS_APP(data)) {
-    Glide *app = GLIDE_APP(data);
+    App *app = GLIDE_APP(data);
     main_window = gtk_application_get_active_window(GTK_APPLICATION(app));
-    preferences = glide_get_preferences(app);
+    preferences = app_get_preferences(app);
   } else
 #endif
   {

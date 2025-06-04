@@ -10,9 +10,9 @@
 #include "glide.h"
 
 void file_save(GtkWidget *, gpointer data) {
-  Glide *app = (Glide *) data;
-  GtkSourceBuffer *source_buffer = glide_get_source_buffer (app);
-  const gchar *filename = glide_get_filename (app);
+  App *app = (App *) data;
+  GtkSourceBuffer *source_buffer = app_get_source_buffer (app);
+  const gchar *filename = app_get_filename (app);
 
   gchar *chosen_filename = NULL;
 
@@ -33,7 +33,7 @@ void file_save(GtkWidget *, gpointer data) {
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
       chosen_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-      glide_set_filename(app, chosen_filename);
+      app_set_filename(app, chosen_filename);
       filename = chosen_filename;
     }
 
@@ -86,15 +86,15 @@ void file_save(GtkWidget *, gpointer data) {
 }
 
 void file_saveas(GtkWidget *widget, gpointer data) {
-  Glide *app = (Glide *) data;
-  gchar *old_filename = g_strdup(glide_get_filename (app));
-  glide_set_filename (app, NULL);
+  App *app = (App *) data;
+  gchar *old_filename = g_strdup(app_get_filename (app));
+  app_set_filename (app, NULL);
 
   file_save(widget, app);
 
-  const char *new_filename = glide_get_filename (app);
+  const char *new_filename = app_get_filename (app);
   if (!new_filename) {
-    glide_set_filename (app, old_filename);
+    app_set_filename (app, old_filename);
   }
   g_free(old_filename);
 }

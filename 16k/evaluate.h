@@ -5,6 +5,6 @@
 #include "glide.h"
 
 void
-on_evaluate(Glide *self);
+on_evaluate(App *self);
 
 #endif // EVALUATE_H

@@ -6,7 +6,7 @@
 #include "evaluate.h"
 
 /* === Instance structure ================================================= */
-struct _Glide
+struct _App
 {
   GtkApplication  parent_instance;
 
@@ -20,9 +20,9 @@ struct _Glide
 static gboolean
 on_key_press (GtkWidget *,
     GdkEventKey *event,
-    gpointer     user_data)   /* actually Glide* */
+    gpointer     user_data)   /* actually App* */
 {
-  Glide *self = (Glide *) user_data;
+  App *self = (App *) user_data;
 
   if ((event->keyval == GDK_KEY_Return) &&
       (event->state  & GDK_MOD1_MASK))      /* Alt+Enter */
@@ -35,13 +35,13 @@ on_key_press (GtkWidget *,
 
 
 /* === GObject boiler-plate ============================================== */
-G_DEFINE_TYPE(Glide, glide, GTK_TYPE_APPLICATION)
+G_DEFINE_TYPE(App, app, GTK_TYPE_APPLICATION)
 
 /* ---  class_init ------------------------------------------------------- */
 static void
-glide_activate (GApplication *app)
+app_activate (GApplication *app)
 {
-  Glide *self = GLIDE_APP(app);
+  App *self = GLIDE_APP(app);
 
   /*--------------------------------------------------------------*
    *  Build the UI (this is almost a verbatim move from app.c)    *
@@ -103,48 +103,48 @@ glide_activate (GApplication *app)
 }
 
 static void
-glide_startup (GApplication *app)
+app_startup (GApplication *app)
 {
   /* Chain up first */
-  G_APPLICATION_CLASS (glide_parent_class)->startup (app);
+  G_APPLICATION_CLASS (app_parent_class)->startup (app);
 
   /* Anything that has to happen *before* activate goes here */
   relocate ();   /* from the original code */
 }
 
 static void
-glide_dispose (GObject *object)
+app_dispose (GObject *object)
 {
-  Glide *self = GLIDE_APP(object);
+  App *self = GLIDE_APP(object);
 
   g_clear_pointer (&self->filename, g_free);
   g_clear_object (&self->preferences);
-  G_OBJECT_CLASS (glide_parent_class)->dispose (object);
+  G_OBJECT_CLASS (app_parent_class)->dispose (object);
 }
 
 static void
-glide_class_init (GlideClass *klass)
+app_class_init (AppClass *klass)
 {
   GApplicationClass *app_class = G_APPLICATION_CLASS (klass);
   GObjectClass      *obj_class = G_OBJECT_CLASS (klass);
 
-  app_class->startup  = glide_startup;
-  app_class->activate = glide_activate;
-  obj_class->dispose  = glide_dispose;
+  app_class->startup  = app_startup;
+  app_class->activate = app_activate;
+  obj_class->dispose  = app_dispose;
 }
 
 static void
-glide_init (Glide *self)
+app_init (App *self)
 {
   /* Everything that needs only the *instance* goes here */
   self->filename = NULL;
   self->preferences = NULL;
 }
 
-STATIC Glide *
-glide_new (const gchar *prefs_filename)
+STATIC App *
+app_new (const gchar *prefs_filename)
 {
-  Glide *self = g_object_new (GLIDE_TYPE,
+  App *self = g_object_new (GLIDE_TYPE,
       /* GtkApplication properties */
       "application-id",    "org.example.Glide",
       "flags",             G_APPLICATION_HANDLES_OPEN,
@@ -154,21 +154,21 @@ glide_new (const gchar *prefs_filename)
 }
 
 STATIC GtkSourceBuffer *
-glide_get_source_buffer (Glide *self)
+app_get_source_buffer (App *self)
 {
   g_return_val_if_fail (GLIDE_APP (self), NULL);
   return self->buffer;
 }
 
 STATIC const gchar *
-glide_get_filename (Glide *self)
+app_get_filename (App *self)
 {
   g_return_val_if_fail (GLIDE_APP (self), NULL);
   return self->filename;
 }
 
 STATIC void
-glide_set_filename (Glide *self, const gchar *new_filename)
+app_set_filename (App *self, const gchar *new_filename)
 {
   g_return_if_fail (GLIDE_APP (self));
   gchar *dup = new_filename ? g_strdup (new_filename) : NULL;
@@ -180,7 +180,7 @@ glide_set_filename (Glide *self, const gchar *new_filename)
 }
 
 STATIC Preferences *
-glide_get_preferences (Glide *self)
+app_get_preferences (App *self)
 {
   g_return_val_if_fail (GLIDE_APP (self), NULL);
   return self->preferences;

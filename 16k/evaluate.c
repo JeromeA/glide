@@ -16,9 +16,9 @@
 /* Callback triggered when the user requests evaluation of the current line. */
 /* ------------------------------------------------------------------------- */
 void
-on_evaluate(Glide *self)
+on_evaluate(App *self)
 {
-  GtkSourceBuffer *source_buffer = glide_get_source_buffer(self);
+  GtkSourceBuffer *source_buffer = app_get_source_buffer(self);
 
   /* 1. Locate the iterator at the caret (insert mark). */
   GtkTextMark *insert_mark = gtk_text_buffer_get_insert(GTK_TEXT_BUFFER(source_buffer));
@@ -45,7 +45,7 @@ on_evaluate(Glide *self)
   }
 
   /* 4. Send the expression to SWANK for remote execution. */
-  Preferences *prefs = glide_get_preferences(self);
+  Preferences *prefs = app_get_preferences(self);
   Swank *swank = swank_get_instance(prefs);
   swank_remote_execution(swank, expr);
 

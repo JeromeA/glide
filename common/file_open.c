@@ -10,8 +10,8 @@
 #include "glide.h"
 
 void file_open(GtkWidget *, gpointer data) {
-  Glide *app = (Glide *) data;
-  GtkSourceBuffer *source_buffer = glide_get_source_buffer (app);
+  App *app = (App *) data;
+  GtkSourceBuffer *source_buffer = app_get_source_buffer (app);
 
   // Create a file chooser dialog
   GtkWidget *dialog = gtk_file_chooser_dialog_new(
@@ -24,7 +24,7 @@ void file_open(GtkWidget *, gpointer data) {
 
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     gchar* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-    glide_set_filename (app, filename);
+    app_set_filename (app, filename);
 
     // Open the file using syscalls
     int fd = sys_open(filename, O_RDONLY, 0);
