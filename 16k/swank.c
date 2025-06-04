@@ -12,6 +12,9 @@
 
 #define DEFAULT_SWANK_PORT 4005
 
+/* forward declarations */
+static void swank_finalize(GObject *object);
+
 struct _Swank {
   GObject             parent_instance;
   GPid                lisp_pid;
@@ -266,9 +269,26 @@ static void connect_swank(Swank *self)
 }
 
 static void
-swank_class_init(SwankClass * /*klass*/)
+swank_class_init(SwankClass *klass)
 {
   /* no virtuals or signals */
+  GObjectClass *object_class = G_OBJECT_CLASS(klass);
+  object_class->finalize = swank_finalize;
+}
+
+static void
+swank_finalize(GObject *object)
+{
+  Swank *self = GLIDE_SWANK(object);
+
+  g_string_free(self->out_data, TRUE);
+  g_string_free(self->swank_data, TRUE);
+  g_mutex_clear(&self->out_mutex);
+  g_cond_clear(&self->out_cond);
+  g_mutex_clear(&self->swank_mutex);
+  g_cond_clear(&self->swank_cond);
+
+  G_OBJECT_CLASS(swank_parent_class)->finalize(object);
 }
 
 static void
@@ -286,6 +306,12 @@ swank_init(Swank *self)
   self->out_consumed = 0;
   g_mutex_init(&self->out_mutex);
   g_cond_init(&self->out_cond);
+
+  /* initialize fields used by the Swank reader thread */
+  self->swank_data = g_string_new(NULL);
+  self->swank_consumed = 0;
+  g_mutex_init(&self->swank_mutex);
+  g_cond_init(&self->swank_cond);
 }
 
 static void
