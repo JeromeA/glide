@@ -33,6 +33,8 @@ struct _Swank {
   gsize               swank_consumed;
   GMutex              swank_mutex;
   GCond               swank_cond;
+
+  Preferences        *prefs;
 };
 
 G_DEFINE_TYPE(Swank, swank, G_TYPE_OBJECT)
@@ -167,8 +169,8 @@ static void child_setup (gpointer)
 
 static void start_lisp(Swank *self)
 {
-  Preferences *prefs = preferences_get_instance();
-  const gchar *sdk_path = preferences_get_sdk(prefs);
+  Preferences *prefs = self->prefs;
+  const gchar *sdk_path = prefs ? preferences_get_sdk(prefs) : NULL;
   if (!sdk_path) {
     g_print("Swank: SDK not configured\n");
     return;
@@ -330,12 +332,14 @@ swank_init_function(Swank *self)
 }
 
 STATIC Swank *
-swank_get_instance(void)
+swank_get_instance(Preferences *prefs)
 {
   if (!swank_instance) {
     g_print("Swank: get_instance triggering new()\n");
     swank_instance = g_object_new(SWANK_TYPE, NULL);
   }
+  if (prefs)
+    swank_instance->prefs = prefs;
   return swank_instance;
 }
 

@@ -1,25 +1,24 @@
 #include "preferences.h"
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <string.h>
 
 static void
 test_defaults(void)
 {
-    if (g_test_subprocess()) {
-        Preferences *prefs = preferences_get_instance();
-        g_assert_null(preferences_get_sdk(prefs));
-        g_assert_cmpuint(preferences_get_swank_port(prefs), ==, 4005);
-        return;
-    }
-
     gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
-    gchar *env = g_strdup_printf("XDG_CONFIG_HOME=%s", tmpdir);
-    const char *const envp[] = { env, NULL };
+    gchar *file = g_build_filename(tmpdir, "prefs.ini", NULL);
 
-    g_test_trap_subprocess_with_envp(NULL, envp, 0, 0);
-    g_test_trap_assert_passed();
+    Preferences *prefs = preferences_new(file);
 
-    g_free(env);
+    g_assert_null(preferences_get_sdk(prefs));
+    g_assert_cmpuint(preferences_get_swank_port(prefs), ==, 4005);
+
+    g_object_unref(prefs);
+
+    g_remove(file);
+    g_rmdir(tmpdir);
+    g_free(file);
     g_free(tmpdir);
 }
 
@@ -33,33 +32,29 @@ on_sdk_changed(Preferences *prefs, const gchar *sdk, gpointer user_data)
 static void
 test_set_sdk(void)
 {
-    if (g_test_subprocess()) {
-        Preferences *prefs = preferences_get_instance();
-        int count = 0;
-        g_signal_connect(prefs, "sdk-changed", G_CALLBACK(on_sdk_changed), &count);
-        preferences_set_sdk(prefs, "my_sdk");
-        g_assert_cmpstr(preferences_get_sdk(prefs), ==, "my_sdk");
-        g_assert_cmpint(count, ==, 1);
-
-        const char *config_dir = g_getenv("XDG_CONFIG_HOME");
-        gchar *filename = g_build_filename(config_dir, "glide", "preferences.ini", NULL);
-        gchar *contents = NULL;
-        g_file_get_contents(filename, &contents, NULL, NULL);
-        g_assert_nonnull(contents);
-        g_assert_nonnull(strstr(contents, "my_sdk"));
-        g_free(contents);
-        g_free(filename);
-        return;
-    }
-
     gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
-    gchar *env = g_strdup_printf("XDG_CONFIG_HOME=%s", tmpdir);
-    const char *const envp[] = { env, NULL };
+    gchar *file = g_build_filename(tmpdir, "prefs.ini", NULL);
 
-    g_test_trap_subprocess_with_envp(NULL, envp, 0, 0);
-    g_test_trap_assert_passed();
+    Preferences *prefs = preferences_new(file);
 
-    g_free(env);
+    int count = 0;
+    g_signal_connect(prefs, "sdk-changed", G_CALLBACK(on_sdk_changed), &count);
+
+    preferences_set_sdk(prefs, "my_sdk");
+    g_assert_cmpstr(preferences_get_sdk(prefs), ==, "my_sdk");
+    g_assert_cmpint(count, ==, 1);
+
+    gchar *contents = NULL;
+    g_file_get_contents(file, &contents, NULL, NULL);
+    g_assert_nonnull(contents);
+    g_assert_nonnull(strstr(contents, "my_sdk"));
+    g_free(contents);
+
+    g_object_unref(prefs);
+
+    g_remove(file);
+    g_rmdir(tmpdir);
+    g_free(file);
     g_free(tmpdir);
 }
 

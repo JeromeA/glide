@@ -14,6 +14,7 @@ struct _Glide
   GtkWidget      *window;
   GtkSourceBuffer*buffer;
   gchar          *filename;   /* current file path or NULL */
+  Preferences    *preferences;
 };
 
 static gboolean
@@ -117,6 +118,7 @@ glide_dispose (GObject *object)
   Glide *self = GLIDE_APP(object);
 
   g_clear_pointer (&self->filename, g_free);
+  g_clear_object (&self->preferences);
   G_OBJECT_CLASS (glide_parent_class)->dispose (object);
 }
 
@@ -136,16 +138,19 @@ glide_init (Glide *self)
 {
   /* Everything that needs only the *instance* goes here */
   self->filename = NULL;
+  self->preferences = NULL;
 }
 
 STATIC Glide *
-glide_new (void)
+glide_new (const gchar *prefs_filename)
 {
-  return g_object_new (GLIDE_TYPE,
+  Glide *self = g_object_new (GLIDE_TYPE,
       /* GtkApplication properties */
       "application-id",    "org.example.Glide",
       "flags",             G_APPLICATION_HANDLES_OPEN,
       NULL);
+  self->preferences = preferences_new (prefs_filename);
+  return self;
 }
 
 STATIC GtkSourceBuffer *
@@ -172,4 +177,11 @@ glide_set_filename (Glide *self, const gchar *new_filename)
 
   /* If you later register a “filename” property, notify here:
      g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_FILENAME]); */
+}
+
+STATIC Preferences *
+glide_get_preferences (Glide *self)
+{
+  g_return_val_if_fail (GLIDE_APP (self), NULL);
+  return self->preferences;
 }

@@ -2,6 +2,7 @@
 #include "simple_file_open.h"
 #include "simple_file_save.h"
 #include "preferences_dialog.h"
+#include "preferences.h"
 
 #ifdef INLINE
 #define STATIC static
@@ -17,6 +18,11 @@ gchar *filename = NULL;
 
 int main(int argc, char *argv[]) {
   relocate();
+
+  gchar *prefs_file = g_build_filename(g_get_user_config_dir(),
+                                       "glide", "preferences.ini", NULL);
+  Preferences *prefs = preferences_new(prefs_file);
+  g_free(prefs_file);
 
   // Initialize GTK
   gtk_init(&argc, &argv);
@@ -62,7 +68,7 @@ int main(int argc, char *argv[]) {
   g_signal_connect(open_menu_item, "activate", G_CALLBACK(file_open), source_buffer);
   g_signal_connect(save_menu_item, "activate", G_CALLBACK(file_save), source_buffer);
   g_signal_connect(saveas_menu_item, "activate", G_CALLBACK(file_saveas), source_buffer);
-  g_signal_connect(preferences_menu_item, "activate", G_CALLBACK(on_preferences), window);
+  g_signal_connect(preferences_menu_item, "activate", G_CALLBACK(on_preferences), prefs);
   g_signal_connect(quit_menu_item, "activate", G_CALLBACK(gtk_main_quit), NULL);
 
   // Create a vertical box to pack the menu and the scrolled window
@@ -76,6 +82,8 @@ int main(int argc, char *argv[]) {
 
   // Start the GTK main loop
   gtk_main();
+
+  g_object_unref(prefs);
 
   exit(0);
 }

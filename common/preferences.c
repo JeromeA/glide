@@ -6,8 +6,9 @@
 /* Define the Preferences class structure */
 struct _Preferences {
     GObject parent_instance;
-    gchar *sdk;
-    guint16 swank_port;
+    gchar   *filename;
+    gchar   *sdk;
+    guint16  swank_port;
 };
 
 /* Define the Preferences class */
@@ -25,11 +26,9 @@ enum {
 
 static guint preferences_signals[SIGNAL_COUNT] = { 0 };
 
-/* Static variable to hold the singleton instance */
-static Preferences *preference_instance = NULL;
-
 static void preferences_finalize(GObject *object) {
     Preferences *self = GLIDE_PREFERENCES(object);
+    g_free(self->filename);
     g_free(self->sdk);
     /* reset global instance when last reference is released */
     if ((GObject *)self == (GObject *)preference_instance)
@@ -54,13 +53,14 @@ static void preferences_class_init(PreferencesClass *klass) {
   object_class->finalize = preferences_finalize;
 }
 
-static char *preferences_get_filename() {
-  const char *config_dir = g_get_user_config_dir();
-  return g_build_filename(config_dir, "glide", "preferences.ini", NULL);
+static const char *
+preferences_get_filename(Preferences *self)
+{
+  return self->filename;
 }
 
 static void preferences_load(Preferences *self) {
-  char *filename = preferences_get_filename();
+  const char *filename = preferences_get_filename(self);
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
   if (g_key_file_load_from_file(key_file, filename, G_KEY_FILE_NONE, &error)) {
@@ -80,11 +80,10 @@ static void preferences_load(Preferences *self) {
   }
 
   g_key_file_free(key_file);
-  g_free(filename);
 }
 
 static void preferences_save(Preferences *self) {
-  char *filename = preferences_get_filename();
+  const char *filename = preferences_get_filename(self);
 
   /* Ensure that the configuration directory exists */
   char *dir = g_path_get_dirname(filename);
@@ -107,22 +106,22 @@ static void preferences_save(Preferences *self) {
   }
 
   g_key_file_free(key_file);
-  g_free(filename);
 }
 
 /* Internal instance initialization */
 static void preferences_init(Preferences *self) {
-  self->sdk = NULL;
+  self->filename   = NULL;
+  self->sdk        = NULL;
   self->swank_port = 4005;
-  preferences_load(self);
 }
 
-/* Public API: Get the singleton instance */
-Preferences *preferences_get_instance(void) {
-  if (!preference_instance) {
-    preference_instance = g_object_new(PREFERENCES_TYPE, NULL);
-  }
-  return preference_instance;
+Preferences *
+preferences_new(const gchar *filename)
+{
+  Preferences *self = g_object_new(PREFERENCES_TYPE, NULL);
+  self->filename = g_strdup(filename);
+  preferences_load(self);
+  return self;
 }
 
 const gchar *preferences_get_sdk(Preferences *self) {

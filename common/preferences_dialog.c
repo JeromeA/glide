@@ -2,6 +2,9 @@
 #include <gtk/gtk.h>
 #include "preferences.h"
 #include "find_executables.h"
+#ifdef GLIDE_TYPE
+#include "glide.h"
+#endif
 
 typedef struct {
   GtkWidget *dialog;
@@ -9,9 +12,10 @@ typedef struct {
   Preferences *preferences;
 } PreferencesDialog;
 
-PreferencesDialog *preferences_dialog_new(GtkWindow *parent) {
+PreferencesDialog *
+preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   PreferencesDialog *prefs = g_new0(PreferencesDialog, 1);
-  prefs->preferences = preferences_get_instance();
+  prefs->preferences = preferences;
 
   prefs->dialog = gtk_dialog_new_with_buttons(
       "Preferences", parent, GTK_DIALOG_MODAL,
@@ -76,9 +80,23 @@ gboolean preferences_dialog_run(PreferencesDialog *prefs) {
     return confirmed;
 }
 
-void on_preferences(GtkWidget *, gpointer data) {
-  GtkWindow *main_window = GTK_WINDOW(data);
-  PreferencesDialog *prefs = preferences_dialog_new(main_window);
+void on_preferences(GtkWidget *widget, gpointer data) {
+  GtkWindow *main_window = NULL;
+  Preferences *preferences = NULL;
+
+#ifdef GLIDE_TYPE
+  if (GLIDE_IS_APP(data)) {
+    Glide *app = GLIDE_APP(data);
+    main_window = gtk_application_get_active_window(GTK_APPLICATION(app));
+    preferences = glide_get_preferences(app);
+  } else
+#endif
+  {
+    main_window = GTK_WINDOW(gtk_widget_get_toplevel(widget));
+    preferences = (Preferences *)data;
+  }
+
+  PreferencesDialog *prefs = preferences_dialog_new(main_window, preferences);
   preferences_dialog_run(prefs);
   preferences_dialog_free(prefs);
 }

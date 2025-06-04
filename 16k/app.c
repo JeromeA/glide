@@ -19,7 +19,12 @@ int
 main (int argc, char *argv[])
 {
   relocate();
-  Glide *app   = glide_new ();
+  gchar *prefs_file = g_build_filename (g_get_user_config_dir (),
+                                        "glide", "preferences.ini", NULL);
+
+  Glide *app   = glide_new (prefs_file);
+  g_free (prefs_file);
+
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref (app);
   return status;

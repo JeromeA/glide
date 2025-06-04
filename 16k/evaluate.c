@@ -45,7 +45,8 @@ on_evaluate(Glide *self)
   }
 
   /* 4. Send the expression to SWANK for remote execution. */
-  Swank *swank = swank_get_instance();
+  Preferences *prefs = glide_get_preferences(self);
+  Swank *swank = swank_get_instance(prefs);
   swank_remote_execution(swank, expr);
 
   g_free(expr);
