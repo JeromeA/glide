@@ -14,17 +14,17 @@ typedef struct {
 
 PreferencesDialog *
 preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
-  PreferencesDialog *prefs = g_new0(PreferencesDialog, 1);
-  prefs->preferences = preferences;
+  PreferencesDialog *self = g_new0(PreferencesDialog, 1);
+  self->preferences = preferences;
 
-  prefs->dialog = gtk_dialog_new_with_buttons(
+  self->dialog = gtk_dialog_new_with_buttons(
       "Preferences", parent, GTK_DIALOG_MODAL,
       "_OK", GTK_RESPONSE_OK,
       "_Cancel", GTK_RESPONSE_CANCEL,
       NULL
       );
 
-  GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(prefs->dialog));
+  GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(self->dialog));
 
   GtkWidget *grid = gtk_grid_new();
   gtk_widget_set_margin_start(grid, 10);
@@ -36,20 +36,20 @@ preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   gtk_container_add(GTK_CONTAINER(content_area), grid);
 
   GtkWidget *binary_label = gtk_label_new("Lisp binary:");
-  prefs->binary_combo_box = gtk_combo_box_text_new();
+  self->binary_combo_box = gtk_combo_box_text_new();
   GPtrArray *executables = find_lisp_executables();
   for (guint i = 0; i < executables->len; i++) {
     const gchar *executable = g_ptr_array_index(executables, i);
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(prefs->binary_combo_box), executable, executable);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(self->binary_combo_box), executable, executable);
   }
   g_ptr_array_free(executables, TRUE);
 
   gtk_grid_attach(GTK_GRID(grid), binary_label, 0, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), prefs->binary_combo_box, 1, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), self->binary_combo_box, 1, 0, 1, 1);
 
-  gtk_widget_show_all(prefs->dialog);
+  gtk_widget_show_all(self->dialog);
 
-  return prefs;
+  return self;
 }
 
 void preferences_dialog_free(PreferencesDialog *prefs) {
