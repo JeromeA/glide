@@ -5,7 +5,7 @@ CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS)
 LDLIBS += `pkg-config --libs $(LIBS)`
 
 TARGETS += app-full app-reloc app-gdb app
-SOURCES += app.c reloc.c
+SOURCES += main.c reloc.c
 FULL_OBJECTS = $(SOURCES:.c=.full.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
 CLEANABLES += $(TARGETS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm
@@ -15,7 +15,7 @@ app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
 
 all: $(TARGETS)
 
-app.full.o app.reloc.o: app.c reloc.h symbols.inc
+app.full.o app.reloc.o: main.c reloc.h symbols.inc
 reloc.full.o app.reloc.o: reloc.c reloc.h symbols.inc
 
 %.full.o: %.c
@@ -32,7 +32,7 @@ app-reloc: $(RELOC_OBJECTS)
 
 app-source.s: CFLAGS += -O2 -DRELOC -DINLINE -DSYSCALLS -DINTEL_SYNTAX
 app-source.s: $(SOURCES)
-	$(CC) $(CFLAGS) app.c -S -masm=intel -o $@
+	$(CC) $(CFLAGS) main.c -S -masm=intel -o $@
 
 app-source.asm: app-source.s libraries.asm
 	../common/intel2nasm.pl $< > $@
