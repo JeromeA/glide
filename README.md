@@ -47,8 +47,11 @@ Same as 4k, plus:
 
 Same as 8k, plus:
 * can evaluate current line of code with alt-enter.
+* the code is all object oriented, with DI instead of global variables.
 
 # Installation instructions
+
+Here are the dependencies you need to install before building the project.
 
 ## Linux
 
