@@ -43,8 +43,9 @@ find_executables(const gchar * const names[],
     for (guint j = 0; j < n_names; j++) {
       gchar *full_path = g_build_filename(dirs[i], names[j], NULL);
 
-      /* Check existence and executable bit */
-      if (g_file_test(full_path, G_FILE_TEST_EXISTS | G_FILE_TEST_IS_EXECUTABLE)) {
+      /* Check existence AND executable bit */
+      if (g_file_test(full_path, G_FILE_TEST_EXISTS) &&
+          g_file_test(full_path, G_FILE_TEST_IS_EXECUTABLE)) {
         /* Keep it */
         g_ptr_array_add(found, full_path);
       } else {
