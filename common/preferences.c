@@ -30,9 +30,6 @@ static void preferences_finalize(GObject *object) {
     Preferences *self = GLIDE_PREFERENCES(object);
     g_free(self->filename);
     g_free(self->sdk);
-    /* reset global instance when last reference is released */
-    if ((GObject *)self == (GObject *)preference_instance)
-      preference_instance = NULL;
     G_OBJECT_CLASS(preferences_parent_class)->finalize(object);
 }
 
@@ -53,17 +50,10 @@ static void preferences_class_init(PreferencesClass *klass) {
   object_class->finalize = preferences_finalize;
 }
 
-static const char *
-preferences_get_filename(Preferences *self)
-{
-  return self->filename;
-}
-
 static void preferences_load(Preferences *self) {
-  const char *filename = preferences_get_filename(self);
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
-  if (g_key_file_load_from_file(key_file, filename, G_KEY_FILE_NONE, &error)) {
+  if (g_key_file_load_from_file(key_file, self->filename, G_KEY_FILE_NONE, &error)) {
     char *sdk = g_key_file_get_string(key_file, "General", "sdk", &error);
     if (sdk) {
       preferences_set_sdk(self, sdk);
@@ -83,10 +73,8 @@ static void preferences_load(Preferences *self) {
 }
 
 static void preferences_save(Preferences *self) {
-  const char *filename = preferences_get_filename(self);
-
   /* Ensure that the configuration directory exists */
-  char *dir = g_path_get_dirname(filename);
+  char *dir = g_path_get_dirname(self->filename);
   if (g_mkdir_with_parents(dir, 0700) != 0 && errno != EEXIST) {
     g_printerr("Failed to create config directory '%s': %s\n", dir,
                g_strerror(errno));
@@ -100,7 +88,7 @@ static void preferences_save(Preferences *self) {
     g_key_file_set_string(key_file, "General", "sdk", self->sdk);
   g_key_file_set_integer(key_file, "General", "swank_port", self->swank_port);
 
-  if (!g_key_file_save_to_file(key_file, filename, &error)) {
+  if (!g_key_file_save_to_file(key_file, self->filename, &error)) {
     g_printerr("Failed to save config: %s\n", error->message);
     g_clear_error(&error);
   }
