@@ -7,7 +7,7 @@
 #include "reloc.h"
 #include "syscalls.h"
 #include "file_save.h"
-#include "glide.h"
+#include "app.h"
 
 void file_save(GtkWidget *, gpointer data) {
   App *app = (App *) data;

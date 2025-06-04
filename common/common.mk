@@ -15,8 +15,8 @@ app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
 
 all: $(TARGETS)
 
-app.full.o app.reloc.o: main.c reloc.h symbols.inc
-reloc.full.o app.reloc.o: reloc.c reloc.h symbols.inc
+main.full.o main.reloc.o: main.c reloc.h symbols.inc
+reloc.full.o reloc.reloc.o: reloc.c reloc.h symbols.inc
 
 %.full.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

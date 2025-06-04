@@ -1,5 +1,5 @@
 #include "includes.h"
-#include "glide.h"
+#include "app.h"
 #include "file_open.h"
 #include "file_save.h"
 #include "preferences_dialog.h"

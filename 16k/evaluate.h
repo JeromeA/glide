@@ -2,7 +2,7 @@
 #ifndef EVALUATE_H
 #define EVALUATE_H
 
-#include "glide.h"
+#include "app.h"
 
 void
 on_evaluate(App *self);

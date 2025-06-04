@@ -9,11 +9,11 @@
 #include "find_executables.c"
 #include "swank.c"
 #include "evaluate.c"
-#include "glide.c"
+#include "app.c"
 #endif
 
 #include "includes.h"
-#include "glide.h"
+#include "app.h"
 
 int
 main (int argc, char *argv[])
