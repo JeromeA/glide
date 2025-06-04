@@ -15,6 +15,7 @@ struct _App
   GtkSourceBuffer*buffer;
   gchar          *filename;   /* current file path or NULL */
   Preferences    *preferences;
+  Swank          *swank;
 };
 
 static gboolean
@@ -119,6 +120,7 @@ app_dispose (GObject *object)
 
   g_clear_pointer (&self->filename, g_free);
   g_clear_object (&self->preferences);
+  g_clear_object (&self->swank);
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
 }
 
@@ -139,17 +141,22 @@ app_init (App *self)
   /* Everything that needs only the *instance* goes here */
   self->filename = NULL;
   self->preferences = NULL;
+  self->swank = NULL;
 }
 
 STATIC App *
-app_new (const gchar *prefs_filename)
+app_new (Preferences *prefs, Swank *swank)
 {
+  g_return_val_if_fail (GLIDE_IS_SWANK (swank), NULL);
+
   App *self = g_object_new (GLIDE_TYPE,
       /* GtkApplication properties */
       "application-id",    "org.example.Glide",
       "flags",             G_APPLICATION_HANDLES_OPEN,
       NULL);
-  self->preferences = preferences_new (prefs_filename);
+
+  self->preferences = g_object_ref (prefs);
+  self->swank       = g_object_ref (swank);
   return self;
 }
 
@@ -184,4 +191,11 @@ app_get_preferences (App *self)
 {
   g_return_val_if_fail (GLIDE_APP (self), NULL);
   return self->preferences;
+}
+
+STATIC Swank *
+app_get_swank (App *self)
+{
+  g_return_val_if_fail (GLIDE_APP (self), NULL);
+  return self->swank;
 }

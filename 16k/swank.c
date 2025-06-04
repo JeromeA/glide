@@ -39,7 +39,6 @@ struct _Swank {
 
 G_DEFINE_TYPE(Swank, swank, G_TYPE_OBJECT)
 
-static Swank *swank_instance = NULL;
 
 static gpointer
 stderr_reader_thread(gpointer data)
@@ -332,15 +331,11 @@ swank_init_function(Swank *self)
 }
 
 STATIC Swank *
-swank_get_instance(Preferences *prefs)
+swank_new(Preferences *prefs)
 {
-  if (!swank_instance) {
-    g_print("Swank: get_instance triggering new()\n");
-    swank_instance = g_object_new(SWANK_TYPE, NULL);
-  }
-  if (prefs)
-    swank_instance->prefs = prefs;
-  return swank_instance;
+  Swank *self = g_object_new(SWANK_TYPE, NULL);
+  self->prefs = prefs;
+  return self;
 }
 
 /**

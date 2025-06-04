@@ -44,9 +44,9 @@ on_evaluate(App *self)
   }
 
   /* 4. Send the expression to SWANK for remote execution. */
-  Preferences *prefs = app_get_preferences(self);
-  Swank *swank = swank_get_instance(prefs);
-  swank_remote_execution(swank, expr);
+  Swank *swank = app_get_swank (self);
+  if (swank)
+    swank_remote_execution(swank, expr);
 
   g_free(expr);
 }

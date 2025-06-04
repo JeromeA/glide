@@ -13,7 +13,7 @@
 G_DECLARE_FINAL_TYPE(Swank, swank, GLIDE, SWANK, GObject)
 
 /* Public API */
-STATIC Swank *swank_get_instance(Preferences *prefs);  // Get the singleton instance
-STATIC void swank_remote_execution(Swank *self, const char *expr);
+STATIC Swank *swank_new(Preferences *prefs);  // Create a new Swank instance
+STATIC void  swank_remote_execution(Swank *self, const char *expr);
 
 #endif // SWANK_H
