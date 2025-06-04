@@ -31,6 +31,9 @@ static Preferences *preference_instance = NULL;
 static void preferences_finalize(GObject *object) {
     Preferences *self = GLIDE_PREFERENCES(object);
     g_free(self->sdk);
+    /* reset global instance when last reference is released */
+    if ((GObject *)self == (GObject *)preference_instance)
+      preference_instance = NULL;
     G_OBJECT_CLASS(preferences_parent_class)->finalize(object);
 }
 
@@ -66,6 +69,14 @@ static void preferences_load(Preferences *self) {
       preferences_set_sdk(self, sdk);
       g_free(sdk);
     }
+
+    /* load swank port if present */
+    gint port = g_key_file_get_integer(key_file, "General", "swank_port", &error);
+    if (error == NULL) {
+      self->swank_port = (guint16)port;
+    } else {
+      g_clear_error(&error);
+    }
   }
 
   g_key_file_free(key_file);
@@ -86,7 +97,9 @@ static void preferences_save(Preferences *self) {
   GKeyFile *key_file = g_key_file_new();
   GError *error = NULL;
 
-  g_key_file_set_string(key_file, "General", "sdk", self->sdk);
+  if (self->sdk)
+    g_key_file_set_string(key_file, "General", "sdk", self->sdk);
+  g_key_file_set_integer(key_file, "General", "swank_port", self->swank_port);
 
   if (!g_key_file_save_to_file(key_file, filename, &error)) {
     g_printerr("Failed to save config: %s\n", error->message);
