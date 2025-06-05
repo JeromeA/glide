@@ -21,6 +21,8 @@ STATIC const gchar *app_get_filename  (App *self); // Returns the current filena
 STATIC void app_set_filename  (App *self, const gchar *new_filename);
 STATIC Preferences *app_get_preferences(App *self);
 STATIC Swank *app_get_swank(App *self);
+STATIC void app_on_quit(App *self);
+STATIC void app_quit(App *self);
 
 G_END_DECLS
 

@@ -5,6 +5,10 @@
 #include "preferences_dialog.h"
 #include "evaluate.h"
 
+/* Signal handlers */
+STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
+STATIC void     quit_menu_item   (GtkWidget * /*item*/,   gpointer data);
+
 /* === Instance structure ================================================= */
 struct _App
 {
@@ -49,7 +53,8 @@ app_activate (GApplication *app)
    *--------------------------------------------------------------*/
   self->window = gtk_application_window_new (GTK_APPLICATION (app));
   gtk_window_set_default_size (GTK_WINDOW (self->window), 800, 600);
-  g_signal_connect (self->window, "delete-event", G_CALLBACK (gtk_window_close), NULL);
+  g_signal_connect (self->window, "delete-event",
+                    G_CALLBACK (quit_delete_event), self);
 
   /* Scrolled source-view */
   GtkWidget *scrolled = gtk_scrolled_window_new (NULL, NULL);
@@ -92,7 +97,7 @@ app_activate (GApplication *app)
 
   /* Preferences need a window */
   g_signal_connect (pref_item, "activate", G_CALLBACK (on_preferences), self);
-  g_signal_connect (quit_item, "activate", G_CALLBACK (g_application_quit), app);
+  g_signal_connect (quit_item, "activate", G_CALLBACK (quit_menu_item), self);
 
   /* Vertical box with menu + view */
   GtkWidget *vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
@@ -198,4 +203,32 @@ app_get_swank (App *self)
 {
   g_return_val_if_fail (GLIDE_APP (self), NULL);
   return self->swank;
+}
+
+STATIC void
+app_quit (App *self)
+{
+  g_return_if_fail (GLIDE_APP (self));
+  g_application_quit (G_APPLICATION (self));
+}
+
+STATIC void
+app_on_quit (App *self)
+{
+  g_return_if_fail (GLIDE_APP (self));
+  /* TODO: check for unsaved changes, prompt the user, stop subprocesses, ... */
+  app_quit (self);
+}
+
+STATIC gboolean
+quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data)
+{
+  app_on_quit (GLIDE_APP (data));
+  return TRUE;
+}
+
+STATIC void
+quit_menu_item (GtkWidget * /*item*/, gpointer data)
+{
+  app_on_quit (GLIDE_APP (data));
 }
