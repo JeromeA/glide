@@ -2,8 +2,8 @@
 #include <gtk/gtk.h>
 #include "preferences.h"
 #include "find_executables.h"
-#ifdef APP_TYPE
-#include "app.h"
+#if __has_include("app.h")
+# include "app.h"
 #endif
 
 typedef struct {
@@ -84,7 +84,7 @@ void on_preferences(GtkWidget *widget, gpointer data) {
   GtkWindow *main_window = NULL;
   Preferences *preferences = NULL;
 
-#ifdef APP_TYPE
+#ifdef GLIDE_IS_APP
   if (GLIDE_IS_APP(data)) {
     App *app = GLIDE_APP(data);
     main_window = gtk_application_get_active_window(GTK_APPLICATION(app));
