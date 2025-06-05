@@ -3,6 +3,7 @@
 #include "preferences.h"
 #include "find_executables.h"
 #if __has_include("app.h")
+# define WITH_APP
 # include "app.h"
 #endif
 
@@ -83,18 +84,14 @@ gboolean preferences_dialog_run(PreferencesDialog *prefs) {
 void on_preferences(GtkWidget *widget, gpointer data) {
   GtkWindow *main_window = NULL;
   Preferences *preferences = NULL;
+  main_window = GTK_WINDOW(gtk_widget_get_toplevel(widget));
 
-#ifdef GLIDE_IS_APP
-  if (GLIDE_IS_APP(data)) {
-    App *app = GLIDE_APP(data);
-    main_window = gtk_application_get_active_window(GTK_APPLICATION(app));
-    preferences = app_get_preferences(app);
-  } else
+#ifdef WITH_APP
+  App *app = GLIDE_APP(data);
+  preferences = app_get_preferences(app);
+#else
+  preferences = (Preferences *)data;
 #endif
-  {
-    main_window = GTK_WINDOW(gtk_widget_get_toplevel(widget));
-    preferences = (Preferences *)data;
-  }
 
   PreferencesDialog *prefs = preferences_dialog_new(main_window, preferences);
   preferences_dialog_run(prefs);
