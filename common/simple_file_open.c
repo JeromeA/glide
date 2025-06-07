@@ -30,12 +30,12 @@ void file_open(GtkWidget *, gpointer data) {
         int fd = sys_open(filename, O_RDONLY, 0);
         if (fd == -1) {
             // Handle error opening file
-            g_printerr("Failed to open file using syscalls: %s (errno: %d)\n",
+            g_printerr("Failed to open %s (errno %d)\n",
                        filename, errno);
         } else {
             struct stat sb;
             if (sys_fstat(fd, &sb) == -1) {
-                g_printerr("Failed to stat file: %s (errno: %d)\n",
+                g_printerr("Failed to stat %s (errno %d)\n",
                            filename, errno);
                 sys_close(fd);
             } else if (!S_ISREG(sb.st_mode)) {
@@ -48,7 +48,7 @@ void file_open(GtkWidget *, gpointer data) {
                 // Allocate buffer for file content + null terminator
                 char *content = g_malloc(length + 1);
                 if (!content) {
-                    g_printerr("Failed to allocate memory for file content.\n");
+                    g_printerr("Failed to allocate memory.\n");
                     sys_close(fd);
                 } else {
                     ssize_t total_read = 0;
@@ -58,7 +58,7 @@ void file_open(GtkWidget *, gpointer data) {
                         ssize_t r = sys_read(fd, content + total_read,
                                          length - total_read);
                         if (r == -1) {
-                            g_printerr("Error reading file: %s (errno: %d)\n",
+                            g_printerr("Error reading %s (errno %d)\n",
                                        filename, errno);
                             break;
                         } else if (r == 0) {

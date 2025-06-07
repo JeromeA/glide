@@ -57,7 +57,7 @@ void file_save(GtkWidget *, gpointer data) {
     // Open (or create/truncate) the file for writing using syscalls
     int fd = sys_open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1) {
-        g_printerr("Failed to open file for writing: %s (errno: %d)\n", filename, errno);
+        g_printerr("Failed to open file %s (errno %d)\n", filename, errno);
         g_free(buffer_text);
         return;
     }
@@ -68,7 +68,7 @@ void file_save(GtkWidget *, gpointer data) {
     while (total_written < to_write) {
         ssize_t written = sys_write(fd, buffer_text + total_written, to_write - total_written);
         if (written == -1) {
-            g_printerr("Error writing to file: %s (errno: %d)\n", filename, errno);
+            g_printerr("Error writing to %s (errno %d)\n", filename, errno);
             sys_close(fd);
             g_free(buffer_text);
             return;
@@ -78,7 +78,7 @@ void file_save(GtkWidget *, gpointer data) {
 
     // Close the file
     if (sys_close(fd) == -1) {
-        g_printerr("Error closing file: %s (errno: %d)\n", filename, errno);
+        g_printerr("Error closing %s (errno %d)\n", filename, errno);
     }
 
     g_free(buffer_text);

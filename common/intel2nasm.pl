@@ -13,18 +13,21 @@ s/^\s*\.ident.*//ms;
 s/^#.*\n//gm;
 
 # Replace indentation tabs with 4 spaces.
-s/^\t/    /mg;
+s/^\t/    /gm;
 
 # Replace all other tabs with spaces.
 s/\t/ /g;
+
+# Delete align directives before strings.
+s/^\s*\.align\s+\d+\n(\.LC\d+:\n\s*\.string\s".*"\n)/$1/gm;
 
 # Change the format for litterals.
 s/\.align/align/g;
 s/\.string\s"(.*)"/db `$1`, 0/g;
 s/\.byte\s(-?\d+)/db $1/g;
 s/\.long\s(-?\d+)/dd $1/g;
-s/\.quad\s(-?\d+)/dq $1/gm;
-s/\.quad\s(\S+)/dq BASE_ADDR + $1/gm;
+s/\.quad\s(-?\d+)/dq $1/g;
+s/\.quad\s(\S+)/dq BASE_ADDR + $1/g;
 
 # Replace local labels with global ones.
 s/\.LC(\d+)/LC$1/g;
