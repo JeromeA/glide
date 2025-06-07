@@ -62,6 +62,8 @@ S(g_ptr_array_add, VOID, void, (GPtrArray *array, gpointer data), (array, data))
 S(gtk_widget_hide, VOID, void, (GtkWidget *widget), (widget))
 S(g_ptr_array_new_with_free_func, RETURN, GPtrArray *, (GDestroyNotify element_free_func), (element_free_func))
 S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), (combo_box))
+S(g_malloc0, RETURN, gpointer, (gsize n_bytes), (n_bytes))
+S(g_ptr_array_free, RETURN, void **, (GPtrArray *array, gboolean free_segment), (array, free_segment))
 
 // We need this one to load everybody else:
 //   dlsym
@@ -70,10 +72,18 @@ S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), 
 //   gtk_dialog_new_with_buttons
 //   gtk_file_chooser_dialog_new
 //   g_printerr
+//   g_build_filename
+//   g_signal_emit
+//   g_object_new
+//   g_signal_new
 //
 // These have weird macro expansion issues:
 //   g_once_init_enter_pointer
 //   g_once_init_leave_pointer
+//   g_strdup
+//
+// These are there, but something is wrong with them:
+//   g_free
 
 // TODO: investigate these symbols:
 //   memmove
@@ -87,21 +97,16 @@ S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), 
 //   write
 //   g_string_insert_len
 //   memcpy
-//   g_build_filename
 //   g_snprintf
 //   __errno_location
 //   g_thread_new
-//   g_free
 //   g_cclosure_marshal_VOID__STRING
 //   gtk_text_iter_set_line_offset
 //   g_socket_get_fd
-//   g_object_new
 //   g_strdup_printf
 //   g_string_new
 //   strerror
-//   g_signal_emit
 //   g_socket_client_new
-//   g_ptr_array_free
 //   g_print
 //   g_string_insert_c
 //   gtk_text_buffer_get_iter_at_mark
@@ -114,8 +119,6 @@ S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), 
 //   __snprintf_chk
 //   g_file_test
 //   g_object_unref
-//   g_malloc0
-//   g_signal_new
 //   g_application_run
 //   gtk_text_buffer_get_insert
 //   g_type_check_instance_is_a

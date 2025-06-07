@@ -90,6 +90,5 @@ S(g_ptr_array_free, RETURN, void **, (GPtrArray *array, gboolean free_segment), 
 // TODO: sort out the following ones:
 //   g_cclosure_marshal_VOID__STRING: resq 1
 //   __errno_location: resq 1
-//   g_ptr_array_free: resq 1
 //   __stack_chk_fail: resq 1
 

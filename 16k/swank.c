@@ -47,7 +47,7 @@ stderr_reader_thread(gpointer data)
   char buf[1024];
   ssize_t n;
 
-  while ((n = read(fd, buf, sizeof(buf) - 1)) > 0) {
+  while ((n = sys_read(fd, buf, sizeof(buf) - 1)) > 0) {
     buf[n] = '\0';
     g_print("err: %s\n", buf);
   }
@@ -227,7 +227,7 @@ static void start_swank(Swank *self)
   /* quickload swank */
   const char *ql_cmd = "(ql:quickload :swank)\n";
   g_print("start_swank: sending %s\n", ql_cmd);
-  if (write(self->in_fd, ql_cmd, strlen(ql_cmd)) < 0)
+  if (sys_write(self->in_fd, ql_cmd, strlen(ql_cmd)) < 0)
     g_print("start_swank: write quickload failed: %s\n", strerror(errno));
   /* wait for quickload result and next prompt */
   read_until(self, "(:SWANK)");
@@ -239,7 +239,7 @@ static void start_swank(Swank *self)
       "(swank:create-server :port %d :dont-close t)\n",
       self->port);
   g_print("start_swank: sending %s\n", create_cmd);
-  if (write(self->in_fd, create_cmd, strlen(create_cmd)) < 0)
+  if (sys_write(self->in_fd, create_cmd, strlen(create_cmd)) < 0)
     g_print("start_swank: write create-server failed: %s\n", strerror(errno));
   /* wait for server creation and prompt */
   read_until(self, "* ");
@@ -370,7 +370,7 @@ STATIC void swank_remote_execution(Swank *self, const char *expr)
   msg[HDR_LEN + len] = '\0';           /* for g_print below */
 
   /* Send the header (6 bytes) + payload (len bytes); skip the NUL */
-  if (write(self->swank_fd, msg, HDR_LEN + len) < 0)
+  if (sys_write(self->swank_fd, msg, HDR_LEN + len) < 0)
     g_print("swank_remote_execution: write error: %s\n", strerror(errno));
 
   g_print("swank_remote_execution: sent %s\n", msg);
