@@ -113,9 +113,6 @@ app_startup (GApplication *app)
 {
   /* Chain up first */
   G_APPLICATION_CLASS (app_parent_class)->startup (app);
-
-  /* Anything that has to happen *before* activate goes here */
-  relocate ();   /* from the original code */
 }
 
 static void
