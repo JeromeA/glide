@@ -1,5 +1,6 @@
 #include "swank.h"
 #include "preferences.h"
+#include "syscalls.h"
 
 #include <gio/gio.h>
 #include <glib.h>
