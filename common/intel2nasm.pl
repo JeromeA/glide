@@ -1,7 +1,7 @@
 #!/usr/bin/perl -p -0777
 
 # Delete all the directives that NASM doesn't understand.
-s/.*\.(loc|cfi|file|size|type|text|section|p2align|align|globl|intel_syntax|data|bss).*\n//g;
+s/.*\.(loc|cfi|file|size|type|text|section|p2align|globl|intel_syntax|data|bss).*\n//g;
 
 # Delete the .LFB and .LFE labels.
 s/^\.LF[BE].*\n//gm;
@@ -19,6 +19,7 @@ s/^\t/    /mg;
 s/\t/ /g;
 
 # Change the format for litterals.
+s/\.align/align/g;
 s/\.string\s"(.*)"/db `$1`, 0/g;
 s/\.byte\s(-?\d+)/db $1/g;
 s/\.long\s(-?\d+)/dd $1/g;
