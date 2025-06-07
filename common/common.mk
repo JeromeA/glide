@@ -45,7 +45,7 @@ app-gdb: app.asm
 	chmod +x $@
 
 app: app.asm
-	nasm -l app.list $<
+	nasm -l $@.list $<
 	chmod +x $@
 
 clean:
