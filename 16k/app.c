@@ -168,21 +168,21 @@ app_new (Preferences *prefs, Swank *swank)
 STATIC GtkSourceBuffer *
 app_get_source_buffer (App *self)
 {
-  g_return_val_if_fail (GLIDE_APP (self), NULL);
+  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->buffer;
 }
 
 STATIC const gchar *
 app_get_filename (App *self)
 {
-  g_return_val_if_fail (GLIDE_APP (self), NULL);
+  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->filename;
 }
 
 STATIC void
 app_set_filename (App *self, const gchar *new_filename)
 {
-  g_return_if_fail (GLIDE_APP (self));
+  g_return_if_fail (GLIDE_IS_APP (self));
   gchar *dup = new_filename ? g_strdup (new_filename) : NULL;
   g_free (self->filename);
   self->filename = dup;
@@ -194,28 +194,28 @@ app_set_filename (App *self, const gchar *new_filename)
 STATIC Preferences *
 app_get_preferences (App *self)
 {
-  g_return_val_if_fail (GLIDE_APP (self), NULL);
+  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->preferences;
 }
 
 STATIC Swank *
 app_get_swank (App *self)
 {
-  g_return_val_if_fail (GLIDE_APP (self), NULL);
+  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->swank;
 }
 
 STATIC void
 app_quit (App *self)
 {
-  g_return_if_fail (GLIDE_APP (self));
+  g_return_if_fail (GLIDE_IS_APP (self));
   g_application_quit (G_APPLICATION (self));
 }
 
 STATIC void
 app_on_quit (App *self)
 {
-  g_return_if_fail (GLIDE_APP (self));
+  g_return_if_fail (GLIDE_IS_APP (self));
   /* TODO: check for unsaved changes, prompt the user, stop subprocesses, ... */
   app_quit (self);
 }
