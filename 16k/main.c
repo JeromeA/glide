@@ -34,6 +34,6 @@ main (int argc, char *argv[])
   g_object_unref (app);
   g_object_unref (swank);
   g_object_unref (prefs);
-  return status;
+  exit(status);
 }
 
