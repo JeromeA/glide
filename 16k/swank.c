@@ -57,14 +57,14 @@ stderr_reader_thread(gpointer data)
 }
 
 static gpointer
-stdout_reader_thread (gpointer data)
+stdout_reader_thread(gpointer data)
 {
   Swank *self = data;
   int    fd   = self->out_fd;
   char   buf[1024];
   ssize_t n;
 
-  while ((n = read (fd, buf, sizeof(buf)-1)) > 0) {
+  while ((n = sys_read(fd, buf, sizeof(buf)-1)) > 0) {
     buf[n] = '\0';
     g_print("out: %s\n", buf);
 
@@ -78,14 +78,14 @@ stdout_reader_thread (gpointer data)
 }
 
 static gpointer
-swank_reader_thread (gpointer data)
+swank_reader_thread(gpointer data)
 {
   Swank *self = data;
   int    fd   = self->swank_fd;
   char   buf[1024];
 
   for(;;) {
-    ssize_t n = read (fd, buf, sizeof(buf)-1);
+    ssize_t n = sys_read(fd, buf, sizeof(buf)-1);
     if (n > 0) {
       buf[n] = '\0';
       g_print("swank: %s\n", buf);

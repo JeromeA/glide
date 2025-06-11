@@ -1,6 +1,5 @@
 S(exit, NORETURN, void, (int status), (status))
 S(g_clear_error, VOID, void, (GError **err), (err))
-S(g_free, VOID, void, (gpointer mem), (mem))
 S(g_get_user_config_dir, RETURN, const gchar *, (void), ())
 S(g_intern_static_string, RETURN, const gchar *, (const gchar *string), (string))
 S(g_key_file_free, VOID, void, (GKeyFile *key_file), (key_file))
@@ -64,62 +63,84 @@ S(g_ptr_array_new_with_free_func, RETURN, GPtrArray *, (GDestroyNotify element_f
 S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), (combo_box))
 S(g_malloc0, RETURN, gpointer, (gsize n_bytes), (n_bytes))
 S(g_ptr_array_free, RETURN, void **, (GPtrArray *array, gboolean free_segment), (array, free_segment))
+S(gtk_text_iter_forward_to_line_end, RETURN, gboolean, (GtkTextIter *iter), (iter))
+S(g_return_if_fail_warning, VOID, void, (const gchar *log_domain, const gchar *func, const gchar *expression), (log_domain, func, expression))
+S(g_socket_connection_get_socket, RETURN, GSocket *, (GSocketConnection *connection), (connection))
+S(g_socket_client_connect_to_host, RETURN, GSocketConnection *, (GSocketClient *client, const gchar *host_name, guint16 port, GCancellable *cancellable, GError **error), (client, host_name, port, cancellable, error))
+S(g_string_insert_len, RETURN, GString *, (GString *string, gssize pos, const gchar *val, gssize len), (string, pos, val, len))
+S(g_thread_new, RETURN, GThread *, (const gchar *name, GThreadFunc func, gpointer data), (name, func, data))
+S(gtk_text_iter_set_line_offset, VOID, void, (GtkTextIter *iter, gint line_offset), (iter, line_offset))
+S(g_socket_get_fd, RETURN, gint, (GSocket *socket), (socket))
+S(g_string_new, RETURN, GString *, (const gchar *init), (init))
+S(g_socket_client_new, RETURN, GSocketClient *, (void), ())
+S(g_string_insert_c, RETURN, GString *, (GString *string, gssize pos, gchar c), (string, pos, c))
+S(gtk_text_buffer_get_iter_at_mark, VOID, void, (GtkTextBuffer *buffer, GtkTextIter *iter, GtkTextMark *mark), (buffer, iter, mark))
+S(g_string_free_and_steal, RETURN, gchar *, (GString *string), (string))
+S(strstr, RETURN, char *, (const char *haystack, const char *needle), (haystack, needle))
+S(g_spawn_async_with_pipes, RETURN, gboolean, (const gchar *working_directory, gchar **argv, gchar **envp, GSpawnFlags flags, GSpawnChildSetupFunc child_setup, gpointer user_data, GPid *child_pid, gint *standard_input, gint *standard_output, gint *standard_error, GError **error), (working_directory, argv, envp, flags, child_setup, user_data, child_pid, standard_input, standard_output, standard_error, error))
+S(g_file_test, RETURN, gboolean, (const gchar *filename, GFileTest test), (filename, test))
+S(g_object_unref, VOID, void, (void *object), (object))
+S(g_application_run, RETURN, gint, (GApplication *application, int argc, char **argv), (application, argc, argv))
+S(gtk_text_buffer_get_insert, RETURN, GtkTextMark *, (GtkTextBuffer *buffer), (buffer))
+S(g_type_check_instance_is_a, RETURN, gboolean, (GTypeInstance *instance, GType instance_type), (instance, instance_type))
+S(g_mutex_lock, VOID, void, (GMutex *mutex), (mutex))
+S(g_mutex_unlock, VOID, void, (GMutex *mutex), (mutex))
+S(g_mutex_init, VOID, void, (GMutex *mutex), (mutex))
+S(g_mutex_clear, VOID, void, (GMutex *mutex), (mutex))
+S(g_cond_clear, VOID, void, (GCond *cond), (cond))
+S(g_cond_wait, VOID, void, (GCond *cond, GMutex *mutex), (cond, mutex))
+S(g_cond_init, VOID, void, (GCond *cond), (cond))
+S(g_cond_broadcast, VOID, void, (GCond *cond), (cond))
+S(g_key_file_get_integer, RETURN, gint, (GKeyFile *key_file, const gchar *group_name, const gchar *key, GError **error), (key_file, group_name, key, error))
+S(g_application_quit, VOID, void, (GApplication *application), (application))
+S(g_path_get_dirname, RETURN, gchar *, (const gchar *file_name), (file_name))
+S(gtk_widget_get_toplevel, RETURN, GtkWidget *, (GtkWidget *widget), (widget))
+S(g_strerror, RETURN, const gchar *, (int errnum), (errnum))
+S(gtk_application_window_new, RETURN, GtkWidget *, (GtkApplication *application), (application))
+S(g_mkdir_with_parents, RETURN, gint, (const gchar *pathname, gint mode), (pathname, mode))
+S(gtk_application_get_type, RETURN, GType, (void), ())
+S(g_key_file_set_integer, VOID, void, (GKeyFile *key_file, const gchar *group_name, const gchar *key, gint value), (key_file, group_name, key, value))
+S(g_usleep, VOID, void, (gulong usec), (usec))
 
 // We need this one to load everybody else:
 //   dlsym
 //
 // These have varargs:
+//   g_build_filename
+//   g_log
+//   g_object_new
+//   g_print
+//   g_printerr
+//   g_signal_emit
+//   g_signal_new
+//   g_snprintf
+//   g_strdup_printf
 //   gtk_dialog_new_with_buttons
 //   gtk_file_chooser_dialog_new
-//   g_printerr
-//   g_build_filename
-//   g_signal_emit
-//   g_object_new
-//   g_signal_new
+//   __snprintf_chk
 //
 // These have weird macro expansion issues:
 //   g_once_init_enter_pointer
 //   g_once_init_leave_pointer
 //   g_strdup
+//   g_strdup
+//   g_string_append_len
+//   g_string_free
+//   memcpy
+//   memmove
+//   g_object_ref
 //
-// These are there, but something is wrong with them:
+// These are used in generated code, so I can't control them:
+//   g_cclosure_marshal_VOID__STRING
 //   g_free
 
 // TODO: investigate these symbols:
-//   memmove
-//   g_log
-//   gtk_text_iter_forward_to_line_end
-//   g_return_if_fail_warning
-//   g_socket_connection_get_socket
-//   g_string_free
 //   __stack_chk_fail
-//   g_socket_client_connect_to_host
-//   write
-//   g_string_insert_len
-//   memcpy
-//   g_snprintf
 //   __errno_location
-//   g_thread_new
-//   g_cclosure_marshal_VOID__STRING
-//   gtk_text_iter_set_line_offset
-//   g_socket_get_fd
-//   g_strdup_printf
-//   g_string_new
 //   strerror
-//   g_socket_client_new
-//   g_print
-//   g_string_insert_c
-//   gtk_text_buffer_get_iter_at_mark
-//   g_string_append_len
-//   g_string_free_and_steal
-//   read
-//   strstr
-//   g_spawn_async_with_pipes
-//   g_strdup
-//   __snprintf_chk
-//   g_file_test
-//   g_object_unref
-//   g_application_run
-//   gtk_text_buffer_get_insert
-//   g_type_check_instance_is_a
+//   kill
+//   prctl
+//   getpid
+//   setsid
+//   getppid
 
