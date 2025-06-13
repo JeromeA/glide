@@ -65,6 +65,12 @@ S(g_ptr_array_new_with_free_func, RETURN, GPtrArray *, (GDestroyNotify element_f
 S(gtk_combo_box_get_active_id, RETURN, const gchar *, (GtkComboBox *combo_box), (combo_box))
 S(g_malloc0, RETURN, gpointer, (gsize n_bytes), (n_bytes))
 S(g_ptr_array_free, RETURN, void **, (GPtrArray *array, gboolean free_segment), (array, free_segment))
+S(g_object_unref, VOID, void, (void *object), (object))
+S(g_key_file_set_integer, VOID, void, (GKeyFile *key_file, const gchar *group_name, const gchar *key, gint value), (key_file, group_name, key, value))
+S(g_key_file_get_integer, RETURN, gint, (GKeyFile *key_file, const gchar *group_name, const gchar *key, GError **error), (key_file, group_name, key, error))
+S(gtk_widget_get_toplevel, RETURN, GtkWidget *, (GtkWidget *widget), (widget))  
+S(g_path_get_dirname, RETURN, gchar *, (const gchar *file_name), (file_name))
+S(g_mkdir_with_parents, RETURN, gint, (const gchar *pathname, gint mode), (pathname, mode))
 
 // We need this one to load everybody else:
 //   dlsym
@@ -84,11 +90,11 @@ S(g_ptr_array_free, RETURN, void **, (GPtrArray *array, gboolean free_segment), 
 //   g_strdup
 //
 // These are there, but something is wrong with them:
+//   g_cclosure_marshal_VOID__STRING: resq 1
 //   gtk_main_quit
 //   g_free
 
 // TODO: sort out the following ones:
-//   g_cclosure_marshal_VOID__STRING: resq 1
 //   __errno_location: resq 1
 //   __stack_chk_fail: resq 1
 
