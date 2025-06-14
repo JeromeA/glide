@@ -46,8 +46,12 @@ Same as 4k, plus:
 ## 16k
 
 Same as 8k, plus:
-* can evaluate current line of code with alt-enter.
 * the code is all object oriented, with DI instead of global variables.
+
+## 32k
+
+Same as 16k, plus:
+* can evaluate current line of code with alt-enter.
 
 # Installation instructions
 
