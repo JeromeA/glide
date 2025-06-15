@@ -52,7 +52,7 @@ stderr_reader_thread(gpointer data)
     buf[n] = '\0';
     g_print("err: %s\n", buf);
   }
-  g_print("stderr_reader_thread: EOF\n");
+  g_print("stderr: EOF\n");
   return NULL;
 }
 
@@ -73,7 +73,7 @@ stdout_reader_thread(gpointer data)
     g_cond_broadcast (&self->out_cond);   /* wake waiters      */
     g_mutex_unlock (&self->out_mutex);
   }
-  g_print("stdout_reader_thread: EOF\n");
+  g_print("stdout: EOF\n");
   return NULL;
 }
 
@@ -88,7 +88,7 @@ swank_reader_thread(gpointer data)
     ssize_t n = sys_read(fd, buf, sizeof(buf)-1);
     if (n > 0) {
       buf[n] = '\0';
-      g_print("swank: %s\n", buf);
+      g_print("swank read: %s\n", buf);
 
       g_mutex_lock (&self->swank_mutex);
       g_string_append_len (self->swank_data, buf, n);
@@ -101,7 +101,7 @@ swank_reader_thread(gpointer data)
       break; /* EOF or error */
     }
   }
-  g_print("swank_reader_thread: EOF\n");
+  g_print("swank: EOF\n");
   return NULL;
 }
 
@@ -202,7 +202,7 @@ static void start_lisp(Swank *self)
         &err_fd,
         &error))
   {
-    g_print("Swank: failed to start Lisp: %s\n", error->message);
+    g_print("Swank: can't start Lisp: %s\n", error->message);
     g_clear_error(&error);
     return;
   }
@@ -212,8 +212,8 @@ static void start_lisp(Swank *self)
   self->err_fd = err_fd;
 
   /* start threads to log Lisp stdout and stderr */
-  g_thread_new("lisp-stdout-reader", stdout_reader_thread, self);
-  g_thread_new("lisp-stderr-reader", stderr_reader_thread, GINT_TO_POINTER(err_fd));
+  g_thread_new("lisp-stdout", stdout_reader_thread, self);
+  g_thread_new("lisp-stderr", stderr_reader_thread, GINT_TO_POINTER(err_fd));
 }
 
 static void start_swank(Swank *self)
@@ -248,15 +248,14 @@ static void start_swank(Swank *self)
 
 static void connect_swank(Swank *self)
 {
-  g_print("connect_swank: connecting to server on port %d\n", self->port);
+  g_print("connect_swank: port %d\n", self->port);
   GSocketClient *client = g_socket_client_new();
   GError        *conn_err = NULL;
   self->connection = g_socket_client_connect_to_host(
       client, "127.0.0.1", self->port, NULL, &conn_err);
   g_object_unref(client);
   if (!self->connection) {
-    g_print("connect_swank: cannot connect to server on port %d: %s\n",
-        self->port, conn_err->message);
+    g_print("connect_swank: can't connect: %s\n", conn_err->message);
     g_clear_error(&conn_err);
     return;
   }
@@ -267,7 +266,7 @@ static void connect_swank(Swank *self)
   self->swank_fd = g_socket_get_fd(gsocket);
 
   /* start thread to read Swank server replies */
-  g_thread_new("swank-reader-reader", swank_reader_thread, self);
+  g_thread_new("swank-reader", swank_reader_thread, self);
 }
 
 static void
@@ -371,10 +370,11 @@ STATIC void swank_remote_execution(Swank *self, const char *expr)
   msg[HDR_LEN + len] = '\0';           /* for g_print below */
 
   /* Send the header (6 bytes) + payload (len bytes); skip the NUL */
-  if (sys_write(self->swank_fd, msg, HDR_LEN + len) < 0)
+  if (sys_write(self->swank_fd, msg, HDR_LEN + len) < 0) {
     g_print("swank_remote_execution: write error: %s\n", strerror(errno));
-
-  g_print("swank_remote_execution: sent %s\n", msg);
+  } else {
+    g_print("swank_remote_execution: sent %s\n", msg);
+  }
 
   g_free(msg);
   g_free(rpc);
