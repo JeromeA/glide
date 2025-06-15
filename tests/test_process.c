@@ -1,6 +1,7 @@
 #include "process.h"
 #include "preferences.h"
 #include <glib.h>
+#include <glib/gstdio.h>
 #include <string.h>
 
 static GString *output;
@@ -12,8 +13,8 @@ static void on_out(GString *data, gpointer user_data) {
 static void test_bc(void)
 {
     gchar *tmpdir = g_dir_make_tmp("proc-test-XXXXXX", NULL);
-    gchar *file = g_build_filename(tmpdir, "prefs.ini", NULL);
-    Preferences *prefs = preferences_new(file);
+    Preferences *prefs = preferences_new(tmpdir);
+    gchar *file = g_build_filename(tmpdir, "glide", "preferences.ini", NULL);
     preferences_set_sdk(prefs, "/usr/bin/bc");
     ProcessImpl *p = process_new(prefs);
     g_assert_nonnull(p);
@@ -26,7 +27,10 @@ static void test_bc(void)
     process_free(p);
     g_object_unref(prefs);
     g_remove(file);
+    gchar *prefs_dir = g_path_get_dirname(file);
+    g_rmdir(prefs_dir);
     g_rmdir(tmpdir);
+    g_free(prefs_dir);
     g_free(file);
     g_free(tmpdir);
     g_string_free(output, TRUE);

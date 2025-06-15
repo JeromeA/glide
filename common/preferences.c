@@ -104,10 +104,10 @@ static void preferences_init(Preferences *self) {
 }
 
 Preferences *
-preferences_new(const gchar *filename)
+preferences_new(const gchar *config_dir)
 {
   Preferences *self = g_object_new(PREFERENCES_TYPE, NULL);
-  self->filename = g_strdup(filename);
+  self->filename = g_build_filename(config_dir, "glide", "preferences.ini", NULL);
   preferences_load(self);
   return self;
 }

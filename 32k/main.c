@@ -25,11 +25,8 @@ int
 main (int argc, char *argv[])
 {
   relocate();
-  gchar *prefs_file = g_build_filename (g_get_user_config_dir (),
-                                        "glide", "preferences.ini", NULL);
 
-  Preferences *prefs = preferences_new (prefs_file);
-  g_free (prefs_file);
+  Preferences *prefs = preferences_new (g_get_user_config_dir ());
 
   ProcessImpl *proc = process_new (prefs);
   SwankProcessImpl *swank_proc = swank_process_new (proc, prefs);

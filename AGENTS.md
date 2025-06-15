@@ -8,6 +8,7 @@
 
 - Use glib idioms and patterns whenever possible
 - Use 2 space indentation
+- No space after function names in function calls.
 - Tests should be unit tests, using mock objects.
 - Keep full names for variables: it's `MockSwank *mock_swank`, not `MockSwank *ms`.
 - All DI should happen in main.c, there should be no call to an `xxx_new()` in any other file.

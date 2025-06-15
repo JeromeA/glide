@@ -7,9 +7,9 @@ static void
 test_defaults(void)
 {
     gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
-    gchar *file = g_build_filename(tmpdir, "prefs.ini", NULL);
 
-    Preferences *prefs = preferences_new(file);
+    Preferences *prefs = preferences_new(tmpdir);
+    gchar *file = g_build_filename(tmpdir, "glide", "preferences.ini", NULL);
 
     g_assert_null(preferences_get_sdk(prefs));
     g_assert_cmpuint(preferences_get_swank_port(prefs), ==, 4005);
@@ -17,7 +17,10 @@ test_defaults(void)
     g_object_unref(prefs);
 
     g_remove(file);
+    gchar *prefs_dir = g_path_get_dirname(file);
+    g_rmdir(prefs_dir);
     g_rmdir(tmpdir);
+    g_free(prefs_dir);
     g_free(file);
     g_free(tmpdir);
 }
@@ -33,9 +36,9 @@ static void
 test_set_sdk(void)
 {
     gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
-    gchar *file = g_build_filename(tmpdir, "prefs.ini", NULL);
 
-    Preferences *prefs = preferences_new(file);
+    Preferences *prefs = preferences_new(tmpdir);
+    gchar *file = g_build_filename(tmpdir, "glide", "preferences.ini", NULL);
 
     int count = 0;
     g_signal_connect(prefs, "sdk-changed", G_CALLBACK(on_sdk_changed), &count);
@@ -53,7 +56,10 @@ test_set_sdk(void)
     g_object_unref(prefs);
 
     g_remove(file);
+    gchar *prefs_dir = g_path_get_dirname(file);
+    g_rmdir(prefs_dir);
     g_rmdir(tmpdir);
+    g_free(prefs_dir);
     g_free(file);
     g_free(tmpdir);
 }
