@@ -7,14 +7,18 @@
 #include "preferences.c"
 #include "preferences_dialog.c"
 #include "find_executables.c"
-#include "swank.c"
+#include "process.c"
+#include "swank_process.c"
+#include "swank_session.c"
 #include "evaluate.c"
 #include "app.c"
 #endif
 
 #include "includes.h"
 #include "app.h"
-#include "swank.h"
+#include "process.h"
+#include "swank_process.h"
+#include "swank_session.h"
 #include "preferences.h"
 
 int
@@ -27,7 +31,9 @@ main (int argc, char *argv[])
   Preferences *prefs = preferences_new (prefs_file);
   g_free (prefs_file);
 
-  Swank *swank = swank_new (prefs);
+  ProcessImpl *proc = process_new (prefs);
+  SwankProcessImpl *swank_proc = swank_process_new (proc, prefs);
+  SwankSession *swank = swank_session_new (swank_proc);
   App *app     = app_new (prefs, swank);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);

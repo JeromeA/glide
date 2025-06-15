@@ -19,7 +19,7 @@ struct _App
   GtkSourceBuffer*buffer;
   gchar          *filename;   /* current file path or NULL */
   Preferences    *preferences;
-  Swank          *swank;
+  SwankSession   *swank;
 };
 
 static gboolean
@@ -147,9 +147,9 @@ app_init (App *self)
 }
 
 STATIC App *
-app_new (Preferences *prefs, Swank *swank)
+app_new (Preferences *prefs, SwankSession *swank)
 {
-  g_return_val_if_fail (GLIDE_IS_SWANK (swank), NULL);
+  g_return_val_if_fail (GLIDE_IS_SWANK_SESSION (swank), NULL);
 
   App *self = g_object_new (GLIDE_TYPE,
       /* GtkApplication properties */
@@ -195,7 +195,7 @@ app_get_preferences (App *self)
   return self->preferences;
 }
 
-STATIC Swank *
+STATIC SwankSession *
 app_get_swank (App *self)
 {
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
