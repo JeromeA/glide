@@ -3,7 +3,6 @@
 #include "file_open.h"
 #include "file_save.h"
 #include "preferences_dialog.h"
-#include "evaluate.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -19,25 +18,7 @@ struct _App
   GtkSourceBuffer*buffer;
   gchar          *filename;   /* current file path or NULL */
   Preferences    *preferences;
-  Swank          *swank;
 };
-
-static gboolean
-on_key_press (GtkWidget *,
-    GdkEventKey *event,
-    gpointer     user_data)   /* actually App* */
-{
-  App *self = (App *) user_data;
-
-  if ((event->keyval == GDK_KEY_Return) &&
-      (event->state  & GDK_MOD1_MASK))      /* Alt+Enter */
-  {
-    on_evaluate(self);
-    return TRUE;                  /* stop further propagation */
-  }
-  return FALSE;
-}
-
 
 /* === GObject boiler-plate ============================================== */
 G_DEFINE_TYPE(App, app, GTK_TYPE_APPLICATION)
@@ -68,9 +49,6 @@ app_activate (GApplication *app)
   GtkWidget *view = gtk_source_view_new_with_buffer (self->buffer);
   gtk_source_view_set_show_line_numbers (GTK_SOURCE_VIEW (view), TRUE);
   gtk_container_add (GTK_CONTAINER (scrolled), view);
-
-  /* Catch Alt+Enter in the view */
-  g_signal_connect (view, "key-press-event", G_CALLBACK (on_key_press), self);
 
   /* Menu bar ------------------------------------------------------ */
   GtkWidget *menu_bar      = gtk_menu_bar_new ();
@@ -122,7 +100,6 @@ app_dispose (GObject *object)
 
   g_clear_pointer (&self->filename, g_free);
   g_clear_object (&self->preferences);
-  g_clear_object (&self->swank);
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
 }
 
@@ -143,14 +120,11 @@ app_init (App *self)
   /* Everything that needs only the *instance* goes here */
   self->filename = NULL;
   self->preferences = NULL;
-  self->swank = NULL;
 }
 
 STATIC App *
-app_new (Preferences *prefs, Swank *swank)
+app_new (Preferences *prefs)
 {
-  g_return_val_if_fail (GLIDE_IS_SWANK (swank), NULL);
-
   App *self = g_object_new (GLIDE_TYPE,
       /* GtkApplication properties */
       "application-id",    "org.example.Glide",
@@ -158,7 +132,6 @@ app_new (Preferences *prefs, Swank *swank)
       NULL);
 
   self->preferences = g_object_ref (prefs);
-  self->swank       = g_object_ref (swank);
   return self;
 }
 
@@ -193,13 +166,6 @@ app_get_preferences (App *self)
 {
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->preferences;
-}
-
-STATIC Swank *
-app_get_swank (App *self)
-{
-  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  return self->swank;
 }
 
 STATIC void

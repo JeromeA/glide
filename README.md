@@ -47,6 +47,7 @@ Same as 4k, plus:
 
 Same as 8k, plus:
 * the code is all object oriented, with DI instead of global variables.
+* TODO: add something useful. Swank doesn't fit.
 
 ## 32k
 
