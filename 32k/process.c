@@ -70,9 +70,7 @@ static void
 child_setup(gpointer /*user_data*/)
 {
   setsid();
-  prctl(PR_SET_PDEATHSIG, SIGTERM);
-  if (getppid() == 1)
-    kill(getpid(), SIGTERM);
+  prctl(PR_SET_PDEATHSIG, SIGKILL);
 }
 
 static void proc_real_set_stdout_cb(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
