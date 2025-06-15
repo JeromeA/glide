@@ -24,7 +24,8 @@ static void test_eval(void)
     ms->last = g_string_new(NULL);
     SwankSession *sess = swank_session_new((SwankProcessImpl*)ms);
     swank_session_eval(sess, "(+ 1 2)");
-    g_assert_cmpstr(ms->last->str, ==, "(:emacs-rex \"(+ 1 2)\" \"COMMON-LISP-USER\" t 1)");
+    g_assert_cmpstr(ms->last->str, ==,
+        "(:emacs-rex (swank:eval-and-grab-output \"(+ 1 2)\") \"COMMON-LISP-USER\" t 1)");
     g_object_unref(sess);
 }
 
