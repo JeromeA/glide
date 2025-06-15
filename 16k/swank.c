@@ -349,7 +349,7 @@ STATIC void swank_remote_execution(Swank *self, const char *expr)
   if (!self->connection)
     swank_init_function(self);
   if (!self->connection) {
-    g_print("Swank: no connection for remote execution\n");
+    g_print("swank_remote_execution: no connection\n");
     return;
   }
 
@@ -357,7 +357,7 @@ STATIC void swank_remote_execution(Swank *self, const char *expr)
   gchar *escaped = escape_string(expr);
 
   // Build the RPC call.
-  gchar *rpc = g_strdup_printf("(:emacs-rex \"%s\" \"COMMON-LISP-USER\" t 1)", escaped);
+  gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t 1)", escaped);
   g_free(escaped);
 
   /* Prefix with a 6-digit hex length header (Swank protocol) */

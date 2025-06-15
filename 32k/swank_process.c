@@ -190,11 +190,12 @@ static void
 sp_real_send(SwankProcessImpl *base, const GString *payload)
 {
   RealSwankProcess *self = (RealSwankProcess*)base;
-  g_debug("sending %.*s", (int)payload->len, payload->str);
   size_t len = payload->len;
   char hdr[7];
   g_snprintf(hdr, sizeof(hdr), "%06zx", len);
+  g_debug("sending header: %.*s", 6, hdr);
   sys_write(self->swank_fd, hdr, 6);
+  g_debug("sending payload: %.*s", (int)len, payload->str);
   sys_write(self->swank_fd, payload->str, len);
 }
 

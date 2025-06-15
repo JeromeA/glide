@@ -65,7 +65,7 @@ swank_session_eval(SwankSession *self, const gchar *expr)
   if (!self->proc)
     return;
   gchar *escaped = escape_string(expr);
-  gchar *rpc = g_strdup_printf("(:emacs-rex \"%s\" \"COMMON-LISP-USER\" t 1)", escaped);
+  gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t 1)", escaped);
   GString *payload = g_string_new(rpc);
   g_free(escaped);
   g_free(rpc);
