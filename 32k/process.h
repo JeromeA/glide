@@ -10,14 +10,14 @@ typedef struct _ProcessImpl ProcessImpl; /* implementation */
 typedef void (*ProcessCallback)(GString *data, gpointer user_data);
 
 struct _Process {
-    void     (*set_stdout_cb)(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
-    void     (*set_stderr_cb)(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
-    gboolean (*write)(ProcessImpl *proc, const gchar *data, gssize len);
-    void     (*free)(ProcessImpl *proc);
+  void     (*set_stdout_cb)(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
+  void     (*set_stderr_cb)(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
+  gboolean (*write)(ProcessImpl *proc, const gchar *data, gssize len);
+  void     (*free)(ProcessImpl *proc);
 };
 
 struct _ProcessImpl {
-    const Process *iface;
+  const Process *iface;
 };
 
 ProcessImpl *process_new(Preferences *prefs);

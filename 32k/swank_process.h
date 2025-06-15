@@ -10,13 +10,13 @@ typedef struct _SwankProcess SwankProcess;           /* interface */
 typedef struct _SwankProcessImpl SwankProcessImpl;   /* implementation */
 
 struct _SwankProcess {
-    void     (*send)(SwankProcessImpl *self, const GString *payload);
-    GString *(*get_reply)(SwankProcessImpl *self);
-    void     (*free)(SwankProcessImpl *self);
+  void     (*send)(SwankProcessImpl *self, const GString *payload);
+  GString *(*get_reply)(SwankProcessImpl *self);
+  void     (*free)(SwankProcessImpl *self);
 };
 
 struct _SwankProcessImpl {
-    const SwankProcess *iface;
+  const SwankProcess *iface;
 };
 
 SwankProcessImpl *swank_process_new(ProcessImpl *proc, Preferences *prefs);
