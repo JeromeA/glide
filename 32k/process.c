@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
+#include <signal.h>
+#include <sys/prctl.h>
 
 typedef struct {
   ProcessImpl base;
@@ -64,6 +66,15 @@ stderr_thread(gpointer data)
   return NULL;
 }
 
+static void
+child_setup(gpointer /*user_data*/)
+{
+  setsid();
+  prctl(PR_SET_PDEATHSIG, SIGTERM);
+  if (getppid() == 1)
+    kill(getpid(), SIGTERM);
+}
+
 static void proc_real_set_stdout_cb(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
 static void proc_real_set_stderr_cb(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
 static gboolean proc_real_write(ProcessImpl *proc, const gchar *data, gssize len);
@@ -85,7 +96,7 @@ process_spawn(const gchar *const *argv)
   GError *error = NULL;
   if (!g_spawn_async_with_pipes(NULL, (gchar**)argv, NULL,
         G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH,
-        NULL, NULL,
+        child_setup, NULL,
         &p->pid,
         &p->in_fd,
         &p->out_fd,
