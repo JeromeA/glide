@@ -7,7 +7,8 @@
 ## Coding Conventions
 
 - Use glib idioms and patterns whenever possible
-- 2 space indentation
-- All DI happens in main.c, there should be no call to an `xxx_new()` in any other file.
+- Use 2 space indentation
 - Tests should be unit tests, using mock objects.
+- Keep full names for variables: it's `MockSwank *mock_swank`, not `MockSwank *ms`.
+- All DI should happen in main.c, there should be no call to an `xxx_new()` in any other file.
 
