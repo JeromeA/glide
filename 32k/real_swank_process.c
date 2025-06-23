@@ -49,6 +49,8 @@ real_swank_process_finalize(GObject *obj)
     g_thread_join(self->swank_thread);
   if (self->proc)
     g_object_unref(self->proc);
+  if (self->prefs)
+    g_object_unref(self->prefs);
   if (self->connection)
     g_object_unref(self->connection);
   g_string_free(self->out_data, TRUE);
