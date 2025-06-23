@@ -20,7 +20,6 @@ struct _SwankProcessImpl {
 };
 
 SwankProcessImpl *swank_process_new(ProcessImpl *proc, Preferences *prefs);
-SwankProcessImpl *swank_process_new_from_fd(int fd); /* for testing */
 void swank_process_send(SwankProcessImpl *self, const GString *payload);
 GString *swank_process_get_reply(SwankProcessImpl *self);
 void swank_process_free(SwankProcessImpl *self);

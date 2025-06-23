@@ -168,24 +168,6 @@ swank_process_new(ProcessImpl *proc, Preferences *prefs)
   return &self->base;
 }
 
-SwankProcessImpl *
-swank_process_new_from_fd(int fd)
-{
-  RealSwankProcess *self = g_new0(RealSwankProcess,1);
-  g_debug("swank_process_new_from_fd %d", fd);
-  self->base.iface = &swank_real_iface;
-  self->swank_fd = fd;
-  self->out_data = g_string_new(NULL);
-  self->swank_data = g_string_new(NULL);
-  g_mutex_init(&self->out_mutex);
-  g_cond_init(&self->out_cond);
-  g_mutex_init(&self->swank_mutex);
-  g_cond_init(&self->swank_cond);
-  self->connection = NULL;
-  self->swank_thread = g_thread_new("swank-reader", swank_reader_thread, self);
-  return &self->base;
-}
-
 static void
 sp_real_send(SwankProcessImpl *base, const GString *payload)
 {
