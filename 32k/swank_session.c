@@ -37,7 +37,7 @@ swank_session_new(SwankProcess *proc)
 {
   g_debug("swank_session_new");
   SwankSession *self = g_object_new(SWANK_SESSION_TYPE, NULL);
-  self->proc = proc;
+  self->proc = proc ? g_object_ref(proc) : NULL;
   return self;
 }
 
