@@ -17,7 +17,9 @@
 #include "includes.h"
 #include "app.h"
 #include "process.h"
+#include "real_process.h"
 #include "swank_process.h"
+#include "real_swank_process.h"
 #include "swank_session.h"
 #include "preferences.h"
 
@@ -29,8 +31,8 @@ main (int argc, char *argv[])
   Preferences *prefs = preferences_new (g_get_user_config_dir ());
 
   const gchar *sdk_path = preferences_get_sdk (prefs);
-  ProcessImpl *proc = process_new (sdk_path);
-  SwankProcessImpl *swank_proc = swank_process_new (proc, prefs);
+  Process *proc = real_process_new (sdk_path);
+  SwankProcess *swank_proc = real_swank_process_new (proc, prefs);
   SwankSession *swank = swank_session_new (swank_proc);
   App *app     = app_new (prefs, swank);
 

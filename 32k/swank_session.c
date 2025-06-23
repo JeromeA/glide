@@ -6,7 +6,7 @@
 
 struct _SwankSession {
   GObject parent_instance;
-  SwankProcessImpl *proc;
+  SwankProcess *proc;
 };
 
 G_DEFINE_TYPE(SwankSession, swank_session, G_TYPE_OBJECT)
@@ -16,7 +16,7 @@ static void swank_session_finalize(GObject *obj)
   SwankSession *self = GLIDE_SWANK_SESSION(obj);
   g_debug("swank_session_finalize");
   if (self->proc)
-    swank_process_free(self->proc);
+    g_object_unref(self->proc);
   G_OBJECT_CLASS(swank_session_parent_class)->finalize(obj);
 }
 
@@ -33,7 +33,7 @@ static void swank_session_init(SwankSession *self)
 }
 
 SwankSession *
-swank_session_new(SwankProcessImpl *proc)
+swank_session_new(SwankProcess *proc)
 {
   g_debug("swank_session_new");
   SwankSession *self = g_object_new(SWANK_SESSION_TYPE, NULL);

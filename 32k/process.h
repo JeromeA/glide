@@ -1,29 +1,35 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#include <glib.h>
+#include <glib-object.h>
 
-typedef struct _Process Process;       /* interface */
-typedef struct _ProcessImpl ProcessImpl; /* implementation */
+typedef struct _Process Process;
 
 typedef void (*ProcessCallback)(GString *data, gpointer user_data);
 
-struct _Process {
-  void     (*set_stdout_cb)(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
-  void     (*set_stderr_cb)(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
-  gboolean (*write)(ProcessImpl *proc, const gchar *data, gssize len);
-  void     (*free)(ProcessImpl *proc);
+#define PROCESS_TYPE (process_get_type())
+G_DECLARE_INTERFACE(Process, process, GLIDE, PROCESS, GObject)
+
+struct _ProcessInterface {
+  GTypeInterface parent_iface;
+  void     (*set_stdout_cb)(Process *self, ProcessCallback cb, gpointer user_data);
+  void     (*set_stderr_cb)(Process *self, ProcessCallback cb, gpointer user_data);
+  gboolean (*write)(Process *self, const gchar *data, gssize len);
 };
 
-struct _ProcessImpl {
-  const Process *iface;
-};
+static inline void process_set_stdout_cb(Process *self, ProcessCallback cb, gpointer user_data) {
+  g_return_if_fail(GLIDE_IS_PROCESS(self));
+  GLIDE_PROCESS_GET_IFACE(self)->set_stdout_cb(self, cb, user_data);
+}
 
-ProcessImpl *process_new(const gchar *cmd);
-ProcessImpl *process_new_from_argv(const gchar *const *argv);
-void process_set_stdout_cb(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
-void process_set_stderr_cb(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
-gboolean process_write(ProcessImpl *proc, const gchar *data, gssize len);
-void process_free(ProcessImpl *proc);
+static inline void process_set_stderr_cb(Process *self, ProcessCallback cb, gpointer user_data) {
+  g_return_if_fail(GLIDE_IS_PROCESS(self));
+  GLIDE_PROCESS_GET_IFACE(self)->set_stderr_cb(self, cb, user_data);
+}
+
+static inline gboolean process_write(Process *self, const gchar *data, gssize len) {
+  g_return_val_if_fail(GLIDE_IS_PROCESS(self), FALSE);
+  return GLIDE_PROCESS_GET_IFACE(self)->write(self, data, len);
+}
 
 #endif /* PROCESS_H */
