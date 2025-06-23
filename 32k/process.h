@@ -2,7 +2,6 @@
 #define PROCESS_H
 
 #include <glib.h>
-#include "preferences.h"
 
 typedef struct _Process Process;       /* interface */
 typedef struct _ProcessImpl ProcessImpl; /* implementation */
@@ -20,7 +19,7 @@ struct _ProcessImpl {
   const Process *iface;
 };
 
-ProcessImpl *process_new(Preferences *prefs);
+ProcessImpl *process_new(const gchar *cmd);
 ProcessImpl *process_new_from_argv(const gchar *const *argv);
 void process_set_stdout_cb(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);
 void process_set_stderr_cb(ProcessImpl *proc, ProcessCallback cb, gpointer user_data);

@@ -28,7 +28,8 @@ main (int argc, char *argv[])
 
   Preferences *prefs = preferences_new (g_get_user_config_dir ());
 
-  ProcessImpl *proc = process_new (prefs);
+  const gchar *sdk_path = preferences_get_sdk (prefs);
+  ProcessImpl *proc = process_new (sdk_path);
   SwankProcessImpl *swank_proc = swank_process_new (proc, prefs);
   SwankSession *swank = swank_session_new (swank_proc);
   App *app     = app_new (prefs, swank);

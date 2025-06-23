@@ -1,7 +1,6 @@
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "process"
 #include "process.h"
-#include "preferences.h"
 #include "syscalls.h"
 
 #include <glib.h>
@@ -117,16 +116,13 @@ process_new_from_argv(const gchar *const *argv)
 }
 
 ProcessImpl *
-process_new(Preferences *prefs)
+process_new(const gchar *cmd)
 {
-  g_debug("process_new called");
-  if (!prefs)
+  g_debug("process_new called with cmd: %s", cmd ? cmd : "(null)");
+  if (!cmd)
     return NULL;
-  const gchar *sdk = preferences_get_sdk(prefs);
-  if (!sdk)
-    return NULL;
-  const gchar *argv[] = { sdk, NULL };
-  g_debug("using sdk: %s", sdk);
+  const gchar *argv[] = { cmd, NULL };
+  g_debug("using cmd: %s", cmd);
   return process_spawn(argv);
 }
 

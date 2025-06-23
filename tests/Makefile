@@ -12,7 +12,7 @@ all: $(TESTS)
 test_preferences: test_preferences.c ../common/preferences.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-test_process: test_process.c ../32k/process.c ../common/preferences.c
+test_process: test_process.c ../32k/process.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 test_swank_process: test_swank_process.c ../32k/swank_process.c ../32k/process.c ../common/preferences.c
