@@ -178,7 +178,7 @@ real_swank_process_new(Process *proc, Preferences *prefs)
 {
   RealSwankProcess *self = g_object_new(REAL_SWANK_PROCESS_TYPE, NULL);
   self->proc = proc ? g_object_ref(proc) : NULL;
-  self->prefs = prefs;
+  self->prefs = prefs ? g_object_ref(prefs) : NULL;
   self->port = prefs ? preferences_get_swank_port(prefs) : 4005;
 
   if (proc) {
