@@ -136,9 +136,8 @@ on_proc_out(GString *data, gpointer user_data)
 }
 
 static void
-on_proc_err(GString *data, gpointer /*user_data*/)
+on_proc_err(GString * /*data*/, gpointer /*user_data*/)
 {
-  (void)data;
 }
 
 static void start_swank(RealSwankProcess *self)
