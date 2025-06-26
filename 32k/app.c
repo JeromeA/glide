@@ -23,7 +23,7 @@ struct _App
 };
 
 static gboolean
-on_key_press (GtkWidget *,
+on_key_press(GtkWidget * /*widget*/,
     GdkEventKey *event,
     gpointer     user_data)   /* actually App* */
 {
@@ -47,6 +47,8 @@ static void
 app_activate (GApplication *app)
 {
   App *self = GLIDE_APP(app);
+
+  g_debug("App.activate");
 
   /*--------------------------------------------------------------*
    *  Build the UI (this is almost a verbatim move from app.c)    *
@@ -111,6 +113,7 @@ app_activate (GApplication *app)
 static void
 app_startup (GApplication *app)
 {
+  g_debug("App.startup");
   /* Chain up first */
   G_APPLICATION_CLASS (app_parent_class)->startup (app);
 }
@@ -119,6 +122,8 @@ static void
 app_dispose (GObject *object)
 {
   App *self = GLIDE_APP(object);
+
+  g_debug("App.dispose");
 
   g_clear_pointer (&self->filename, g_free);
   g_clear_object (&self->preferences);
@@ -129,6 +134,7 @@ app_dispose (GObject *object)
 static void
 app_class_init (AppClass *klass)
 {
+  g_debug("App.class_init");
   GApplicationClass *app_class = G_APPLICATION_CLASS (klass);
   GObjectClass      *obj_class = G_OBJECT_CLASS (klass);
 
@@ -140,6 +146,7 @@ app_class_init (AppClass *klass)
 static void
 app_init (App *self)
 {
+  g_debug("App.init");
   /* Everything that needs only the *instance* goes here */
   self->filename = NULL;
   self->preferences = NULL;
@@ -149,6 +156,7 @@ app_init (App *self)
 STATIC App *
 app_new (Preferences *prefs, SwankSession *swank)
 {
+  g_debug("App.new");
   g_return_val_if_fail (GLIDE_IS_SWANK_SESSION (swank), NULL);
 
   App *self = g_object_new (GLIDE_TYPE,
@@ -165,6 +173,7 @@ app_new (Preferences *prefs, SwankSession *swank)
 STATIC GtkSourceBuffer *
 app_get_source_buffer (App *self)
 {
+  g_debug("App.get_source_buffer");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->buffer;
 }
@@ -172,6 +181,7 @@ app_get_source_buffer (App *self)
 STATIC const gchar *
 app_get_filename (App *self)
 {
+  g_debug("App.get_filename");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->filename;
 }
@@ -179,6 +189,7 @@ app_get_filename (App *self)
 STATIC void
 app_set_filename (App *self, const gchar *new_filename)
 {
+  g_debug("App.set_filename %s", new_filename ? new_filename : "(null)");
   g_return_if_fail (GLIDE_IS_APP (self));
   gchar *dup = new_filename ? g_strdup (new_filename) : NULL;
   g_free (self->filename);
@@ -191,6 +202,7 @@ app_set_filename (App *self, const gchar *new_filename)
 STATIC Preferences *
 app_get_preferences (App *self)
 {
+  g_debug("App.get_preferences");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->preferences;
 }
@@ -198,6 +210,7 @@ app_get_preferences (App *self)
 STATIC SwankSession *
 app_get_swank (App *self)
 {
+  g_debug("App.get_swank");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->swank;
 }
@@ -205,6 +218,7 @@ app_get_swank (App *self)
 STATIC void
 app_quit (App *self)
 {
+  g_debug("App.quit");
   g_return_if_fail (GLIDE_IS_APP (self));
   g_application_quit (G_APPLICATION (self));
 }
@@ -212,6 +226,7 @@ app_quit (App *self)
 STATIC void
 app_on_quit (App *self)
 {
+  g_debug("App.on_quit");
   g_return_if_fail (GLIDE_IS_APP (self));
   /* TODO: check for unsaved changes, prompt the user, stop subprocesses, ... */
   app_quit (self);
@@ -220,6 +235,7 @@ app_on_quit (App *self)
 STATIC gboolean
 quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data)
 {
+  g_debug("App.quit_delete_event");
   app_on_quit (GLIDE_APP (data));
   return TRUE;
 }
@@ -227,5 +243,6 @@ quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data)
 STATIC void
 quit_menu_item (GtkWidget * /*item*/, gpointer data)
 {
+  g_debug("App.quit_menu_item");
   app_on_quit (GLIDE_APP (data));
 }

@@ -14,7 +14,7 @@ G_DEFINE_TYPE(SwankSession, swank_session, G_TYPE_OBJECT)
 static void swank_session_finalize(GObject *obj)
 {
   SwankSession *self = GLIDE_SWANK_SESSION(obj);
-  g_debug("swank_session_finalize");
+  g_debug("SwankSession.finalize");
   if (self->proc)
     g_object_unref(self->proc);
   G_OBJECT_CLASS(swank_session_parent_class)->finalize(obj);
@@ -22,20 +22,21 @@ static void swank_session_finalize(GObject *obj)
 
 static void swank_session_class_init(SwankSessionClass *klass)
 {
+  g_debug("SwankSession.class_init");
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = swank_session_finalize;
 }
 
 static void swank_session_init(SwankSession *self)
 {
-  g_debug("swank_session_init");
+  g_debug("SwankSession.init");
   self->proc = NULL;
 }
 
 SwankSession *
 swank_session_new(SwankProcess *proc)
 {
-  g_debug("swank_session_new");
+  g_debug("SwankSession.new");
   SwankSession *self = g_object_new(SWANK_SESSION_TYPE, NULL);
   self->proc = proc ? g_object_ref(proc) : NULL;
   return self;
@@ -44,7 +45,7 @@ swank_session_new(SwankProcess *proc)
 static gchar *
 escape_string(const char *str)
 {
-  g_debug("escape_string input: %s", str);
+  g_debug("SwankSession.escape_string input:%s", str);
   GString *out = g_string_new(NULL);
   for (const char *p = str; *p; p++) {
     switch (*p) {
@@ -54,14 +55,14 @@ escape_string(const char *str)
     }
   }
   gchar *ret = g_string_free(out, FALSE);
-  g_debug("escape_string output: %s", ret);
+  g_debug("SwankSession.escape_string output:%s", ret);
   return ret;
 }
 
 void
 swank_session_eval(SwankSession *self, const gchar *expr)
 {
-  g_debug("swank_session_eval %s", expr);
+  g_debug("SwankSession.eval %s", expr);
   if (!self->proc)
     return;
   gchar *escaped = escape_string(expr);

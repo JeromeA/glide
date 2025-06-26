@@ -27,6 +27,7 @@ struct _RealProcess {
 static gpointer
 stdout_thread(gpointer data)
 {
+  g_debug("RealProcess.stdout_thread");
   RealProcess *p = data;
   char buf[256];
   ssize_t n;
@@ -43,6 +44,7 @@ stdout_thread(gpointer data)
 static gpointer
 stderr_thread(gpointer data)
 {
+  g_debug("RealProcess.stderr_thread");
   RealProcess *p = data;
   char buf[256];
   ssize_t n;
@@ -59,6 +61,7 @@ stderr_thread(gpointer data)
 static void
 child_setup(gpointer /*user_data*/)
 {
+  g_debug("RealProcess.child_setup");
   setsid();
   prctl(PR_SET_PDEATHSIG, SIGKILL);
 }
@@ -70,6 +73,7 @@ static gboolean real_write(Process *proc, const gchar *data, gssize len);
 static void
 real_process_process_iface_init(ProcessInterface *iface)
 {
+  g_debug("RealProcess.process_iface_init");
   iface->set_stdout_cb = real_set_stdout_cb;
   iface->set_stderr_cb = real_set_stderr_cb;
   iface->write = real_write;
@@ -81,6 +85,7 @@ G_DEFINE_TYPE_WITH_CODE(RealProcess, real_process, G_TYPE_OBJECT,
 static void
 real_process_finalize(GObject *obj)
 {
+  g_debug("RealProcess.finalize");
   RealProcess *p = GLIDE_REAL_PROCESS(obj);
   if (p->out_thread)
     g_thread_join(p->out_thread);
@@ -97,6 +102,7 @@ real_process_finalize(GObject *obj)
 static void
 real_process_class_init(RealProcessClass *klass)
 {
+  g_debug("RealProcess.class_init");
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = real_process_finalize;
 }
@@ -104,6 +110,7 @@ real_process_class_init(RealProcessClass *klass)
 static void
 real_process_init(RealProcess *self)
 {
+  g_debug("RealProcess.init");
   self->pid = 0;
   self->in_fd = self->out_fd = self->err_fd = -1;
   self->out_cb = NULL;
@@ -115,6 +122,7 @@ real_process_init(RealProcess *self)
 static Process *
 spawn_process(const gchar *const *argv)
 {
+  g_debug("RealProcess.spawn_process cmd:%s", argv && argv[0] ? argv[0] : "(null)");
   RealProcess *p = g_object_new(REAL_PROCESS_TYPE, NULL);
   GError *error = NULL;
   if (!g_spawn_async_with_pipes(NULL, (gchar**)argv, NULL,
@@ -135,12 +143,14 @@ spawn_process(const gchar *const *argv)
 Process *
 real_process_new_from_argv(const gchar *const *argv)
 {
+  g_debug("RealProcess.new_from_argv cmd:%s", argv && argv[0] ? argv[0] : "(null)");
   return spawn_process(argv);
 }
 
 Process *
 real_process_new(const gchar *cmd)
 {
+  g_debug("RealProcess.new cmd:%s", cmd ? cmd : "(null)");
   if (!cmd)
     return NULL;
   const gchar *argv[] = { cmd, NULL };
@@ -150,6 +160,7 @@ real_process_new(const gchar *cmd)
 static void
 real_set_stdout_cb(Process *proc, ProcessCallback cb, gpointer user_data)
 {
+  g_debug("RealProcess.set_stdout_cb");
   RealProcess *p = GLIDE_REAL_PROCESS(proc);
   p->out_cb = cb;
   p->out_user = user_data;
@@ -160,6 +171,7 @@ real_set_stdout_cb(Process *proc, ProcessCallback cb, gpointer user_data)
 static void
 real_set_stderr_cb(Process *proc, ProcessCallback cb, gpointer user_data)
 {
+  g_debug("RealProcess.set_stderr_cb");
   RealProcess *p = GLIDE_REAL_PROCESS(proc);
   p->err_cb = cb;
   p->err_user = user_data;
@@ -170,6 +182,7 @@ real_set_stderr_cb(Process *proc, ProcessCallback cb, gpointer user_data)
 static gboolean
 real_write(Process *proc, const gchar *data, gssize len)
 {
+  g_debug("RealProcess.write %zd", len);
   RealProcess *p = GLIDE_REAL_PROCESS(proc);
   if (len < 0)
     len = strlen(data);

@@ -17,6 +17,7 @@
 void
 on_evaluate(App *self)
 {
+  g_debug("Evaluate.on_evaluate");
   GtkSourceBuffer *source_buffer = app_get_source_buffer(self);
 
   /* 1. Locate the iterator at the caret (insert mark). */
@@ -38,7 +39,7 @@ on_evaluate(App *self)
       FALSE);          /* no hidden chars */
 
   if (expr == NULL || *expr == '\0') {
-    g_debug("on_evaluate: nothing to evaluate on the current line");
+    g_debug("Evaluate.on_evaluate: nothing to evaluate on the current line");
     g_free(expr);
     return;
   }

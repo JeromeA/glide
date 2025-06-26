@@ -28,6 +28,7 @@
 int
 main (int argc, char *argv[])
 {
+  g_debug("Main.main");
   relocate();
 
   Preferences *prefs = preferences_new (g_get_user_config_dir ());

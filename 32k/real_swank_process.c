@@ -32,6 +32,7 @@ static GString *sp_get_reply(SwankProcess *self);
 static void
 real_swank_process_swank_process_iface_init(SwankProcessInterface *iface)
 {
+  g_debug("RealSwankProcess.swank_process_iface_init");
   iface->send = sp_send;
   iface->get_reply = sp_get_reply;
 }
@@ -42,6 +43,7 @@ G_DEFINE_TYPE_WITH_CODE(RealSwankProcess, real_swank_process, G_TYPE_OBJECT,
 static void
 real_swank_process_finalize(GObject *obj)
 {
+  g_debug("RealSwankProcess.finalize");
   RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(obj);
   if (self->swank_fd >= 0)
     close(self->swank_fd);
@@ -65,6 +67,7 @@ real_swank_process_finalize(GObject *obj)
 static void
 real_swank_process_class_init(RealSwankProcessClass *klass)
 {
+  g_debug("RealSwankProcess.class_init");
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = real_swank_process_finalize;
 }
@@ -72,6 +75,7 @@ real_swank_process_class_init(RealSwankProcessClass *klass)
 static void
 real_swank_process_init(RealSwankProcess *self)
 {
+  g_debug("RealSwankProcess.init");
   self->proc = NULL;
   self->prefs = NULL;
   self->swank_fd = -1;
@@ -89,6 +93,7 @@ real_swank_process_init(RealSwankProcess *self)
 static gpointer
 swank_reader_thread(gpointer data)
 {
+  g_debug("RealSwankProcess.swank_reader_thread");
   RealSwankProcess *self = data;
   char buf[1024];
   for (;;) {
@@ -110,6 +115,7 @@ swank_reader_thread(gpointer data)
 static void
 read_until(RealSwankProcess *self, const char *pattern)
 {
+  g_debug("RealSwankProcess.read_until %s", pattern);
   const gsize patlen = strlen(pattern);
   g_mutex_lock(&self->out_mutex);
   while (TRUE) {
@@ -128,6 +134,7 @@ read_until(RealSwankProcess *self, const char *pattern)
 static void
 on_proc_out(GString *data, gpointer user_data)
 {
+  g_debug("RealSwankProcess.on_proc_out len:%d", (int)data->len);
   RealSwankProcess *self = user_data;
   g_mutex_lock(&self->out_mutex);
   g_string_append_len(self->out_data, data->str, data->len);
@@ -138,10 +145,12 @@ on_proc_out(GString *data, gpointer user_data)
 static void
 on_proc_err(GString * /*data*/, gpointer /*user_data*/)
 {
+  g_debug("RealSwankProcess.on_proc_err");
 }
 
 static void start_swank(RealSwankProcess *self)
 {
+  g_debug("RealSwankProcess.start_swank");
   if (!self->proc)
     return;
   read_until(self, "* ");
@@ -158,6 +167,7 @@ static void start_swank(RealSwankProcess *self)
 
 static void connect_swank(RealSwankProcess *self)
 {
+  g_debug("RealSwankProcess.connect_swank port:%d", self->port);
   GSocketClient *client = g_socket_client_new();
   GError *conn_err = NULL;
   GSocketConnection *conn = g_socket_client_connect_to_host(
@@ -175,6 +185,7 @@ static void connect_swank(RealSwankProcess *self)
 SwankProcess *
 real_swank_process_new(Process *proc, Preferences *prefs)
 {
+  g_debug("RealSwankProcess.new");
   RealSwankProcess *self = g_object_new(REAL_SWANK_PROCESS_TYPE, NULL);
   self->proc = proc ? g_object_ref(proc) : NULL;
   self->prefs = prefs ? g_object_ref(prefs) : NULL;
@@ -194,6 +205,7 @@ real_swank_process_new(Process *proc, Preferences *prefs)
 void
 real_swank_process_set_socket(RealSwankProcess *self, int fd)
 {
+  g_debug("RealSwankProcess.set_socket %d", fd);
   if (self->swank_fd >= 0)
     close(self->swank_fd);
   self->swank_fd = fd;
@@ -202,6 +214,7 @@ real_swank_process_set_socket(RealSwankProcess *self, int fd)
 static void
 sp_send(SwankProcess *base, const GString *payload)
 {
+  g_debug("RealSwankProcess.send len:%zu", payload->len);
   RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
   size_t len = payload->len;
   char hdr[7];
@@ -213,6 +226,7 @@ sp_send(SwankProcess *base, const GString *payload)
 static GString *
 extract_reply(RealSwankProcess *self)
 {
+  g_debug("RealSwankProcess.extract_reply");
   for (;;) {
     if (self->swank_data->len - self->swank_consumed >= 6) {
       char hdr[7];
@@ -233,6 +247,7 @@ extract_reply(RealSwankProcess *self)
 static GString *
 sp_get_reply(SwankProcess *base)
 {
+  g_debug("RealSwankProcess.get_reply");
   RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
   g_mutex_lock(&self->swank_mutex);
   GString *ret = extract_reply(self);
