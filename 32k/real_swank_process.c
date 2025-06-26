@@ -24,8 +24,10 @@ struct _RealSwankProcess {
   GCond  swank_cond;
   int port;
   GThread *swank_thread;
+  gboolean started;
 };
 
+static void sp_start(SwankProcess *self);
 static void sp_send(SwankProcess *self, const GString *payload);
 static GString *sp_get_reply(SwankProcess *self);
 
@@ -33,6 +35,7 @@ static void
 real_swank_process_swank_process_iface_init(SwankProcessInterface *iface)
 {
   g_debug("RealSwankProcess.swank_process_iface_init");
+  iface->start = sp_start;
   iface->send = sp_send;
   iface->get_reply = sp_get_reply;
 }
@@ -88,6 +91,7 @@ real_swank_process_init(RealSwankProcess *self)
   g_cond_init(&self->swank_cond);
   self->port = 4005;
   self->swank_thread = NULL;
+  self->started = FALSE;
 }
 
 static gpointer
@@ -182,6 +186,21 @@ static void connect_swank(RealSwankProcess *self)
   self->swank_thread = g_thread_new("swank-reader", swank_reader_thread, self);
 }
 
+static void
+sp_start(SwankProcess *base)
+{
+  g_debug("RealSwankProcess.start");
+  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
+  if (self->started)
+    return;
+  if (!self->proc || !self->prefs)
+    return;
+  process_start(self->proc);
+  start_swank(self);
+  connect_swank(self);
+  self->started = TRUE;
+}
+
 SwankProcess *
 real_swank_process_new(Process *proc, Preferences *prefs)
 {
@@ -194,10 +213,6 @@ real_swank_process_new(Process *proc, Preferences *prefs)
   if (proc) {
     process_set_stdout_cb(proc, on_proc_out, self);
     process_set_stderr_cb(proc, on_proc_err, self);
-  }
-  if (prefs && proc) {
-    start_swank(self);
-    connect_swank(self);
   }
   return GLIDE_SWANK_PROCESS(self);
 }

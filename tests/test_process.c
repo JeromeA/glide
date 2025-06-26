@@ -14,6 +14,7 @@ static void test_bc(void) {
   g_assert_nonnull(p);
   output = g_string_new(NULL);
   process_set_stdout_cb(p, on_out, NULL);
+  process_start(p);
   process_write(p, "1+2\n", -1);
   g_usleep(100000);
   g_assert_nonnull(strstr(output->str, "3"));

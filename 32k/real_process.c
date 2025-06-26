@@ -22,6 +22,8 @@ struct _RealProcess {
   gpointer err_user;
   GThread *out_thread;
   GThread *err_thread;
+  gchar **argv;
+  gboolean started;
 };
 
 static gpointer
@@ -69,6 +71,7 @@ child_setup(gpointer /*user_data*/)
 static void real_set_stdout_cb(Process *proc, ProcessCallback cb, gpointer user_data);
 static void real_set_stderr_cb(Process *proc, ProcessCallback cb, gpointer user_data);
 static gboolean real_write(Process *proc, const gchar *data, gssize len);
+static void real_start(Process *proc);
 
 static void
 real_process_process_iface_init(ProcessInterface *iface)
@@ -77,6 +80,7 @@ real_process_process_iface_init(ProcessInterface *iface)
   iface->set_stdout_cb = real_set_stdout_cb;
   iface->set_stderr_cb = real_set_stderr_cb;
   iface->write = real_write;
+  iface->start = real_start;
 }
 
 G_DEFINE_TYPE_WITH_CODE(RealProcess, real_process, G_TYPE_OBJECT,
@@ -96,6 +100,7 @@ real_process_finalize(GObject *obj)
   if (p->err_fd >= 0) close(p->err_fd);
   if (p->pid)
     g_spawn_close_pid(p->pid);
+  g_strfreev(p->argv);
   G_OBJECT_CLASS(real_process_parent_class)->finalize(obj);
 }
 
@@ -117,34 +122,18 @@ real_process_init(RealProcess *self)
   self->err_cb = NULL;
   self->out_thread = NULL;
   self->err_thread = NULL;
+  self->argv = NULL;
+  self->started = FALSE;
 }
 
-static Process *
-spawn_process(const gchar *const *argv)
-{
-  g_debug("RealProcess.spawn_process cmd:%s", argv && argv[0] ? argv[0] : "(null)");
-  RealProcess *p = g_object_new(REAL_PROCESS_TYPE, NULL);
-  GError *error = NULL;
-  if (!g_spawn_async_with_pipes(NULL, (gchar**)argv, NULL,
-        G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH,
-        child_setup, NULL,
-        &p->pid,
-        &p->in_fd,
-        &p->out_fd,
-        &p->err_fd,
-        &error)) {
-    g_clear_error(&error);
-    g_object_unref(p);
-    return NULL;
-  }
-  return GLIDE_PROCESS(p);
-}
 
 Process *
 real_process_new_from_argv(const gchar *const *argv)
 {
   g_debug("RealProcess.new_from_argv cmd:%s", argv && argv[0] ? argv[0] : "(null)");
-  return spawn_process(argv);
+  RealProcess *p = g_object_new(REAL_PROCESS_TYPE, NULL);
+  p->argv = g_strdupv((gchar**)argv);
+  return GLIDE_PROCESS(p);
 }
 
 Process *
@@ -154,7 +143,7 @@ real_process_new(const gchar *cmd)
   if (!cmd)
     return NULL;
   const gchar *argv[] = { cmd, NULL };
-  return spawn_process(argv);
+  return real_process_new_from_argv(argv);
 }
 
 static void
@@ -164,7 +153,7 @@ real_set_stdout_cb(Process *proc, ProcessCallback cb, gpointer user_data)
   RealProcess *p = GLIDE_REAL_PROCESS(proc);
   p->out_cb = cb;
   p->out_user = user_data;
-  if (cb && !p->out_thread)
+  if (cb && p->started && !p->out_thread)
     p->out_thread = g_thread_new("process-stdout", stdout_thread, p);
 }
 
@@ -175,7 +164,33 @@ real_set_stderr_cb(Process *proc, ProcessCallback cb, gpointer user_data)
   RealProcess *p = GLIDE_REAL_PROCESS(proc);
   p->err_cb = cb;
   p->err_user = user_data;
-  if (cb && !p->err_thread)
+  if (cb && p->started && !p->err_thread)
+    p->err_thread = g_thread_new("process-stderr", stderr_thread, p);
+}
+
+static void
+real_start(Process *proc)
+{
+  g_debug("RealProcess.start");
+  RealProcess *p = GLIDE_REAL_PROCESS(proc);
+  if (p->started || !p->argv)
+    return;
+  GError *error = NULL;
+  if (!g_spawn_async_with_pipes(NULL, p->argv, NULL,
+        G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH,
+        child_setup, NULL,
+        &p->pid,
+        &p->in_fd,
+        &p->out_fd,
+        &p->err_fd,
+        &error)) {
+    g_clear_error(&error);
+    return;
+  }
+  p->started = TRUE;
+  if (p->out_cb && !p->out_thread)
+    p->out_thread = g_thread_new("process-stdout", stdout_thread, p);
+  if (p->err_cb && !p->err_thread)
     p->err_thread = g_thread_new("process-stderr", stderr_thread, p);
 }
 

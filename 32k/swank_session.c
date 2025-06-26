@@ -7,6 +7,7 @@
 struct _SwankSession {
   GObject parent_instance;
   SwankProcess *proc;
+  gboolean started;
 };
 
 G_DEFINE_TYPE(SwankSession, swank_session, G_TYPE_OBJECT)
@@ -31,6 +32,7 @@ static void swank_session_init(SwankSession *self)
 {
   g_debug("SwankSession.init");
   self->proc = NULL;
+  self->started = FALSE;
 }
 
 SwankSession *
@@ -39,6 +41,7 @@ swank_session_new(SwankProcess *proc)
   g_debug("SwankSession.new");
   SwankSession *self = g_object_new(SWANK_SESSION_TYPE, NULL);
   self->proc = proc ? g_object_ref(proc) : NULL;
+  self->started = FALSE;
   return self;
 }
 
@@ -65,6 +68,10 @@ swank_session_eval(SwankSession *self, const gchar *expr)
   g_debug("SwankSession.eval %s", expr);
   if (!self->proc)
     return;
+  if (!self->started) {
+    swank_process_start(self->proc);
+    self->started = TRUE;
+  }
   gchar *escaped = escape_string(expr);
   gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t 1)", escaped);
   GString *payload = g_string_new(rpc);
