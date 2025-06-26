@@ -1,5 +1,3 @@
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "swank-session"
 #include "swank_session.h"
 
 #include <string.h>

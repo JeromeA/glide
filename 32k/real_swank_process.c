@@ -1,5 +1,3 @@
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "real-swank-process"
 #include "real_swank_process.h"
 #include "syscalls.h"
 
