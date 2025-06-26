@@ -158,12 +158,14 @@ static void start_swank(RealSwankProcess *self)
     return;
   read_until(self, "* ");
   const char *ql_cmd = "(ql:quickload :swank)\n";
+  g_debug("RealSwankProcess.start_swank send:%s", ql_cmd);
   process_write(self->proc, ql_cmd, -1);
   read_until(self, "(:SWANK)");
   read_until(self, "* ");
   char create_cmd[128];
   g_snprintf(create_cmd, sizeof(create_cmd),
       "(swank:create-server :port %d :dont-close t)\n", self->port);
+  g_debug("RealSwankProcess.start_swank send:%s", create_cmd);
   process_write(self->proc, create_cmd, -1);
   read_until(self, "* ");
 }
@@ -229,11 +231,11 @@ real_swank_process_set_socket(RealSwankProcess *self, int fd)
 static void
 sp_send(SwankProcess *base, const GString *payload)
 {
-  g_debug("RealSwankProcess.send len:%zu", payload->len);
   RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
   size_t len = payload->len;
   char hdr[7];
   g_snprintf(hdr, sizeof(hdr), "%06zx", len);
+  g_debug("RealSwankProcess.send %s%.*s", hdr, (int)len, payload->str);
   sys_write(self->swank_fd, hdr, 6);
   sys_write(self->swank_fd, payload->str, len);
 }
