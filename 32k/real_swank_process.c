@@ -103,6 +103,7 @@ swank_reader_thread(gpointer data)
   for (;;) {
     ssize_t n = sys_read(self->swank_fd, buf, sizeof(buf));
     if (n > 0) {
+      g_debug("RealSwankProcess.swank_reader_thread got:%.*s", (int)n, buf);
       g_mutex_lock(&self->swank_mutex);
       g_string_append_len(self->swank_data, buf, n);
       g_cond_broadcast(&self->swank_cond);
@@ -138,7 +139,7 @@ read_until(RealSwankProcess *self, const char *pattern)
 static void
 on_proc_out(GString *data, gpointer user_data)
 {
-  g_debug("RealSwankProcess.on_proc_out len:%d", (int)data->len);
+  g_debug("RealSwankProcess.on_proc_out %s", data->str);
   RealSwankProcess *self = user_data;
   g_mutex_lock(&self->out_mutex);
   g_string_append_len(self->out_data, data->str, data->len);
@@ -147,9 +148,9 @@ on_proc_out(GString *data, gpointer user_data)
 }
 
 static void
-on_proc_err(GString * /*data*/, gpointer /*user_data*/)
+on_proc_err(GString *data, gpointer /*user_data*/)
 {
-  g_debug("RealSwankProcess.on_proc_err");
+  g_debug("RealSwankProcess.on_proc_err %s", data->str);
 }
 
 static void start_swank(RealSwankProcess *self)
@@ -183,6 +184,7 @@ static void connect_swank(RealSwankProcess *self)
   }
   self->swank_fd = g_socket_get_fd(g_socket_connection_get_socket(conn));
   self->connection = conn;
+  g_debug("RealSwankProcess.connect_swank connected fd:%d", self->swank_fd);
   self->swank_thread = g_thread_new("swank-reader", swank_reader_thread, self);
 }
 
