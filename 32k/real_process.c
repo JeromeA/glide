@@ -188,9 +188,9 @@ real_start(Process *proc)
     return;
   }
   p->started = TRUE;
-  if (p->out_cb && !p->out_thread)
+  if (!p->out_thread)
     p->out_thread = g_thread_new("process-stdout", stdout_thread, p);
-  if (p->err_cb && !p->err_thread)
+  if (!p->err_thread)
     p->err_thread = g_thread_new("process-stderr", stderr_thread, p);
 }
 
