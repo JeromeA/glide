@@ -109,6 +109,10 @@ swank_reader_thread(gpointer data)
     } else if (n == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
       g_usleep(10000);
     } else {
+      if (n == -1)
+        g_printerr("swank_reader_thread read error: %s (errno %d)\n", g_strerror(errno), errno);
+      else
+        g_debug("RealSwankProcess.swank_reader_thread eof");
       break;
     }
   }
@@ -236,8 +240,12 @@ sp_send(SwankProcess *base, const GString *payload)
   char hdr[7];
   g_snprintf(hdr, sizeof(hdr), "%06zx", len);
   g_debug("RealSwankProcess.send %s%.*s", hdr, (int)len, payload->str);
-  sys_write(self->swank_fd, hdr, 6);
-  sys_write(self->swank_fd, payload->str, len);
+  ssize_t nw = sys_write(self->swank_fd, hdr, 6);
+  if (nw != 6)
+    g_printerr("Failed to write swank header (errno %d)\n", errno);
+  nw = sys_write(self->swank_fd, payload->str, len);
+  if (nw != (ssize_t)len)
+    g_printerr("Failed to write swank payload (errno %d)\n", errno);
 }
 
 static GString *
