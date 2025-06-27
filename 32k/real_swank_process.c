@@ -161,7 +161,8 @@ static void start_swank(RealSwankProcess *self)
   if (!self->proc)
     return;
   read_until(self, "* ");
-  const char *ql_cmd = "(ql:quickload :swank)\n";
+  // TODO: select the right loading command: (ql:quickload :swank) or (require :swank)
+  const char *ql_cmd = "(require :swank)\n";
   g_debug("RealSwankProcess.start_swank send:%s", ql_cmd);
   process_write(self->proc, ql_cmd, -1);
   read_until(self, "(:SWANK)");
