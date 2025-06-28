@@ -219,8 +219,12 @@ parse_return_ok(const gchar *token, gchar **output, gchar **result)
   }
 
   const char *q = list;
+  if (*q == '(')
+    q++;
   gchar *out_tok = next_token(&q);
   gchar *res_tok = next_token(&q);
+  if (*q == ')')
+    q++;
 
   if (!out_tok || !res_tok) {
     g_debug("RealSwankSession.parse_return_ok missing tokens in:%s", list);

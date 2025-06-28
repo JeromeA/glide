@@ -69,9 +69,20 @@ static void test_eval(void)
   g_object_unref(mock_swank_process);
 }
 
+static void test_on_message_return_ok(void)
+{
+  GString *msg = g_string_new("(:return (:ok (\"\" \"5\")) 1)");
+  g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,
+      "RealSwankSession.on_return_ok  5 1");
+  real_swank_session_on_message(msg, NULL);
+  g_test_assert_expected_messages();
+  g_string_free(msg, TRUE);
+}
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/session/eval", test_eval);
+  g_test_add_func("/session/on_message_return_ok", test_on_message_return_ok);
   return g_test_run();
 }
