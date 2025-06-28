@@ -19,7 +19,13 @@ swank_process_test: swank_process_test.c ../32k/swank_process.c ../32k/real_swan
 swank_session_test: swank_session_test.c ../32k/swank_session.c ../32k/swank_process.c ../32k/real_swank_session.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
+run: all
+	./preferences_test
+	./process_test
+	./swank_process_test
+	./swank_session_test
+
 clean:
 	rm -f $(CLEANABLES)
 
-.PHONY: all clean
+.PHONY: all clean run
