@@ -3,6 +3,7 @@
 
 #include <sys/stat.h> // For struct stat used by fstat
 #include <stddef.h>
+#include <errno.h>
 
 #ifdef SYSCALLS
 
@@ -37,7 +38,11 @@ static inline long sys_open(const char *pathname, int flags, int mode)
         : "r" (pathname), "r" ((long)flags), "r" ((long)mode), "i" (SYS_open)
         : "rdi", "rsi", "rdx", "rcx", "r11", "memory"
     );
-    return ret;
+  if (ret < 0) {
+    errno = -ret;
+    return -1;
+  }
+  return ret;
 }
 
 /*
@@ -64,7 +69,11 @@ static inline long sys_read(int fd, void *buf, unsigned long count)
         : "r" ((long)fd), "r" (buf), "r" (count), "i" (SYS_read)
         : "rdi", "rsi", "rdx", "rcx", "r11", "memory"
     );
-    return ret;
+  if (ret < 0) {
+    errno = -ret;
+    return -1;
+  }
+  return ret;
 }
 
 /*
@@ -91,7 +100,11 @@ static inline long sys_write(int fd, const void *buf, unsigned long count)
         : "r" ((long)fd), "r" (buf), "r" (count), "i" (SYS_write)
         : "rdi", "rsi", "rdx", "rcx", "r11", "memory"
     );
-    return ret;
+  if (ret < 0) {
+    errno = -ret;
+    return -1;
+  }
+  return ret;
 }
 
 /*
@@ -114,7 +127,11 @@ static inline long sys_close(int fd)
         : "r" ((long)fd), "i" (SYS_close)
         : "rdi", "rcx", "r11", "memory"
     );
-    return ret;
+  if (ret < 0) {
+    errno = -ret;
+    return -1;
+  }
+  return ret;
 }
 
 /*
@@ -139,7 +156,11 @@ static inline long sys_fstat(int fd, struct stat *buf)
         : "r" ((long)fd), "r" (buf), "i" (SYS_fstat)
         : "rdi", "rsi", "rcx", "r11", "memory"
     );
-    return ret;
+  if (ret < 0) {
+    errno = -ret;
+    return -1;
+  }
+  return ret;
 }
 
 #else
