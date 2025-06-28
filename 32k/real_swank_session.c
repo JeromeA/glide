@@ -244,6 +244,26 @@ parse_return_ok(const gchar *token, gchar **output, gchar **result)
   return TRUE;
 }
 
+static gboolean
+parse_return_abort(const gchar *token, gchar **reason)
+{
+  if (!g_str_has_prefix(token, "(:abort ")) {
+    g_debug("RealSwankSession.parse_return_abort unexpected token:%s", token);
+    return FALSE;
+  }
+
+  const char *p = token + strlen("(:abort ");
+  gchar *reason_tok = next_token(&p);
+  if (!reason_tok) {
+    g_debug("RealSwankSession.parse_return_abort missing reason in:%s", token);
+    return FALSE;
+  }
+
+  *reason = unescape_string(reason_tok);
+  g_free(reason_tok);
+  return TRUE;
+}
+
 static void
 on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result,
     guint32 tag)
@@ -257,11 +277,26 @@ on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result,
     g_debug("RealSwankSession.on_return_ok unknown tag:%u", tag);
     return;
   }
-  g_free(interaction->output);
-  interaction->output = g_strdup(output);
-  g_free(interaction->result);
-  interaction->result = g_strdup(result);
-  interaction->status = INTERACTION_OK;
+  g_free(inter->output);
+  g_free(inter->result);
+  inter->output = g_strdup(output);
+  inter->result = g_strdup(result);
+  inter->status = INTERACTION_OK;
+}
+
+static void
+on_return_abort(RealSwankSession *self, const gchar *reason, guint32 tag)
+{
+  g_debug("RealSwankSession.on_return_abort %s %u", reason, tag);
+  if (!self)
+    return;
+  Interaction *inter = g_hash_table_lookup(self->interactions,
+      GUINT_TO_POINTER(tag));
+  if (inter) {
+    g_free(inter->error);
+    inter->error = g_strdup(reason);
+    inter->status = INTERACTION_ERROR;
+  }
 }
 
 static void
@@ -285,11 +320,14 @@ real_swank_session_on_message(GString *msg, gpointer user_data)
 
   const char *p = msg->str;
   if (g_str_has_prefix(p, "(:return ")) {
+    RealSwankSession *self = GLIDE_REAL_SWANK_SESSION(user_data);
     p += strlen("(:return ");
     gchar *arg1 = next_token(&p);
     gchar *arg2 = next_token(&p);
     gchar *output = NULL;
     gchar *result = NULL;
+    gchar *reason = NULL;
+    gboolean handled = FALSE;
     if (parse_return_ok(arg1, &output, &result)) {
       gchar *end = NULL;
       guint64 tag64 = g_ascii_strtoull(arg2, &end, 10);
@@ -297,10 +335,22 @@ real_swank_session_on_message(GString *msg, gpointer user_data)
         g_debug("RealSwankSession.on_message invalid tag:%s", arg2);
       } else {
         on_return_ok(self, output, result, (guint32)tag64);
+        handled = TRUE;
       }
       g_free(output);
       g_free(result);
-    } else {
+    } else if (parse_return_abort(arg1, &reason)) {
+      gchar *end = NULL;
+      guint64 tag64 = g_ascii_strtoull(arg2, &end, 10);
+      if (end == arg2 || *end != '\0' || tag64 > G_MAXUINT32) {
+        g_debug("RealSwankSession.on_message invalid tag:%s", arg2);
+      } else {
+        on_return_abort(self, reason, (guint32)tag64);
+        handled = TRUE;
+      }
+      g_free(reason);
+    }
+    if (!handled) {
       g_debug("RealSwankSession.on_message failed to parse return list:%s", arg1);
     }
     g_free(arg1);

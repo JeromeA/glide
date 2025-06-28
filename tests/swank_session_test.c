@@ -79,10 +79,31 @@ static void test_on_message_return_ok(void)
   g_string_free(msg, TRUE);
 }
 
+static void test_on_message_return_abort(void)
+{
+  MockSwankProcess *mock_swank_process = g_object_new(mock_swank_process_get_type(), NULL);
+  SwankSession *sess = real_swank_session_new(GLIDE_SWANK_PROCESS(g_object_ref(mock_swank_process)));
+  Interaction interaction;
+  interaction_init(&interaction, "(+ 1 2)");
+  swank_session_eval(sess, &interaction);
+  GString *msg = g_string_new("(:return (:abort \"fail\") 1)");
+  g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,
+      "RealSwankSession.on_return_abort fail 1");
+  real_swank_session_on_message(msg, sess);
+  g_test_assert_expected_messages();
+  g_assert_nonnull(interaction.error);
+  g_assert_cmpstr(interaction.error, ==, "fail");
+  interaction_clear(&interaction);
+  g_string_free(msg, TRUE);
+  g_object_unref(sess);
+  g_object_unref(mock_swank_process);
+}
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/session/eval", test_eval);
   g_test_add_func("/session/on_message_return_ok", test_on_message_return_ok);
+  g_test_add_func("/session/on_message_return_abort", test_on_message_return_abort);
   return g_test_run();
 }

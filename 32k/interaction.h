@@ -16,7 +16,7 @@ typedef struct {
   InteractionStatus status;
   gchar *result;
   gchar *output;
-  gchar *errors;
+  gchar *error;
 } Interaction;
 
 static inline void interaction_init(Interaction *self, const gchar *expr) {
@@ -25,14 +25,14 @@ static inline void interaction_init(Interaction *self, const gchar *expr) {
   self->status = INTERACTION_CREATED;
   self->result = NULL;
   self->output = NULL;
-  self->errors = NULL;
+  self->error = NULL;
 }
 
 static inline void interaction_clear(Interaction *self) {
   g_free(self->expression);
   g_free(self->result);
   g_free(self->output);
-  g_free(self->errors);
+  g_free(self->error);
 }
 
 #endif /* INTERACTION_H */
