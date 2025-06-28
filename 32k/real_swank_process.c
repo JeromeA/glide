@@ -185,7 +185,10 @@ static void start_swank(RealSwankProcess *self)
   const char *ql_cmd = "(require :swank)\n";
   g_debug("RealSwankProcess.start_swank send:%s", ql_cmd);
   process_write(self->proc, ql_cmd, -1);
-  read_until(self, "(:SWANK)");
+  // TODO: select the right output:
+  // - (:SWANK) for quickload
+  // - ("SB-INTROSPECT" "SB-CLTL2") for require
+  read_until(self, "(\"SB-INTROSPECT\" \"SB-CLTL2\")");
   read_until(self, "* ");
   char create_cmd[128];
   g_snprintf(create_cmd, sizeof(create_cmd),
