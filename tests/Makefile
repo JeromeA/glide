@@ -16,7 +16,7 @@ process_test: process_test.c ../32k/process.c ../32k/real_process.c
 swank_process_test: swank_process_test.c ../32k/swank_process.c ../32k/real_swank_process.c ../32k/process.c ../common/preferences.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-swank_session_test: swank_session_test.c ../32k/swank_session.c ../32k/swank_process.c
+swank_session_test: swank_session_test.c ../32k/swank_session.c ../32k/swank_process.c ../32k/real_swank_session.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:

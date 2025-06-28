@@ -1,4 +1,5 @@
 #include "swank_session.h"
+#include "real_swank_session.h"
 #include "swank_process.h"
 #include <glib.h>
 #include <string.h>
@@ -7,6 +8,8 @@ typedef struct {
   GObject parent_instance;
   GString *last;
   int start_count;
+  SwankProcessMessageCallback cb;
+  gpointer user_data;
 } MockSwankProcess;
 
 typedef struct { GObjectClass parent_class; } MockSwankProcessClass;
@@ -21,12 +24,18 @@ static void mock_swank_process_send(SwankProcess *proc, const GString *payload) 
   g_string_assign(mock_swank_process->last, payload->str);
   g_string_truncate(mock_swank_process->last, payload->len);
 }
-static GString *mock_swank_process_get(SwankProcess *proc) { (void)proc; return NULL; }
+static void mock_swank_process_set_cb(SwankProcess *proc,
+    SwankProcessMessageCallback cb,
+    gpointer user_data) {
+  MockSwankProcess *mock_swank_process = (MockSwankProcess*)proc;
+  mock_swank_process->cb = cb;
+  mock_swank_process->user_data = user_data;
+}
 
 static void mock_swank_process_iface_init(SwankProcessInterface *iface) {
   iface->start = mock_swank_process_start;
   iface->send = mock_swank_process_send;
-  iface->get_reply = mock_swank_process_get;
+  iface->set_message_cb = mock_swank_process_set_cb;
 }
 
 G_DEFINE_TYPE_WITH_CODE(MockSwankProcess, mock_swank_process, G_TYPE_OBJECT,
@@ -39,12 +48,14 @@ static void mock_swank_process_class_init(MockSwankProcessClass *klass) {
 static void mock_swank_process_init(MockSwankProcess *self) {
   self->last = g_string_new(NULL);
   self->start_count = 0;
+  self->cb = NULL;
+  self->user_data = NULL;
 }
 
 static void test_eval(void)
 {
   MockSwankProcess *mock_swank_process = g_object_new(mock_swank_process_get_type(), NULL);
-  SwankSession *sess = swank_session_new(GLIDE_SWANK_PROCESS(g_object_ref(mock_swank_process)));
+  SwankSession *sess = real_swank_session_new(GLIDE_SWANK_PROCESS(g_object_ref(mock_swank_process)));
   swank_session_eval(sess, "(+ 1 2)");
   g_assert_cmpstr(mock_swank_process->last->str, ==,
       "(:emacs-rex (swank:eval-and-grab-output \"(+ 1 2)\") \"COMMON-LISP-USER\" t 1)");

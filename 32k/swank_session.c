@@ -1,80 +1,9 @@
 #include "swank_session.h"
 
-#include <string.h>
+G_DEFINE_INTERFACE(SwankSession, swank_session, G_TYPE_OBJECT)
 
-struct _SwankSession {
-  GObject parent_instance;
-  SwankProcess *proc;
-  gboolean started;
-};
-
-G_DEFINE_TYPE(SwankSession, swank_session, G_TYPE_OBJECT)
-
-static void swank_session_finalize(GObject *obj)
+static void
+swank_session_default_init(SwankSessionInterface * /*iface*/)
 {
-  SwankSession *self = GLIDE_SWANK_SESSION(obj);
-  g_debug("SwankSession.finalize");
-  if (self->proc)
-    g_object_unref(self->proc);
-  G_OBJECT_CLASS(swank_session_parent_class)->finalize(obj);
-}
-
-static void swank_session_class_init(SwankSessionClass *klass)
-{
-  g_debug("SwankSession.class_init");
-  GObjectClass *obj = G_OBJECT_CLASS(klass);
-  obj->finalize = swank_session_finalize;
-}
-
-static void swank_session_init(SwankSession *self)
-{
-  g_debug("SwankSession.init");
-  self->proc = NULL;
-  self->started = FALSE;
-}
-
-SwankSession *
-swank_session_new(SwankProcess *proc)
-{
-  g_debug("SwankSession.new");
-  SwankSession *self = g_object_new(SWANK_SESSION_TYPE, NULL);
-  self->proc = proc ? g_object_ref(proc) : NULL;
-  self->started = FALSE;
-  return self;
-}
-
-static gchar *
-escape_string(const char *str)
-{
-  g_debug("SwankSession.escape_string input:%s", str);
-  GString *out = g_string_new(NULL);
-  for (const char *p = str; *p; p++) {
-    switch (*p) {
-      case '\\': g_string_append(out, "\\\\"); break;
-      case '"':  g_string_append(out, "\\\""); break;
-      default:    g_string_append_c(out, *p);
-    }
-  }
-  gchar *ret = g_string_free(out, FALSE);
-  g_debug("SwankSession.escape_string output:%s", ret);
-  return ret;
-}
-
-void
-swank_session_eval(SwankSession *self, const gchar *expr)
-{
-  g_debug("SwankSession.eval %s", expr);
-  if (!self->proc)
-    return;
-  if (!self->started) {
-    swank_process_start(self->proc);
-    self->started = TRUE;
-  }
-  gchar *escaped = escape_string(expr);
-  gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t 1)", escaped);
-  GString *payload = g_string_new(rpc);
-  g_free(escaped);
-  g_free(rpc);
-  swank_process_send(self->proc, payload);
-  g_string_free(payload, TRUE);
+  g_debug("SwankSession.default_init");
 }

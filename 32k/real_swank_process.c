@@ -19,7 +19,8 @@ struct _RealSwankProcess {
   GString *swank_data;
   gsize swank_consumed;
   GMutex swank_mutex;
-  GCond  swank_cond;
+  SwankProcessMessageCallback msg_cb;
+  gpointer msg_cb_data;
   int port;
   GThread *swank_thread;
   gboolean started;
@@ -27,7 +28,8 @@ struct _RealSwankProcess {
 
 static void sp_start(SwankProcess *self);
 static void sp_send(SwankProcess *self, const GString *payload);
-static GString *sp_get_reply(SwankProcess *self);
+static void sp_set_message_cb(SwankProcess *self, SwankProcessMessageCallback cb,
+                              gpointer user_data);
 
 static void
 real_swank_process_swank_process_iface_init(SwankProcessInterface *iface)
@@ -35,7 +37,7 @@ real_swank_process_swank_process_iface_init(SwankProcessInterface *iface)
   g_debug("RealSwankProcess.swank_process_iface_init");
   iface->start = sp_start;
   iface->send = sp_send;
-  iface->get_reply = sp_get_reply;
+  iface->set_message_cb = sp_set_message_cb;
 }
 
 G_DEFINE_TYPE_WITH_CODE(RealSwankProcess, real_swank_process, G_TYPE_OBJECT,
@@ -61,7 +63,6 @@ real_swank_process_finalize(GObject *obj)
   g_mutex_clear(&self->out_mutex);
   g_cond_clear(&self->out_cond);
   g_mutex_clear(&self->swank_mutex);
-  g_cond_clear(&self->swank_cond);
   G_OBJECT_CLASS(real_swank_process_parent_class)->finalize(obj);
 }
 
@@ -86,9 +87,10 @@ real_swank_process_init(RealSwankProcess *self)
   g_mutex_init(&self->out_mutex);
   g_cond_init(&self->out_cond);
   g_mutex_init(&self->swank_mutex);
-  g_cond_init(&self->swank_cond);
   self->port = 4005;
   self->swank_thread = NULL;
+  self->msg_cb = NULL;
+  self->msg_cb_data = NULL;
   self->started = FALSE;
 }
 
@@ -104,7 +106,25 @@ swank_reader_thread(gpointer data)
       g_debug("RealSwankProcess.swank_reader_thread got:%.*s", (int)n, buf);
       g_mutex_lock(&self->swank_mutex);
       g_string_append_len(self->swank_data, buf, n);
-      g_cond_broadcast(&self->swank_cond);
+      if (self->msg_cb) {
+        while (TRUE) {
+          if (self->swank_data->len - self->swank_consumed >= 6) {
+            char hdr[7];
+            memcpy(hdr, self->swank_data->str + self->swank_consumed, 6);
+            hdr[6] = '\0';
+            gsize len = g_ascii_strtoll(hdr, NULL, 16);
+            if (self->swank_data->len - self->swank_consumed - 6 >= len) {
+              char *start = self->swank_data->str + self->swank_consumed + 6;
+              GString *msg = g_string_new_len(start, len);
+              self->swank_consumed += 6 + len;
+              self->msg_cb(msg, self->msg_cb_data);
+              g_string_free(msg, TRUE);
+              continue;
+            }
+          }
+          break;
+        }
+      }
       g_mutex_unlock(&self->swank_mutex);
     } else if (n == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
       g_usleep(10000);
@@ -249,35 +269,15 @@ sp_send(SwankProcess *base, const GString *payload)
     g_printerr("Failed to write swank payload (errno %d)\n", errno);
 }
 
-static GString *
-extract_reply(RealSwankProcess *self)
+static void
+sp_set_message_cb(SwankProcess *base, SwankProcessMessageCallback cb,
+                  gpointer user_data)
 {
-  g_debug("RealSwankProcess.extract_reply");
-  for (;;) {
-    if (self->swank_data->len - self->swank_consumed >= 6) {
-      char hdr[7];
-      memcpy(hdr, self->swank_data->str + self->swank_consumed, 6);
-      hdr[6] = '\0';
-      gsize len = g_ascii_strtoll(hdr, NULL, 16);
-      if (self->swank_data->len - self->swank_consumed - 6 >= len) {
-        char *start = self->swank_data->str + self->swank_consumed + 6;
-        GString *msg = g_string_new_len(start, len);
-        self->swank_consumed += 6 + len;
-        return msg;
-      }
-    }
-    g_cond_wait(&self->swank_cond, &self->swank_mutex);
-  }
-}
-
-static GString *
-sp_get_reply(SwankProcess *base)
-{
-  g_debug("RealSwankProcess.get_reply");
+  g_debug("RealSwankProcess.set_message_cb");
   RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
   g_mutex_lock(&self->swank_mutex);
-  GString *ret = extract_reply(self);
+  self->msg_cb = cb;
+  self->msg_cb_data = user_data;
   g_mutex_unlock(&self->swank_mutex);
-  return ret;
 }
 

@@ -11,6 +11,7 @@
 #include "real_process.c"
 #include "swank_process.c"
 #include "real_swank_process.c"
+#include "real_swank_session.c"
 #include "swank_session.c"
 #include "evaluate.c"
 #include "app.c"
@@ -36,7 +37,7 @@ main (int argc, char *argv[])
   const gchar *sdk_path = preferences_get_sdk (prefs);
   Process *proc = real_process_new (sdk_path);
   SwankProcess *swank_proc = real_swank_process_new (proc, prefs);
-  SwankSession *swank = swank_session_new (swank_proc);
+  SwankSession *swank = real_swank_session_new (swank_proc);
   App *app     = app_new (prefs, swank);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
