@@ -7,6 +7,8 @@ struct _RealSwankSession {
   GObject parent_instance;
   SwankProcess *proc;
   gboolean started;
+  guint32 next_tag;
+  GHashTable *interactions;
 };
 
 static void real_swank_session_eval(SwankSession *session, Interaction *interaction);
@@ -29,6 +31,8 @@ real_swank_session_finalize(GObject *obj)
   RealSwankSession *self = GLIDE_REAL_SWANK_SESSION(obj);
   if (self->proc)
     g_object_unref(self->proc);
+  if (self->interactions)
+    g_hash_table_destroy(self->interactions);
   G_OBJECT_CLASS(real_swank_session_parent_class)->finalize(obj);
 }
 
@@ -46,6 +50,8 @@ real_swank_session_init(RealSwankSession *self)
   g_debug("RealSwankSession.init");
   self->proc = NULL;
   self->started = FALSE;
+  self->next_tag = 1;
+  self->interactions = g_hash_table_new(g_direct_hash, g_direct_equal);
 }
 
 SwankSession *
@@ -88,8 +94,10 @@ real_swank_session_eval(SwankSession *session, Interaction *interaction)
     swank_process_start(self->proc);
     self->started = TRUE;
   }
+  interaction->tag = self->next_tag++;
+  g_hash_table_insert(self->interactions, GUINT_TO_POINTER(interaction->tag), interaction);
   gchar *escaped = escape_string(interaction->expression);
-  gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t 1)", escaped);
+  gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)", escaped, interaction->tag);
   GString *payload = g_string_new(rpc);
   g_free(escaped);
   g_free(rpc);

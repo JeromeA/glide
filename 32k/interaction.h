@@ -12,6 +12,7 @@ typedef enum {
 
 typedef struct {
   gchar *expression;
+  guint32 tag;
   InteractionStatus status;
   gchar *result;
   gchar *output;
@@ -20,6 +21,7 @@ typedef struct {
 
 static inline void interaction_init(Interaction *self, const gchar *expr) {
   self->expression = g_strdup(expr);
+  self->tag = 0;
   self->status = INTERACTION_CREATED;
   self->result = NULL;
   self->output = NULL;
