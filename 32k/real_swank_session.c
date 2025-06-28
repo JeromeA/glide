@@ -128,6 +128,7 @@ real_swank_session_eval(SwankSession *session, Interaction *interaction)
     self->started = TRUE;
   }
   interaction->tag = self->next_tag++;
+  interaction->status = INTERACTION_RUNNING;
   g_hash_table_insert(self->interactions, GUINT_TO_POINTER(interaction->tag), interaction);
   gchar *escaped = escape_string(interaction->expression);
   gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)", escaped, interaction->tag);
@@ -244,9 +245,23 @@ parse_return_ok(const gchar *token, gchar **output, gchar **result)
 }
 
 static void
-on_return_ok(const gchar *output, const gchar *result, guint32 tag)
+on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result,
+    guint32 tag)
 {
   g_debug("RealSwankSession.on_return_ok %s %s %u", output, result, tag);
+  if (!self)
+    return;
+  Interaction *interaction =
+      g_hash_table_lookup(self->interactions, GUINT_TO_POINTER(tag));
+  if (!interaction) {
+    g_debug("RealSwankSession.on_return_ok unknown tag:%u", tag);
+    return;
+  }
+  g_free(interaction->output);
+  interaction->output = g_strdup(output);
+  g_free(interaction->result);
+  interaction->result = g_strdup(result);
+  interaction->status = INTERACTION_OK;
 }
 
 static void
@@ -262,9 +277,11 @@ on_indentation_update(const gchar *value)
 }
 
 void
-real_swank_session_on_message(GString *msg, gpointer /*user_data*/)
+real_swank_session_on_message(GString *msg, gpointer user_data)
 {
   g_debug_40("RealSwankSession.on_message ", msg->str);
+
+  RealSwankSession *self = user_data;
 
   const char *p = msg->str;
   if (g_str_has_prefix(p, "(:return ")) {
@@ -279,7 +296,7 @@ real_swank_session_on_message(GString *msg, gpointer /*user_data*/)
       if (end == arg2 || *end != '\0' || tag64 > G_MAXUINT32) {
         g_debug("RealSwankSession.on_message invalid tag:%s", arg2);
       } else {
-        on_return_ok(output, result, (guint32)tag64);
+        on_return_ok(self, output, result, (guint32)tag64);
       }
       g_free(output);
       g_free(result);
