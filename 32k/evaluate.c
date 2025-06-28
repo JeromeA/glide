@@ -48,10 +48,10 @@ on_evaluate(App *self)
   /* 4. Send the expression to SWANK for remote execution. */
   SwankSession *swank = app_get_swank(self);
   if (swank) {
-    Interaction interaction;
-    interaction_init(&interaction, expr);
-    swank_session_eval(swank, &interaction);
-    interaction_clear(&interaction);
+    Interaction *interaction = g_new0(Interaction, 1);
+    interaction_init(interaction, expr);
+    swank_session_eval(swank, interaction);
+    /* The interaction will be cleared when the session returns the result. */
   }
 
   g_free(expr);

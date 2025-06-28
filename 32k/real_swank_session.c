@@ -277,11 +277,11 @@ on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result,
     g_debug("RealSwankSession.on_return_ok unknown tag:%u", tag);
     return;
   }
-  g_free(inter->output);
-  g_free(inter->result);
-  inter->output = g_strdup(output);
-  inter->result = g_strdup(result);
-  inter->status = INTERACTION_OK;
+  g_free(interaction->output);
+  g_free(interaction->result);
+  interaction->output = g_strdup(output);
+  interaction->result = g_strdup(result);
+  interaction->status = INTERACTION_OK;
 }
 
 static void
@@ -315,8 +315,6 @@ void
 real_swank_session_on_message(GString *msg, gpointer user_data)
 {
   g_debug_40("RealSwankSession.on_message ", msg->str);
-
-  RealSwankSession *self = user_data;
 
   const char *p = msg->str;
   if (g_str_has_prefix(p, "(:return ")) {
