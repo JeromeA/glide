@@ -96,11 +96,21 @@ real_swank_session_eval(SwankSession *session, const gchar *expr)
   g_string_free(payload, TRUE);
 }
 
+static inline gboolean ascii_isspace(char c)
+{
+  switch ((unsigned char)c) {
+    case ' ': case '\t': case '\n': case '\r': case '\f': case '\v':
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
 static gchar *
 next_token(const char **p)
 {
   const char *s = *p;
-  while (g_ascii_isspace(*s)) s++;
+  while (ascii_isspace(*s)) s++;
   const char *start = s;
   if (*s == '(') {
     int depth = 1;
@@ -123,7 +133,7 @@ next_token(const char **p)
       }
     }
     *p = s;
-    while (g_ascii_isspace(**p)) (*p)++;
+    while (ascii_isspace(**p)) (*p)++;
     return g_strndup(start, s - start);
   } else if (*s == '"') {
     gboolean esc = FALSE;
@@ -140,13 +150,13 @@ next_token(const char **p)
       }
     }
     *p = s;
-    while (g_ascii_isspace(**p)) (*p)++;
+    while (ascii_isspace(**p)) (*p)++;
     return g_strndup(start, s - start);
   } else {
-    for (; *s && !g_ascii_isspace(*s) && *s != ')'; s++)
+    for (; *s && !ascii_isspace(*s) && *s != ')'; s++)
       ;
     *p = s;
-    while (g_ascii_isspace(**p)) (*p)++;
+    while (ascii_isspace(**p)) (*p)++;
     return g_strndup(start, s - start);
   }
 }
