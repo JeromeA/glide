@@ -1,6 +1,7 @@
 #include "real_swank_session.h"
 #include <string.h>
 #include "util.h"
+#include "interaction.h"
 
 struct _RealSwankSession {
   GObject parent_instance;
@@ -8,7 +9,7 @@ struct _RealSwankSession {
   gboolean started;
 };
 
-static void real_swank_session_eval(SwankSession *session, const gchar *expr);
+static void real_swank_session_eval(SwankSession *session, Interaction *interaction);
 
 static void
 real_swank_session_swank_session_iface_init(SwankSessionInterface *iface)
@@ -77,9 +78,9 @@ escape_string(const char *str)
 }
 
 static void
-real_swank_session_eval(SwankSession *session, const gchar *expr)
+real_swank_session_eval(SwankSession *session, Interaction *interaction)
 {
-  g_debug("RealSwankSession.eval %s", expr);
+  g_debug("RealSwankSession.eval %s", interaction->expression);
   RealSwankSession *self = GLIDE_REAL_SWANK_SESSION(session);
   if (!self->proc)
     return;
@@ -87,7 +88,7 @@ real_swank_session_eval(SwankSession *session, const gchar *expr)
     swank_process_start(self->proc);
     self->started = TRUE;
   }
-  gchar *escaped = escape_string(expr);
+  gchar *escaped = escape_string(interaction->expression);
   gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t 1)", escaped);
   GString *payload = g_string_new(rpc);
   g_free(escaped);

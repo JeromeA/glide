@@ -6,6 +6,7 @@
  */
 
 #include "swank_session.h"
+#include "interaction.h"
 #include "evaluate.h"
 
 #include <gtk/gtk.h>
@@ -46,8 +47,12 @@ on_evaluate(App *self)
 
   /* 4. Send the expression to SWANK for remote execution. */
   SwankSession *swank = app_get_swank(self);
-  if (swank)
-    swank_session_eval(swank, expr);
+  if (swank) {
+    Interaction interaction;
+    interaction_init(&interaction, expr);
+    swank_session_eval(swank, &interaction);
+    interaction_clear(&interaction);
+  }
 
   g_free(expr);
 }

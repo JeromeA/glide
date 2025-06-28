@@ -1,6 +1,7 @@
 #include "swank_session.h"
 #include "real_swank_session.h"
 #include "swank_process.h"
+#include "interaction.h"
 #include <glib.h>
 #include <string.h>
 
@@ -56,7 +57,10 @@ static void test_eval(void)
 {
   MockSwankProcess *mock_swank_process = g_object_new(mock_swank_process_get_type(), NULL);
   SwankSession *sess = real_swank_session_new(GLIDE_SWANK_PROCESS(g_object_ref(mock_swank_process)));
-  swank_session_eval(sess, "(+ 1 2)");
+  Interaction interaction;
+  interaction_init(&interaction, "(+ 1 2)");
+  swank_session_eval(sess, &interaction);
+  interaction_clear(&interaction);
   g_assert_cmpstr(mock_swank_process->last->str, ==,
       "(:emacs-rex (swank:eval-and-grab-output \"(+ 1 2)\") \"COMMON-LISP-USER\" t 1)");
   g_assert_cmpint(mock_swank_process->start_count, ==, 1);
