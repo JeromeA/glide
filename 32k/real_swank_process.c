@@ -1,5 +1,7 @@
 #include "real_swank_process.h"
+
 #include "syscalls.h"
+#include "util.h"
 
 #include <gio/gio.h>
 #include <unistd.h>
@@ -103,7 +105,9 @@ swank_reader_thread(gpointer data)
   for (;;) {
     ssize_t n = sys_read(self->swank_fd, buf, sizeof(buf));
     if (n > 0) {
-      g_debug("RealSwankProcess.swank_reader_thread got:%.*s", (int)n, buf);
+      char *dbg = g_strndup(buf, n);
+      g_debug_40("RealSwankProcess.swank_reader_thread got:", dbg);
+      g_free(dbg);
       g_mutex_lock(&self->swank_mutex);
       g_string_append_len(self->swank_data, buf, n);
       if (self->msg_cb) {
