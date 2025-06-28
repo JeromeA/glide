@@ -1,30 +1,31 @@
 
 #ifdef INLINE
 #define STATIC static
-#include "reloc.c"
+#include "app.c"
+#include "evaluate.c"
 #include "file_open.c"
 #include "file_save.c"
+#include "find_executables.c"
 #include "preferences.c"
 #include "preferences_dialog.c"
-#include "find_executables.c"
 #include "process.c"
 #include "real_process.c"
-#include "swank_process.c"
 #include "real_swank_process.c"
 #include "real_swank_session.c"
+#include "reloc.c"
+#include "swank_process.c"
 #include "swank_session.c"
-#include "evaluate.c"
-#include "app.c"
 #endif
 
-#include "includes.h"
 #include "app.h"
+#include "includes.h"
+#include "preferences.h"
 #include "process.h"
 #include "real_process.h"
-#include "swank_process.h"
 #include "real_swank_process.h"
+#include "real_swank_session.h"
+#include "swank_process.h"
 #include "swank_session.h"
-#include "preferences.h"
 
 int
 main (int argc, char *argv[])
