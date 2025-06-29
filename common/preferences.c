@@ -21,10 +21,10 @@ G_DEFINE_TYPE(Preferences, preferences, G_TYPE_OBJECT);
 /* Signals enum */
 enum {
     SDK_CHANGED,
-    SIGNAL_COUNT
+    PREFERENCES_SIGNAL_COUNT
 };
 
-static guint preferences_signals[SIGNAL_COUNT] = { 0 };
+static guint preferences_signals[PREFERENCES_SIGNAL_COUNT] = { 0 };
 
 static void preferences_finalize(GObject *object) {
     Preferences *self = GLIDE_PREFERENCES(object);

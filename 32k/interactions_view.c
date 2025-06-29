@@ -10,6 +10,8 @@ struct _InteractionsView {
 
 G_DEFINE_TYPE(InteractionsView, interactions_view, GTK_TYPE_BOX)
 
+static void on_interaction_added(SwankSession *session, Interaction *interaction, gpointer user_data);
+
 static void
 interactions_view_finalize(GObject *obj)
 {

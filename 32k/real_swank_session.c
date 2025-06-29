@@ -13,10 +13,10 @@ struct _RealSwankSession {
 
 enum {
   INTERACTION_ADDED,
-  SIGNAL_COUNT
+  SWANK_SESSION_SIGNAL_COUNT
 };
 
-static guint real_swank_session_signals[SIGNAL_COUNT] = { 0 };
+static guint real_swank_session_signals[SWANK_SESSION_SIGNAL_COUNT] = { 0 };
 
 static void real_swank_session_eval(SwankSession *session, Interaction *interaction);
 
