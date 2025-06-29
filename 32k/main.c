@@ -6,6 +6,7 @@
 #include "file_open.c"
 #include "file_save.c"
 #include "find_executables.c"
+#include "interactions_view.c"
 #include "preferences.c"
 #include "preferences_dialog.c"
 #include "process.c"

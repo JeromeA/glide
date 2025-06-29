@@ -4,6 +4,7 @@
 #include "file_save.h"
 #include "preferences_dialog.h"
 #include "evaluate.h"
+#include "interactions_view.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -98,11 +99,15 @@ app_activate (GApplication *app)
   g_signal_connect (pref_item, "activate", G_CALLBACK (on_preferences), self);
   g_signal_connect (quit_item, "activate", G_CALLBACK (quit_menu_item), self);
 
-  /* Vertical box with menu + view */
-  GtkWidget *vbox = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
-  gtk_box_pack_start (GTK_BOX (vbox), menu_bar,     FALSE, FALSE, 0);
-  gtk_box_pack_start (GTK_BOX (vbox), scrolled,     TRUE,  TRUE,  0);
-  gtk_container_add   (GTK_CONTAINER (self->window), vbox);
+  GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
+  GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
+  gtk_paned_pack1(GTK_PANED(paned), scrolled, TRUE, TRUE);
+  gtk_paned_pack2(GTK_PANED(paned), interactions, FALSE, TRUE);
+
+  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(vbox), paned, TRUE, TRUE, 0);
+  gtk_container_add(GTK_CONTAINER(self->window), vbox);
 
   gtk_widget_show_all (self->window);
 }
