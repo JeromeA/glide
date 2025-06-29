@@ -92,12 +92,9 @@ app_activate (GApplication *app)
   gtk_menu_shell_append (GTK_MENU_SHELL (file_menu), quit_item);
   gtk_menu_shell_append (GTK_MENU_SHELL (menu_bar), file_item);
 
-  /* Pass the buffer to file-handlers */
   g_signal_connect (open_item,   "activate", G_CALLBACK (file_open),   self);
   g_signal_connect (save_item,   "activate", G_CALLBACK (file_save),   self);
   g_signal_connect (saveas_item, "activate", G_CALLBACK (file_saveas), self);
-
-  /* Preferences need a window */
   g_signal_connect (pref_item, "activate", G_CALLBACK (on_preferences), self);
   g_signal_connect (quit_item, "activate", G_CALLBACK (quit_menu_item), self);
 
