@@ -344,14 +344,22 @@ on_indentation_update(const gchar *value)
   g_debug_40("RealSwankSession.on_indentation_update ", value);
 }
 
-void
-real_swank_session_on_message(GString *msg, gpointer user_data)
+typedef struct {
+  RealSwankSession *self;
+  GString *msg;
+} MessageData;
+
+static gboolean
+real_swank_session_handle_message(gpointer data)
 {
-  g_debug_40("RealSwankSession.on_message ", msg->str);
+  MessageData *m = data;
+  g_debug_40("RealSwankSession.on_message ", m->msg->str);
+
+  RealSwankSession *self = m->self;
+  GString *msg = m->msg;
 
   const char *p = msg->str;
   if (g_str_has_prefix(p, "(:return ")) {
-    RealSwankSession *self = GLIDE_REAL_SWANK_SESSION(user_data);
     p += strlen("(:return ");
     gchar *arg1 = next_token(&p);
     gchar *arg2 = next_token(&p);
@@ -397,5 +405,22 @@ real_swank_session_on_message(GString *msg, gpointer user_data)
     on_indentation_update(arg);
     g_free(arg);
   }
+
+  g_string_free(msg, TRUE);
+  if (self)
+    g_object_unref(self);
+  g_free(m);
+  return G_SOURCE_REMOVE;
+}
+
+void
+real_swank_session_on_message(GString *msg, gpointer user_data)
+{
+  MessageData *m = g_new(MessageData, 1);
+  m->self = user_data ? GLIDE_REAL_SWANK_SESSION(user_data) : NULL;
+  m->msg = g_string_new_len(msg->str, msg->len);
+  if (m->self)
+    g_object_ref(m->self);
+  g_main_context_invoke(NULL, real_swank_session_handle_message, m);
 }
 
