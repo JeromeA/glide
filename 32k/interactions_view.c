@@ -2,6 +2,10 @@
 #include "interaction.h"
 #include "swank_session.h"
 
+#define CSS_CLASS_OUTPUT "interaction-output"
+#define CSS_CLASS_ERROR  "interaction-error"
+#define CSS_CLASS_RESULT "interaction-result"
+
 typedef struct {
   GtkWidget *frame;
   GtkWidget *box;
@@ -36,17 +40,30 @@ interaction_row_free(gpointer data)
 }
 
 static void
-set_text_view(GtkBox *box, GtkWidget **view, const gchar *text)
+set_text_view(GtkBox *box,
+    GtkWidget **view,
+    const gchar *text,
+    const gchar *css_class,
+    gboolean hide_if_empty)
 {
-  if (text && !*view) {
+  if ((!text || (hide_if_empty && *text == '\0')) && *view) {
+    gtk_container_remove(GTK_CONTAINER(box), *view);
+    *view = NULL;
+    return;
+  }
+
+  if (text && *text != '\0' && !*view) {
     *view = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(*view), FALSE);
     gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(*view), GTK_WRAP_WORD_CHAR);
+    if (css_class)
+      gtk_style_context_add_class(gtk_widget_get_style_context(*view), css_class);
     gtk_box_pack_start(box, *view, FALSE, FALSE, 0);
   }
-  if (*view) {
+
+  if (*view && text) {
     GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(*view));
-    gtk_text_buffer_set_text(buffer, text ? text : "", -1);
+    gtk_text_buffer_set_text(buffer, text, -1);
   }
 }
 
@@ -54,10 +71,16 @@ static void
 interaction_row_update(InteractionRow *row, Interaction *interaction)
 {
   g_debug("InteractionsView.row_update %s", interaction->expression);
-  set_text_view(GTK_BOX(row->box), &row->expression, interaction->expression);
-  set_text_view(GTK_BOX(row->box), &row->output, interaction->output);
-  set_text_view(GTK_BOX(row->box), &row->error, interaction->error);
-  set_text_view(GTK_BOX(row->box), &row->result, interaction->result);
+  set_text_view(GTK_BOX(row->box), &row->expression,
+      interaction->expression, NULL, FALSE);
+  set_text_view(GTK_BOX(row->box), &row->output,
+      interaction->output, CSS_CLASS_OUTPUT, TRUE);
+  set_text_view(GTK_BOX(row->box), &row->error,
+      interaction->error, CSS_CLASS_ERROR, TRUE);
+  set_text_view(GTK_BOX(row->box), &row->result,
+      interaction->result, CSS_CLASS_RESULT, TRUE);
+  if (row->result)
+    gtk_box_reorder_child(GTK_BOX(row->box), row->result, -1);
 }
 
 static void
@@ -82,6 +105,18 @@ interactions_view_class_init(InteractionsViewClass *klass)
   g_debug("InteractionsView.class_init");
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = interactions_view_finalize;
+
+  GtkCssProvider *provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(provider,
+      "." CSS_CLASS_OUTPUT " { background-color: #f2f2f2; }"
+      " ." CSS_CLASS_ERROR " { background-color: #ffe5e5; }"
+      " ." CSS_CLASS_RESULT " { background-color: #e5ffe5; }",
+      -1, NULL);
+  GdkScreen *screen = gdk_screen_get_default();
+  gtk_style_context_add_provider_for_screen(screen,
+      GTK_STYLE_PROVIDER(provider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(provider);
 }
 
 static void
