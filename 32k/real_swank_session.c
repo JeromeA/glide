@@ -11,6 +11,13 @@ struct _RealSwankSession {
   GHashTable *interactions;
 };
 
+enum {
+  INTERACTION_ADDED,
+  SIGNAL_COUNT
+};
+
+static guint real_swank_session_signals[SIGNAL_COUNT] = { 0 };
+
 static void real_swank_session_eval(SwankSession *session, Interaction *interaction);
 
 static void
@@ -40,6 +47,16 @@ static void
 real_swank_session_class_init(RealSwankSessionClass *klass)
 {
   g_debug("RealSwankSession.class_init");
+  real_swank_session_signals[INTERACTION_ADDED] = g_signal_new(
+      "interaction-added",
+      G_TYPE_FROM_CLASS(klass),
+      G_SIGNAL_RUN_FIRST,
+      0,
+      NULL, NULL,
+      g_cclosure_marshal_VOID__POINTER,
+      G_TYPE_NONE,
+      1,
+      G_TYPE_POINTER);
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = real_swank_session_finalize;
 }
@@ -130,6 +147,7 @@ real_swank_session_eval(SwankSession *session, Interaction *interaction)
   interaction->tag = self->next_tag++;
   interaction->status = INTERACTION_RUNNING;
   g_hash_table_insert(self->interactions, GUINT_TO_POINTER(interaction->tag), interaction);
+  g_signal_emit(self, real_swank_session_signals[INTERACTION_ADDED], 0, interaction);
   gchar *escaped = escape_string(interaction->expression);
   gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)", escaped, interaction->tag);
   GString *payload = g_string_new(rpc);
