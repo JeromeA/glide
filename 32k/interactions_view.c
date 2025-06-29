@@ -53,6 +53,7 @@ set_text_view(GtkBox *box, GtkWidget **view, const gchar *text)
 static void
 interaction_row_update(InteractionRow *row, Interaction *interaction)
 {
+  g_debug("InteractionsView.row_update %s", interaction->expression);
   set_text_view(GTK_BOX(row->box), &row->expression, interaction->expression);
   set_text_view(GTK_BOX(row->box), &row->output, interaction->output);
   set_text_view(GTK_BOX(row->box), &row->error, interaction->error);
