@@ -13,6 +13,7 @@ struct _RealSwankSession {
 
 enum {
   INTERACTION_ADDED,
+  INTERACTION_UPDATED,
   SWANK_SESSION_SIGNAL_COUNT
 };
 
@@ -49,6 +50,16 @@ real_swank_session_class_init(RealSwankSessionClass *klass)
   g_debug("RealSwankSession.class_init");
   real_swank_session_signals[INTERACTION_ADDED] = g_signal_new(
       "interaction-added",
+      G_TYPE_FROM_CLASS(klass),
+      G_SIGNAL_RUN_FIRST,
+      0,
+      NULL, NULL,
+      g_cclosure_marshal_VOID__POINTER,
+      G_TYPE_NONE,
+      1,
+      G_TYPE_POINTER);
+  real_swank_session_signals[INTERACTION_UPDATED] = g_signal_new(
+      "interaction-updated",
       G_TYPE_FROM_CLASS(klass),
       G_SIGNAL_RUN_FIRST,
       0,
@@ -300,6 +311,8 @@ on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result,
   interaction->output = g_strdup(output);
   interaction->result = g_strdup(result);
   interaction->status = INTERACTION_OK;
+  g_signal_emit(self, real_swank_session_signals[INTERACTION_UPDATED], 0,
+      interaction);
 }
 
 static void
@@ -314,6 +327,8 @@ on_return_abort(RealSwankSession *self, const gchar *reason, guint32 tag)
     g_free(inter->error);
     inter->error = g_strdup(reason);
     inter->status = INTERACTION_ERROR;
+    g_signal_emit(self, real_swank_session_signals[INTERACTION_UPDATED], 0,
+        inter);
   }
 }
 
