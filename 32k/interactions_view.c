@@ -106,17 +106,7 @@ interactions_view_class_init(InteractionsViewClass *klass)
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = interactions_view_finalize;
 
-  GtkCssProvider *provider = gtk_css_provider_new();
-  gtk_css_provider_load_from_data(provider,
-      "." CSS_CLASS_OUTPUT " { background-color: #f2f2f2; }"
-      " ." CSS_CLASS_ERROR " { background-color: #ffe5e5; }"
-      " ." CSS_CLASS_RESULT " { background-color: #e5ffe5; }",
-      -1, NULL);
-  GdkScreen *screen = gdk_screen_get_default();
-  gtk_style_context_add_provider_for_screen(screen,
-      GTK_STYLE_PROVIDER(provider),
-      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  g_object_unref(provider);
+  // CSS Provider setup moved to interactions_view_init
 }
 
 static void
@@ -124,6 +114,21 @@ interactions_view_init(InteractionsView *self)
 {
   g_debug("InteractionsView.init");
   gtk_orientable_set_orientation(GTK_ORIENTABLE(self), GTK_ORIENTATION_VERTICAL);
+
+  // Load CSS
+  GtkCssProvider *provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(provider,
+      "." CSS_CLASS_OUTPUT " { background-color: #f2f2f2; }"
+      " ." CSS_CLASS_ERROR " { background-color: #ffe5e5; }"
+      " ." CSS_CLASS_RESULT " { background-color: #e5ffe5; }",
+      -1, NULL);
+
+  GtkStyleContext *context = gtk_widget_get_style_context(GTK_WIDGET(self));
+  gtk_style_context_add_provider(context,
+      GTK_STYLE_PROVIDER(provider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(provider); // Provider is referenced by the context now
+
   self->session = NULL;
   self->handler_id = 0;
   self->update_handler_id = 0;
