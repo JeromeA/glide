@@ -153,7 +153,7 @@ void real_process_global_start() {
   if (!g_spawn_async_with_pipes(NULL, // working directory (current)
                                 g_real_process_argv,
                                 NULL, // envp (current)
-                                G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH | G_SPAWN_CHILD_INHERITS_STDIN, // no, child gets pipe
+                                G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH,
                                 child_setup_global, // function to run in child before exec
                                 NULL, // user_data for child_setup
                                 &g_real_process_pid,
