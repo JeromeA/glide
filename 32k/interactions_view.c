@@ -105,8 +105,6 @@ interactions_view_class_init(InteractionsViewClass *klass)
   g_debug("InteractionsView.class_init");
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = interactions_view_finalize;
-
-  // CSS Provider setup moved to interactions_view_init
 }
 
 static void
@@ -118,13 +116,13 @@ interactions_view_init(InteractionsView *self)
   // Load CSS
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_data(provider,
-      "." CSS_CLASS_OUTPUT " { background-color: #f2f2f2; }"
-      " ." CSS_CLASS_ERROR " { background-color: #ffe5e5; }"
-      " ." CSS_CLASS_RESULT " { background-color: #e5ffe5; }",
+      "." CSS_CLASS_OUTPUT " text { background-color: #f2f2f2; }"
+      " ." CSS_CLASS_ERROR " text { background-color: #ffe5e5; }"
+      " ." CSS_CLASS_RESULT " text { background-color: #e5ffe5; }",
       -1, NULL);
 
-  GtkStyleContext *context = gtk_widget_get_style_context(GTK_WIDGET(self));
-  gtk_style_context_add_provider(context,
+  gtk_style_context_add_provider_for_screen(
+      gdk_screen_get_default(),
       GTK_STYLE_PROVIDER(provider),
       GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   g_object_unref(provider); // Provider is referenced by the context now
