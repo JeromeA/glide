@@ -1,88 +1,89 @@
+#include "simple_file_open.h" // Own header
 #include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h>
+#include <gtksourceview/gtksource.h> // For GtkSourceBuffer
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include "reloc.h"
-#include "syscalls.h"
-#include "file_open.h"
+#include "reloc.h"    // For relocate() - though not used directly here, often in main
+#include "syscalls.h" // For sys_open, sys_read, sys_close, sys_fstat
 
-extern gchar *filename;
+// Global variables defined in main.c
+extern GtkSourceBuffer *buffer_global;
+// filename_global is also in main.c, but we'll use main_set_filename to change it.
+// Need declaration for main_set_filename if not in a common header included by both.
+// Assuming for INLINE builds, main.c definitions are visible.
+// For non-INLINE, this would need `extern void main_set_filename(const gchar*);`
+// or main_set_filename needs to be in a shared utility header.
+// Let's add the extern declaration for clarity, assuming it's defined in main.c.
+extern void main_set_filename(const gchar *new_filename);
 
-void file_open(GtkWidget *, gpointer data) {
-    GtkSourceBuffer *source_buffer = GTK_SOURCE_BUFFER(data);
 
-    // Create a file chooser dialog
+void simple_file_open_global(GtkWidget *triggering_widget) {
+    GtkWindow *parent_window = NULL;
+    if (triggering_widget) {
+        parent_window = GTK_WINDOW(gtk_widget_get_toplevel(triggering_widget));
+    }
+
+    if (!buffer_global) {
+        g_printerr("simple_file_open_global: buffer_global is NULL. Cannot open file.\n");
+        return;
+    }
+
     GtkWidget *dialog = gtk_file_chooser_dialog_new(
         "Open File",
-        NULL,
+        parent_window,
         GTK_FILE_CHOOSER_ACTION_OPEN,
         "_Cancel", GTK_RESPONSE_CANCEL,
         "_Open",   GTK_RESPONSE_ACCEPT,
         NULL);
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-        g_free(filename);
-        filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+        gchar *chosen_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
         
-        // Open the file using syscalls
-        int fd = sys_open(filename, O_RDONLY, 0);
+        // Use main_set_filename to update the global filename
+        main_set_filename(chosen_filename);
+        // filename_global is now updated by main_set_filename.
+
+        int fd = sys_open(chosen_filename, O_RDONLY, 0);
         if (fd == -1) {
-            // Handle error opening file
-            g_printerr("Failed to open %s (errno %d)\n",
-                       filename, errno);
+            g_printerr("Failed to open %s (errno %d)\n", chosen_filename, errno);
         } else {
             struct stat sb;
             if (sys_fstat(fd, &sb) == -1) {
-                g_printerr("Failed to stat %s (errno %d)\n",
-                           filename, errno);
+                g_printerr("Failed to stat %s (errno %d)\n", chosen_filename, errno);
                 sys_close(fd);
             } else if (!S_ISREG(sb.st_mode)) {
-                g_printerr("Not a regular file: %s\n", filename);
+                g_printerr("Not a regular file: %s\n", chosen_filename);
                 sys_close(fd);
             } else {
-                // sb.st_size is the size of the file in bytes
                 off_t length = sb.st_size;
-                
-                // Allocate buffer for file content + null terminator
-                char *content = g_malloc(length + 1);
+                gchar *content = g_malloc(length + 1);
                 if (!content) {
-                    g_printerr("Failed to allocate memory.\n");
+                    g_printerr("Failed to allocate memory for file content.\n");
                     sys_close(fd);
                 } else {
                     ssize_t total_read = 0;
-                    
-                    // Read loop to handle partial reads
                     while (total_read < length) {
-                        ssize_t r = sys_read(fd, content + total_read,
-                                         length - total_read);
+                        ssize_t r = sys_read(fd, content + total_read, length - total_read);
                         if (r == -1) {
-                            g_printerr("Error reading %s (errno %d)\n",
-                                       filename, errno);
+                            g_printerr("Error reading %s (errno %d)\n", chosen_filename, errno);
                             break;
                         } else if (r == 0) {
-                            // EOF reached unexpectedly
-                            break;
+                            break; // EOF
                         }
                         total_read += r;
                     }
-                    
-                    // Null-terminate properly in case we didn’t read the entire file
                     content[total_read] = '\0';
-                    
-                    // Close the file
                     sys_close(fd);
 
-                    // Set the content to the buffer
-                    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(source_buffer),
-                                             content, -1);
+                    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(buffer_global), content, -1);
                     g_free(content);
                 }
             }
         }
+        g_free(chosen_filename); // Allocated by gtk_file_chooser_get_filename
     }
 
-    // Destroy the dialog
     gtk_widget_destroy(dialog);
 }

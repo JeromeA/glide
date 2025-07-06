@@ -1,103 +1,21 @@
 #include "real_swank_session.h"
-#include <string.h>
-#include "util.h"
+#include "real_swank_process.h" // For global Swank process functions
 #include "interaction.h"
+#include "util.h"         // For g_debug_40.
+#include "interactions_view.h" // For calling update functions
 
-struct _RealSwankSession {
-  GObject parent_instance;
-  SwankProcess *proc;
-  gboolean started;
-  guint32 next_tag;
-  GHashTable *interactions;
-};
+#include <string.h>       // For strstr, etc.
+#include <gtk/gtk.h>      // For g_main_context_invoke, if message handling needs to be on main thread
 
-enum {
-  INTERACTION_ADDED,
-  INTERACTION_UPDATED,
-  SWANK_SESSION_SIGNAL_COUNT
-};
+// Global static variables for RealSwankSession's state
+extern GtkWidget* interactions_view_global; // Defined in main.c
+static gboolean   g_swank_session_started = FALSE;
+static guint32    g_swank_session_next_tag = 1;
+static GHashTable *g_swank_session_interactions_table = NULL; // Stores Interaction* keyed by tag
 
-static guint real_swank_session_signals[SWANK_SESSION_SIGNAL_COUNT] = { 0 };
 
-static void real_swank_session_eval(SwankSession *session, Interaction *interaction);
-
-static void
-real_swank_session_swank_session_iface_init(SwankSessionInterface *iface)
-{
-  g_debug("RealSwankSession.swank_session_iface_init");
-  iface->eval = real_swank_session_eval;
-}
-
-G_DEFINE_TYPE_WITH_CODE(RealSwankSession, real_swank_session, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE(SWANK_SESSION_TYPE,
-        real_swank_session_swank_session_iface_init))
-
-static void
-real_swank_session_finalize(GObject *obj)
-{
-  g_debug("RealSwankSession.finalize");
-  RealSwankSession *self = GLIDE_REAL_SWANK_SESSION(obj);
-  if (self->proc)
-    g_object_unref(self->proc);
-  if (self->interactions)
-    g_hash_table_destroy(self->interactions);
-  G_OBJECT_CLASS(real_swank_session_parent_class)->finalize(obj);
-}
-
-static void
-real_swank_session_class_init(RealSwankSessionClass *klass)
-{
-  g_debug("RealSwankSession.class_init");
-  real_swank_session_signals[INTERACTION_ADDED] = g_signal_new(
-      "interaction-added",
-      G_TYPE_FROM_CLASS(klass),
-      G_SIGNAL_RUN_FIRST,
-      0,
-      NULL, NULL,
-      g_cclosure_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER);
-  real_swank_session_signals[INTERACTION_UPDATED] = g_signal_new(
-      "interaction-updated",
-      G_TYPE_FROM_CLASS(klass),
-      G_SIGNAL_RUN_FIRST,
-      0,
-      NULL, NULL,
-      g_cclosure_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER);
-  GObjectClass *obj = G_OBJECT_CLASS(klass);
-  obj->finalize = real_swank_session_finalize;
-}
-
-static void
-real_swank_session_init(RealSwankSession *self)
-{
-  g_debug("RealSwankSession.init");
-  self->proc = NULL;
-  self->started = FALSE;
-  self->next_tag = 1;
-  self->interactions = g_hash_table_new(g_direct_hash, g_direct_equal);
-}
-
-SwankSession *
-real_swank_session_new(SwankProcess *proc)
-{
-  g_debug("RealSwankSession.new");
-  RealSwankSession *self = g_object_new(REAL_SWANK_SESSION_TYPE, NULL);
-  self->proc = proc ? g_object_ref(proc) : NULL;
-  self->started = FALSE;
-  if (self->proc)
-    swank_process_set_message_cb(self->proc, real_swank_session_on_message, self);
-  return GLIDE_SWANK_SESSION(self);
-}
-
-static gchar *
-escape_string(const char *str)
-{
-  g_debug("RealSwankSession.escape_string input:%s", str);
+// --- Static utility functions (copied from common/util.c) ---
+static gchar *static_escape_string(const char *str) {
   GString *out = g_string_new(NULL);
   for (const char *p = str; *p; p++) {
     switch (*p) {
@@ -106,20 +24,72 @@ escape_string(const char *str)
       default:    g_string_append_c(out, *p);
     }
   }
-  gchar *ret = g_string_free(out, FALSE);
-  g_debug("RealSwankSession.escape_string output:%s", ret);
-  return ret;
+  return g_string_free(out, FALSE);
 }
 
-static gchar *
-unescape_string(const char *token)
-{
-  g_debug("RealSwankSession.unescape_string input:%s", token);
+static gboolean static_ascii_isspace(char c) {
+  switch ((unsigned char)c) {
+    case ' ': case '\t': case '\n': case '\r': case '\f': case '\v':
+      return TRUE;
+    default:
+      return FALSE;
+  }
+}
+
+static gchar *static_next_token(const char **p_inout) {
+  const char *s = *p_inout;
+  while (static_ascii_isspace(*s)) s++;
+  const char *start = s;
+
+  if (*s == '\0') return NULL;
+
+  if (*s == '(') {
+    int depth = 1;
+    gboolean in_str = FALSE;
+    gboolean esc = FALSE;
+    s++;
+    for (; *s && depth > 0; s++) {
+      char c = *s;
+      if (esc) {
+        esc = FALSE;
+      } else if (c == '\\') {
+        esc = TRUE;
+      } else if (c == '"') {
+        in_str = !in_str;
+      } else if (!in_str) {
+        if (c == '(') depth++;
+        else if (c == ')') depth--;
+      }
+    }
+  } else if (*s == '"') {
+    gboolean esc = FALSE;
+    s++;
+    for (; *s; s++) {
+      char c = *s;
+      if (esc) {
+        esc = FALSE;
+      } else if (c == '\\') {
+        esc = TRUE;
+      } else if (c == '"') {
+        s++;
+        break;
+      }
+    }
+  } else {
+    for (; *s && !static_ascii_isspace(*s) && *s != '(' && *s != ')'; s++) {
+    }
+  }
+
+  *p_inout = s;
+  return g_strndup(start, s - start);
+}
+
+static gchar *static_unescape_string(const char *token) {
   if (*token == '"') {
     GString *out = g_string_new(NULL);
     const char *p = token + 1;
     gboolean esc = FALSE;
-    for (; *p && *p != '"'; p++) {
+    for (; *p && (*p != '"' || esc) ; p++) {
       char c = *p;
       if (esc) {
         switch (c) {
@@ -137,290 +107,202 @@ unescape_string(const char *token)
         g_string_append_c(out, c);
       }
     }
-    gchar *ret = g_string_free(out, FALSE);
-    g_debug("RealSwankSession.unescape_string output:%s", ret);
-    return ret;
+    return g_string_free(out, FALSE);
   }
   return g_strdup(token);
 }
 
-static void
-real_swank_session_eval(SwankSession *session, Interaction *interaction)
-{
-  g_debug("RealSwankSession.eval %s", interaction->expression);
-  RealSwankSession *self = GLIDE_REAL_SWANK_SESSION(session);
-  if (!self->proc)
-    return;
-  if (!self->started) {
-    swank_process_start(self->proc);
-    self->started = TRUE;
-  }
-  interaction->tag = self->next_tag++;
-  interaction->status = INTERACTION_RUNNING;
-  g_hash_table_insert(self->interactions, GUINT_TO_POINTER(interaction->tag), interaction);
-  g_signal_emit(self, real_swank_session_signals[INTERACTION_ADDED], 0, interaction);
-  gchar *escaped = escape_string(interaction->expression);
-  gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)", escaped, interaction->tag);
-  GString *payload = g_string_new(rpc);
-  g_free(escaped);
-  g_free(rpc);
-  swank_process_send(self->proc, payload);
-  g_string_free(payload, TRUE);
-}
+// Use static versions via #define to avoid changing all call sites immediately
+#define escape_string static_escape_string
+#define next_token static_next_token
+#define unescape_string static_unescape_string
+// g_debug_40 is a macro from util.h, so it's fine.
 
-static inline gboolean ascii_isspace(char c)
-{
-  switch ((unsigned char)c) {
-    case ' ': case '\t': case '\n': case '\r': case '\f': case '\v':
-      return TRUE;
-    default:
-      return FALSE;
-  }
-}
-
-static gchar *
-next_token(const char **p)
-{
-  const char *s = *p;
-  while (ascii_isspace(*s)) s++;
-  const char *start = s;
-  if (*s == '(') {
-    int depth = 1;
-    gboolean in_str = FALSE;
-    gboolean esc = FALSE;
-    s++;
-    for (; *s && depth > 0; s++) {
-      char c = *s;
-      if (esc) {
-        esc = FALSE;
-      } else if (c == '\\') {
-        esc = TRUE;
-      } else if (c == '"') {
-        in_str = !in_str;
-      } else if (!in_str) {
-        if (c == '(')
-          depth++;
-        else if (c == ')')
-          depth--;
-      }
-    }
-    *p = s;
-    while (ascii_isspace(**p)) (*p)++;
-    return g_strndup(start, s - start);
-  } else if (*s == '"') {
-    gboolean esc = FALSE;
-    s++;
-    for (; *s; s++) {
-      char c = *s;
-      if (esc)
-        esc = FALSE;
-      else if (c == '\\')
-        esc = TRUE;
-      else if (c == '"') {
-        s++;
-        break;
-      }
-    }
-    *p = s;
-    while (ascii_isspace(**p)) (*p)++;
-    return g_strndup(start, s - start);
-  } else {
-    for (; *s && !ascii_isspace(*s) && *s != ')'; s++)
-      ;
-    *p = s;
-    while (ascii_isspace(**p)) (*p)++;
-    return g_strndup(start, s - start);
-  }
-}
-
-static gboolean
-parse_return_ok(const gchar *token, gchar **output, gchar **result)
-{
-  if (!g_str_has_prefix(token, "(:ok ")) {
-    g_debug("RealSwankSession.parse_return_ok unexpected token:%s", token);
-    return FALSE;
-  }
-
-  const char *p = token + strlen("(:ok ");
-  gchar *list = next_token(&p);
-  if (!list) {
-    g_debug("RealSwankSession.parse_return_ok missing list in:%s", token);
-    return FALSE;
-  }
-
-  const char *q = list;
-  if (*q == '(')
-    q++;
-  gchar *out_tok = next_token(&q);
-  gchar *res_tok = next_token(&q);
-  if (*q == ')')
-    q++;
-
-  if (!out_tok || !res_tok) {
-    g_debug("RealSwankSession.parse_return_ok missing tokens in:%s", list);
-    g_free(list);
-    g_free(out_tok);
-    g_free(res_tok);
-    return FALSE;
-  }
-
-  *output = unescape_string(out_tok);
-  *result = unescape_string(res_tok);
-
-  g_free(out_tok);
-  g_free(res_tok);
-  g_free(list);
-  return TRUE;
-}
-
-static gboolean
-parse_return_abort(const gchar *token, gchar **reason)
-{
-  if (!g_str_has_prefix(token, "(:abort ")) {
-    g_debug("RealSwankSession.parse_return_abort unexpected token:%s", token);
-    return FALSE;
-  }
-
-  const char *p = token + strlen("(:abort ");
-  gchar *reason_tok = next_token(&p);
-  if (!reason_tok) {
-    g_debug("RealSwankSession.parse_return_abort missing reason in:%s", token);
-    return FALSE;
-  }
-
-  *reason = unescape_string(reason_tok);
-  g_free(reason_tok);
-  return TRUE;
-}
-
-static void
-on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result,
-    guint32 tag)
-{
-  g_debug("RealSwankSession.on_return_ok %s %s %u", output, result, tag);
-  if (!self)
-    return;
-  Interaction *interaction =
-      g_hash_table_lookup(self->interactions, GUINT_TO_POINTER(tag));
-  if (!interaction) {
-    g_debug("RealSwankSession.on_return_ok unknown tag:%u", tag);
-    return;
-  }
-  g_free(interaction->output);
-  g_free(interaction->result);
-  interaction->output = g_strdup(output);
-  interaction->result = g_strdup(result);
-  interaction->status = INTERACTION_OK;
-  g_signal_emit(self, real_swank_session_signals[INTERACTION_UPDATED], 0,
-      interaction);
-}
-
-static void
-on_return_abort(RealSwankSession *self, const gchar *reason, guint32 tag)
-{
-  g_debug("RealSwankSession.on_return_abort %s %u", reason, tag);
-  if (!self)
-    return;
-  Interaction *inter = g_hash_table_lookup(self->interactions,
-      GUINT_TO_POINTER(tag));
-  if (inter) {
-    g_free(inter->error);
-    inter->error = g_strdup(reason);
-    inter->status = INTERACTION_ERROR;
-    g_signal_emit(self, real_swank_session_signals[INTERACTION_UPDATED], 0,
-        inter);
-  }
-}
-
-static void
-on_new_features(const gchar *value)
-{
-  g_debug_40("RealSwankSession.on_new_features ", value);
-}
-
-static void
-on_indentation_update(const gchar *value)
-{
-  g_debug_40("RealSwankSession.on_indentation_update ", value);
-}
+// --- Forward declarations for internal static functions (session specific) ---
+static void interaction_free_members_static(Interaction *interaction);
+static void real_swank_session_on_message_internal(GString *msg, gpointer user_data);
+static gboolean real_swank_session_handle_message_on_main_thread(gpointer data);
+static void parse_and_handle_return_message(const gchar *message_payload);
+static gboolean parse_return_ok(const gchar *token, gchar **output, gchar **result);
+static gboolean parse_return_abort(const gchar *token, gchar **reason);
 
 typedef struct {
-  RealSwankSession *self;
-  GString *msg;
-} MessageData;
+    GString *msg_payload;
+} MessageDataForMainThread;
 
-static gboolean
-real_swank_session_handle_message(gpointer data)
-{
-  MessageData *m = data;
-  g_debug_40("RealSwankSession.on_message ", m->msg->str);
-
-  RealSwankSession *self = m->self;
-  GString *msg = m->msg;
-
-  const char *p = msg->str;
-  if (g_str_has_prefix(p, "(:return ")) {
-    p += strlen("(:return ");
-    gchar *arg1 = next_token(&p);
-    gchar *arg2 = next_token(&p);
-    gchar *output = NULL;
-    gchar *result = NULL;
-    gchar *reason = NULL;
-    gboolean handled = FALSE;
-    if (parse_return_ok(arg1, &output, &result)) {
-      gchar *end = NULL;
-      guint64 tag64 = g_ascii_strtoull(arg2, &end, 10);
-      if (end == arg2 || *end != '\0' || tag64 > G_MAXUINT32) {
-        g_debug("RealSwankSession.on_message invalid tag:%s", arg2);
-      } else {
-        on_return_ok(self, output, result, (guint32)tag64);
-        handled = TRUE;
-      }
-      g_free(output);
-      g_free(result);
-    } else if (parse_return_abort(arg1, &reason)) {
-      gchar *end = NULL;
-      guint64 tag64 = g_ascii_strtoull(arg2, &end, 10);
-      if (end == arg2 || *end != '\0' || tag64 > G_MAXUINT32) {
-        g_debug("RealSwankSession.on_message invalid tag:%s", arg2);
-      } else {
-        on_return_abort(self, reason, (guint32)tag64);
-        handled = TRUE;
-      }
-      g_free(reason);
+void interaction_free_members_static(Interaction *interaction) {
+    if (interaction) {
+        g_free(interaction->expression); interaction->expression = NULL;
+        g_free(interaction->output); interaction->output = NULL;
+        g_free(interaction->result); interaction->result = NULL;
+        g_free(interaction->error); interaction->error = NULL;
+        g_free(interaction);
     }
-    if (!handled) {
-      g_debug("RealSwankSession.on_message failed to parse return list:%s", arg1);
-    }
-    g_free(arg1);
-    g_free(arg2);
-  } else if (g_str_has_prefix(p, "(:new-features ")) {
-    p += strlen("(:new-features ");
-    gchar *arg = next_token(&p);
-    on_new_features(arg);
-    g_free(arg);
-  } else if (g_str_has_prefix(p, "(:indentation-update ")) {
-    p += strlen("(:indentation-update ");
-    gchar *arg = next_token(&p);
-    on_indentation_update(arg);
-    g_free(arg);
-  }
-
-  g_string_free(msg, TRUE);
-  if (self)
-    g_object_unref(self);
-  g_free(m);
-  return G_SOURCE_REMOVE;
 }
 
-void
-real_swank_session_on_message(GString *msg, gpointer user_data)
-{
-  MessageData *m = g_new(MessageData, 1);
-  m->self = user_data ? GLIDE_REAL_SWANK_SESSION(user_data) : NULL;
-  m->msg = g_string_new_len(msg->str, msg->len);
-  if (m->self)
-    g_object_ref(m->self);
-  g_main_context_invoke(NULL, real_swank_session_handle_message, m);
+void real_swank_session_init_globals() {
+    g_debug("real_swank_session_init_globals");
+    if (g_swank_session_interactions_table) {
+        g_warning("real_swank_session_init_globals: Already initialized. Cleaning up old state.");
+        real_swank_session_cleanup_globals();
+    }
+    g_swank_session_started = FALSE;
+    g_swank_session_next_tag = 1;
+    g_swank_session_interactions_table = g_hash_table_new_full(g_direct_hash,
+                                                               g_direct_equal,
+                                                               NULL,
+                                                               (GDestroyNotify)interaction_free_members_static);
+    real_swank_process_global_set_message_cb(real_swank_session_on_message_internal, NULL);
+    g_debug("real_swank_session_init_globals: Complete. Registered message callback.");
 }
 
+void real_swank_session_global_eval(Interaction *interaction) {
+    if (!interaction || !interaction->expression) {
+        g_warning("real_swank_session_global_eval: NULL interaction or expression.");
+        if(interaction) g_free(interaction);
+        return;
+    }
+    g_debug("real_swank_session_global_eval: expr='%s'", interaction->expression);
+    if (!g_swank_session_started) {
+        real_swank_process_global_start();
+        g_swank_session_started = TRUE;
+    }
+    interaction->tag = g_swank_session_next_tag++;
+    interaction->status = INTERACTION_RUNNING;
+    g_hash_table_insert(g_swank_session_interactions_table, GUINT_TO_POINTER(interaction->tag), interaction);
+    g_debug("Interaction %u added (expression: %s)", interaction->tag, interaction->expression);
+    if (interactions_view_global) {
+        interactions_view_add_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
+    } else {
+        g_warning("real_swank_session_global_eval: interactions_view_global is NULL. Cannot add interaction to view.");
+    }
+    gchar *escaped_expr = escape_string(interaction->expression); // Uses static_escape_string
+    gchar *rpc_call = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)",
+                                      escaped_expr, interaction->tag);
+    g_free(escaped_expr);
+    GString *payload = g_string_new(rpc_call);
+    g_free(rpc_call);
+    real_swank_process_global_send(payload);
+    g_string_free(payload, TRUE);
+}
+
+static void real_swank_session_on_message_internal(GString *msg, gpointer /*user_data*/) {
+    g_debug_40("real_swank_session_on_message_internal: Received raw msg:", msg->str);
+    MessageDataForMainThread *main_thread_data = g_new(MessageDataForMainThread, 1);
+    main_thread_data->msg_payload = g_string_new_len(msg->str, msg->len);
+    g_main_context_invoke(NULL, real_swank_session_handle_message_on_main_thread, main_thread_data);
+}
+
+static gboolean real_swank_session_handle_message_on_main_thread(gpointer data) {
+    MessageDataForMainThread *main_thread_data = (MessageDataForMainThread *)data;
+    GString *msg_payload = main_thread_data->msg_payload;
+    g_debug_40("real_swank_session_handle_message_on_main_thread: Processing msg:", msg_payload->str);
+    const char *p = msg_payload->str;
+    if (g_str_has_prefix(p, "(:return ")) {
+        parse_and_handle_return_message(p);
+    } else if (g_str_has_prefix(p, "(:new-features ")) {
+        g_debug_40("Received Swank :new-features:", p);
+    } else if (g_str_has_prefix(p, "(:indentation-update ")) {
+        g_debug_40("Received Swank :indentation-update:", p);
+    } else {
+        g_debug_40("Received unknown Swank message type:", p);
+    }
+    g_string_free(msg_payload, TRUE);
+    g_free(main_thread_data);
+    return G_SOURCE_REMOVE;
+}
+
+static void parse_and_handle_return_message(const char *message_payload_str) {
+    const char *p = message_payload_str + strlen("(:return ");
+    gchar *return_type_token = next_token(&p); // Uses static_next_token
+    gchar *tag_id_token = next_token(&p);      // Uses static_next_token
+    if (!return_type_token || !tag_id_token) {
+        g_warning("real_swank_session: Could not parse :return message. Payload: %s", message_payload_str);
+        g_free(return_type_token);
+        g_free(tag_id_token);
+        return;
+    }
+    gchar *end_ptr = NULL;
+    guint64 tag_val_64 = g_ascii_strtoull(tag_id_token, &end_ptr, 10);
+    guint32 tag_id = 0;
+    if (*end_ptr != '\0' || tag_val_64 == 0 || tag_val_64 > G_MAXUINT32) {
+        g_warning("real_swank_session: Invalid tag_id in :return message: '%s'", tag_id_token);
+        g_free(return_type_token);
+        g_free(tag_id_token);
+        return;
+    }
+    tag_id = (guint32)tag_val_64;
+    Interaction *interaction = (Interaction *)g_hash_table_lookup(g_swank_session_interactions_table, GUINT_TO_POINTER(tag_id));
+    if (!interaction) {
+        g_warning("real_swank_session: Received :return for unknown tag_id: %u", tag_id);
+        g_free(return_type_token);
+        g_free(tag_id_token);
+        return;
+    }
+    gchar *output_str = NULL;
+    gchar *result_str = NULL;
+    gchar *abort_reason_str = NULL;
+    if (parse_return_ok(return_type_token, &output_str, &result_str)) {
+        g_debug("Interaction %u OK: output='%s', result='%s'", tag_id, output_str, result_str);
+        g_free(interaction->output); interaction->output = output_str;
+        g_free(interaction->result); interaction->result = result_str;
+        interaction->status = INTERACTION_OK;
+    } else if (parse_return_abort(return_type_token, &abort_reason_str)) {
+        g_debug("Interaction %u ABORT: reason='%s'", tag_id, abort_reason_str);
+        g_free(interaction->error); interaction->error = abort_reason_str;
+        interaction->status = INTERACTION_ERROR;
+    } else {
+        g_warning("real_swank_session: Failed to parse specific return type: %s", return_type_token);
+        interaction->status = INTERACTION_ERROR;
+        g_free(interaction->error);
+        interaction->error = g_strdup("Failed to parse return from Swank");
+    }
+    g_debug("Interaction %u updated (status: %d)", tag_id, interaction->status);
+    if (interactions_view_global) {
+        interactions_view_update_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
+    } else {
+        g_warning("parse_and_handle_return_message: interactions_view_global is NULL. Cannot update interaction in view.");
+    }
+    g_free(return_type_token);
+    g_free(tag_id_token);
+}
+
+static gboolean parse_return_ok(const gchar *token, gchar **output, gchar **result) {
+    if (!g_str_has_prefix(token, "(:ok ")) return FALSE;
+    const char *p = token + strlen("(:ok ");
+    gchar *list_payload = next_token(&p);
+    if (!list_payload) return FALSE;
+    if (list_payload[0] != '(' || list_payload[strlen(list_payload)-1] != ')') {
+        g_free(list_payload); return FALSE;
+    }
+    const char *q = list_payload + 1;
+    gchar *out_tok = next_token(&q);
+    gchar *res_tok = next_token(&q);
+    if (!out_tok || !res_tok) {
+        g_free(list_payload); g_free(out_tok); g_free(res_tok); return FALSE;
+    }
+    *output = unescape_string(out_tok); // Uses static_unescape_string
+    *result = unescape_string(res_tok); // Uses static_unescape_string
+    g_free(list_payload); g_free(out_tok); g_free(res_tok);
+    return TRUE;
+}
+
+static gboolean parse_return_abort(const gchar *token, gchar **reason) {
+    if (!g_str_has_prefix(token, "(:abort ")) return FALSE;
+    const char *p = token + strlen("(:abort ");
+    gchar *reason_tok = next_token(&p);
+    if (!reason_tok) return FALSE;
+    *reason = unescape_string(reason_tok); // Uses static_unescape_string
+    g_free(reason_tok);
+    return TRUE;
+}
+
+void real_swank_session_cleanup_globals() {
+    g_debug("real_swank_session_cleanup_globals");
+    if (g_swank_session_interactions_table) {
+        g_hash_table_destroy(g_swank_session_interactions_table);
+        g_swank_session_interactions_table = NULL;
+    }
+    g_swank_session_started = FALSE;
+    g_swank_session_next_tag = 1;
+}

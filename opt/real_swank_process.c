@@ -1,290 +1,411 @@
 #include "real_swank_process.h"
-
-#include "syscalls.h"
-#include "util.h"
+#include "real_process.h" // For global real_process functions
+#include "preferences.h"  // For global preferences functions
+#include "syscalls.h"     // For sys_read, sys_write
+#include "util.h"         // For g_debug_40
 
 #include <gio/gio.h>
-#include <unistd.h>
-#include <string.h>
-#include <errno.h>
+#include <unistd.h>    // For close
+#include <string.h>    // For strlen, strstr, memcpy
+#include <errno.h>     // For errno
 
-struct _RealSwankProcess {
-  GObject parent_instance;
-  Process *proc;
-  Preferences *prefs;
-  int swank_fd;
-  GSocketConnection *connection;
-  GString *out_data;
-  gsize out_consumed;
-  GMutex out_mutex;
-  GCond  out_cond;
-  GString *swank_data;
-  gsize swank_consumed;
-  GMutex swank_mutex;
-  SwankProcessMessageCallback msg_cb;
-  gpointer msg_cb_data;
-  int port;
-  GThread *swank_thread;
-  gboolean started;
-};
+// Global static variables for RealSwankProcess's state
+static gint g_swank_fd = -1;
+static GSocketConnection *g_swank_connection = NULL; // Store the connection to manage its lifecycle
 
-static void sp_start(SwankProcess *self);
-static void sp_send(SwankProcess *self, const GString *payload);
-static void sp_set_message_cb(SwankProcess *self, SwankProcessMessageCallback cb,
-                              gpointer user_data);
+static GString *g_swank_out_buffer = NULL;    // Buffer for stdout from the underlying Lisp process (before Swank starts)
+static gsize    g_swank_out_consumed = 0;
+static GMutex   g_swank_out_mutex;        // To protect g_swank_out_buffer and g_swank_out_consumed
+static GCond    g_swank_out_cond;         // To signal new data in g_swank_out_buffer
 
-static void
-real_swank_process_swank_process_iface_init(SwankProcessInterface *iface)
-{
-  g_debug("RealSwankProcess.swank_process_iface_init");
-  iface->start = sp_start;
-  iface->send = sp_send;
-  iface->set_message_cb = sp_set_message_cb;
+static GString *g_swank_incoming_data_buffer = NULL; // Buffer for data coming directly from Swank socket
+static gsize    g_swank_incoming_consumed = 0;
+static GMutex   g_swank_incoming_mutex;   // To protect g_swank_incoming_data_buffer and g_swank_incoming_consumed
+
+static GlobalSwankProcessMessageCallback g_swank_message_cb = NULL;
+static gpointer g_swank_message_cb_data = NULL;
+
+static gint    g_swank_port_number = 4005; // Default, will be updated from global preferences
+static GThread *g_swank_reader_thread = NULL;
+static gboolean g_swank_process_started = FALSE;
+
+
+// --- Forward declarations for internal static functions ---
+static gpointer swank_reader_thread_global(gpointer data);
+static void read_until_from_lisp_output(const char *pattern);
+static void on_lisp_stdout(GString *data, gpointer user_data);
+static void on_lisp_stderr(GString *data, gpointer user_data);
+static void start_lisp_and_swank_server();
+static void connect_to_swank_server();
+
+void real_swank_process_init_globals() {
+    g_debug("real_swank_process_init_globals");
+
+    if (g_swank_process_started) {
+        g_warning("real_swank_process_init_globals: Already initialized. Cleaning up old state.");
+        real_swank_process_cleanup_globals();
+    }
+
+    // Initialize mutexes and cond var
+    g_mutex_init(&g_swank_out_mutex);
+    g_cond_init(&g_swank_out_cond);
+    g_mutex_init(&g_swank_incoming_mutex);
+
+    // Initialize buffers
+    g_swank_out_buffer = g_string_new(NULL);
+    g_swank_out_consumed = 0;
+    g_swank_incoming_data_buffer = g_string_new(NULL);
+    g_swank_incoming_consumed = 0;
+
+    g_swank_fd = -1;
+    g_swank_connection = NULL;
+    g_swank_message_cb = NULL;
+    g_swank_message_cb_data = NULL;
+    g_swank_reader_thread = NULL;
+
+    // Get Swank port from global preferences
+    g_swank_port_number = preferences_get_swank_port_global();
+    if (g_swank_port_number == 0) { // Simple check if port is uninitialized or invalid from prefs
+        g_swank_port_number = 4005; // Fallback
+        g_warning("real_swank_process_init_globals: Invalid Swank port from preferences, using default %d", g_swank_port_number);
+    }
+
+    // Set up callbacks for the underlying Lisp process output
+    real_process_global_set_stdout_cb(on_lisp_stdout, NULL);
+    real_process_global_set_stderr_cb(on_lisp_stderr, NULL);
+
+    g_swank_process_started = FALSE; // Will be set to TRUE in _global_start
+    g_debug("real_swank_process_init_globals: complete. Port: %d", g_swank_port_number);
 }
 
-G_DEFINE_TYPE_WITH_CODE(RealSwankProcess, real_swank_process, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE(SWANK_PROCESS_TYPE, real_swank_process_swank_process_iface_init))
+static gpointer swank_reader_thread_global(gpointer /*data*/) {
+    g_debug("real_swank_process: swank_reader_thread_global starting for fd %d", g_swank_fd);
+    char buf[1024]; // Read buffer
+    ssize_t n_read;
 
-static void
-real_swank_process_finalize(GObject *obj)
-{
-  g_debug("RealSwankProcess.finalize");
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(obj);
-  if (self->swank_fd >= 0)
-    close(self->swank_fd);
-  if (self->swank_thread)
-    g_thread_join(self->swank_thread);
-  if (self->proc)
-    g_object_unref(self->proc);
-  if (self->prefs)
-    g_object_unref(self->prefs);
-  if (self->connection)
-    g_object_unref(self->connection);
-  g_string_free(self->out_data, TRUE);
-  g_string_free(self->swank_data, TRUE);
-  g_mutex_clear(&self->out_mutex);
-  g_cond_clear(&self->out_cond);
-  g_mutex_clear(&self->swank_mutex);
-  G_OBJECT_CLASS(real_swank_process_parent_class)->finalize(obj);
-}
+    while (g_swank_fd >= 0) { // Loop as long as the Swank FD is valid
+        n_read = sys_read(g_swank_fd, buf, sizeof(buf));
+        if (n_read > 0) {
+            char *dbg_str = g_strndup(buf, n_read);
+            g_debug_40("real_swank_process: swank_reader_thread_global received data:", dbg_str);
+            g_free(dbg_str);
 
-static void
-real_swank_process_class_init(RealSwankProcessClass *klass)
-{
-  g_debug("RealSwankProcess.class_init");
-  GObjectClass *obj = G_OBJECT_CLASS(klass);
-  obj->finalize = real_swank_process_finalize;
-}
+            g_mutex_lock(&g_swank_incoming_mutex);
+            g_string_append_len(g_swank_incoming_data_buffer, buf, n_read);
 
-static void
-real_swank_process_init(RealSwankProcess *self)
-{
-  g_debug("RealSwankProcess.init");
-  self->proc = NULL;
-  self->prefs = NULL;
-  self->swank_fd = -1;
-  self->connection = NULL;
-  self->out_data = g_string_new(NULL);
-  self->swank_data = g_string_new(NULL);
-  g_mutex_init(&self->out_mutex);
-  g_cond_init(&self->out_cond);
-  g_mutex_init(&self->swank_mutex);
-  self->port = 4005;
-  self->swank_thread = NULL;
-  self->msg_cb = NULL;
-  self->msg_cb_data = NULL;
-  self->started = FALSE;
-}
+            if (g_swank_message_cb) {
+                while (TRUE) { // Process all complete messages in buffer
+                    if (g_swank_incoming_data_buffer->len - g_swank_incoming_consumed >= 6) { // Enough for header?
+                        char hdr[7];
+                        memcpy(hdr, g_swank_incoming_data_buffer->str + g_swank_incoming_consumed, 6);
+                        hdr[6] = '\0';
+                        gsize msg_len = g_ascii_strtoull(hdr, NULL, 16); // Hex string to size_t
 
-static gpointer
-swank_reader_thread(gpointer data)
-{
-  g_debug("RealSwankProcess.swank_reader_thread");
-  RealSwankProcess *self = data;
-  char buf[1024];
-  for (;;) {
-    ssize_t n = sys_read(self->swank_fd, buf, sizeof(buf));
-    if (n > 0) {
-      char *dbg = g_strndup(buf, n);
-      g_debug_40("RealSwankProcess.swank_reader_thread got:", dbg);
-      g_free(dbg);
-      g_mutex_lock(&self->swank_mutex);
-      g_string_append_len(self->swank_data, buf, n);
-      if (self->msg_cb) {
-        while (TRUE) {
-          if (self->swank_data->len - self->swank_consumed >= 6) {
-            char hdr[7];
-            memcpy(hdr, self->swank_data->str + self->swank_consumed, 6);
-            hdr[6] = '\0';
-            gsize len = g_ascii_strtoll(hdr, NULL, 16);
-            if (self->swank_data->len - self->swank_consumed - 6 >= len) {
-              char *start = self->swank_data->str + self->swank_consumed + 6;
-              GString *msg = g_string_new_len(start, len);
-              self->swank_consumed += 6 + len;
-              self->msg_cb(msg, self->msg_cb_data);
-              g_string_free(msg, TRUE);
-              continue;
+                        if (g_swank_incoming_data_buffer->len - g_swank_incoming_consumed - 6 >= msg_len) { // Full message body available?
+                            char *msg_start_ptr = g_swank_incoming_data_buffer->str + g_swank_incoming_consumed + 6;
+                            GString *actual_msg = g_string_new_len(msg_start_ptr, msg_len);
+
+                            g_swank_incoming_consumed += (6 + msg_len);
+
+                            // Dispatch the message
+                            g_swank_message_cb(actual_msg, g_swank_message_cb_data);
+                            // g_string_free(actual_msg, TRUE); // Callback is responsible for the GString
+                            // The original RealSwankProcess freed it, so let's stick to that.
+                            g_string_free(actual_msg, TRUE);
+
+                            // If buffer fully consumed, reset pointers for efficiency
+                            if (g_swank_incoming_consumed == g_swank_incoming_data_buffer->len) {
+                                g_string_set_size(g_swank_incoming_data_buffer, 0);
+                                g_swank_incoming_consumed = 0;
+                            }
+                            continue; // Check for more messages
+                        }
+                    }
+                    break; // Not enough data for header or full message body
+                }
             }
-          }
-          break;
+             // Compact the buffer if a lot has been consumed
+            if (g_swank_incoming_consumed > 0 && g_swank_incoming_data_buffer->len > g_swank_incoming_consumed) {
+                g_string_erase(g_swank_incoming_data_buffer, 0, g_swank_incoming_consumed);
+            } else if (g_swank_incoming_consumed == g_swank_incoming_data_buffer->len) {
+                 g_string_set_size(g_swank_incoming_data_buffer, 0);
+            }
+            g_swank_incoming_consumed = 0; // Reset after processing or compaction
+            g_mutex_unlock(&g_swank_incoming_mutex);
+
+        } else if (n_read == 0) { // EOF
+            g_debug("real_swank_process: swank_reader_thread_global: EOF on Swank FD %d", g_swank_fd);
+            break;
+        } else { // Error
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                g_usleep(10000); // Sleep a bit and retry
+                continue;
+            }
+            g_printerr("real_swank_process: swank_reader_thread_global read error on fd %d: %s (errno %d)\n", g_swank_fd, g_strerror(errno), errno);
+            break;
         }
-      }
-      g_mutex_unlock(&self->swank_mutex);
-    } else if (n == -1 && (errno == EAGAIN || errno == EWOULDBLOCK)) {
-      g_usleep(10000);
+    }
+    g_debug("real_swank_process: swank_reader_thread_global exiting for fd %d", g_swank_fd);
+    if (g_swank_fd >=0) { // Defensive: if fd was closed by cleanup, don't try to close again.
+        // close(g_swank_fd); // Let cleanup handle this
+        // g_swank_fd = -1;
+    }
+    return NULL;
+}
+
+// Reads from the Lisp process's stdout (g_swank_out_buffer) until pattern is found
+static void read_until_from_lisp_output(const char *pattern) {
+    g_debug("real_swank_process: read_until_from_lisp_output: waiting for '%s'", pattern);
+    const gsize pattern_len = strlen(pattern);
+    g_mutex_lock(&g_swank_out_mutex);
+    while (TRUE) {
+        const char *buffer_start = g_swank_out_buffer->str + g_swank_out_consumed;
+        const char *found_at = strstr(buffer_start, pattern);
+
+        if (found_at) {
+            g_swank_out_consumed = (found_at - g_swank_out_buffer->str) + pattern_len;
+            g_debug("real_swank_process: read_until_from_lisp_output: found '%s'. Consumed up to %zu.", pattern, g_swank_out_consumed);
+            // Optional: Compact g_swank_out_buffer if needed
+            if (g_swank_out_consumed == g_swank_out_buffer->len) {
+                g_string_set_size(g_swank_out_buffer, 0);
+                g_swank_out_consumed = 0;
+            }
+            g_mutex_unlock(&g_swank_out_mutex);
+            return;
+        }
+        // Wait for more data to arrive in on_lisp_stdout
+        g_debug("real_swank_process: read_until_from_lisp_output: pattern not found, waiting on g_swank_out_cond.");
+        g_cond_wait(&g_swank_out_cond, &g_swank_out_mutex);
+        g_debug("real_swank_process: read_until_from_lisp_output: woken up.");
+    }
+    // g_mutex_unlock(&g_swank_out_mutex); // Should be unlocked before return in loop
+}
+
+// Callback for stdout from the underlying Lisp process
+static void on_lisp_stdout(GString *data, gpointer /*user_data*/) {
+    g_debug_40("real_swank_process: on_lisp_stdout received:", data->str);
+    g_mutex_lock(&g_swank_out_mutex);
+    g_string_append_len(g_swank_out_buffer, data->str, data->len);
+    g_cond_signal(&g_swank_out_cond); // Signal that new data is available
+    g_mutex_unlock(&g_swank_out_mutex);
+}
+
+// Callback for stderr from the underlying Lisp process
+static void on_lisp_stderr(GString *data, gpointer /*user_data*/) {
+    g_printerr("LISP STDERR: %s\n", data->str); // Print Lisp's stderr directly
+}
+
+static void start_lisp_and_swank_server() {
+    g_debug("real_swank_process: start_lisp_and_swank_server");
+
+    // This function assumes real_process_global_start() has been called or will be called by it.
+    // The original RealSwankProcess called process_start(self->proc).
+    // We should call real_process_global_start() here.
+    real_process_global_start(); // Start the Lisp process
+
+    // Wait for Lisp prompt (e.g., "* ")
+    read_until_from_lisp_output("* "); // TODO: Make this pattern configurable or more robust
+
+    // TODO: Select the right loading command: (ql:quickload :swank) or (require :swank)
+    // This depends on the Lisp implementation. For now, hardcoding for SBCL-like `require`.
+    const char *load_swank_cmd = "(require :swank)\n";
+    g_debug("real_swank_process: Sending Lisp command: %s", load_swank_cmd);
+    real_process_global_write(load_swank_cmd, -1);
+
+    // Wait for confirmation of Swank loading. This is highly Lisp-dependent.
+    // Example for SBCL: ("SB-INTROSPECT" "SB-CLTL2")
+    // Example for CCL: (:SWANK)
+    // For now, using a generic prompt again or a more specific pattern if known.
+    read_until_from_lisp_output(")"); // A simple heuristic: wait for some closing paren. This needs improvement.
+    read_until_from_lisp_output("* "); // Wait for prompt again
+
+    char create_server_cmd[128];
+    g_snprintf(create_server_cmd, sizeof(create_server_cmd),
+               "(swank:create-server :port %d :dont-close t)\n", g_swank_port_number);
+    g_debug("real_swank_process: Sending Lisp command: %s", create_server_cmd);
+    real_process_global_write(create_server_cmd, -1);
+
+    // Wait for Swank server to report its port or for prompt again
+    read_until_from_lisp_output("* "); // Or a specific message like ";; Swank started on port XXXX."
+    g_debug("real_swank_process: Swank server presumed started on Lisp side.");
+}
+
+static void connect_to_swank_server() {
+    g_debug("real_swank_process: connect_to_swank_server trying port %d", g_swank_port_number);
+    GSocketClient *client = g_socket_client_new();
+    GError *conn_error = NULL;
+
+    // Loop with retries for connection
+    for (int i=0; i < 10; ++i) { // Try for ~5 seconds
+        g_swank_connection = g_socket_client_connect_to_host(client,
+                                                             "127.0.0.1",
+                                                             g_swank_port_number,
+                                                             NULL, // GCancellable
+                                                             &conn_error);
+        if (g_swank_connection) {
+            break; // Success
+        }
+        g_debug("real_swank_process: Connection attempt %d failed: %s. Retrying...", i+1, conn_error ? conn_error->message : "Unknown error");
+        g_clear_error(&conn_error);
+        g_usleep(500000); // Wait 0.5 sec before retrying
+    }
+    g_object_unref(client);
+
+    if (!g_swank_connection) {
+        g_printerr("real_swank_process: Failed to connect to Swank server on port %d after multiple retries.\n", g_swank_port_number);
+        if(conn_error) g_clear_error(&conn_error);
+        return; // Failed to connect
+    }
+
+    GSocket *socket = g_socket_connection_get_socket(g_swank_connection);
+    g_swank_fd = g_socket_get_fd(socket); // We don't own the FD from GSocket, GSocketConnection manages it.
+                                        // However, sys_read needs an FD.
+                                        // For GSocket, it's better to use g_input_stream_read.
+                                        // But to keep sys_read, we get the FD. Be careful with its lifecycle.
+                                        // GSocket usually makes it non-blocking.
+
+    // Make the socket blocking for sys_read if necessary, or adapt sys_read logic.
+    // For simplicity, we assume sys_read handles non-blocking behavior or FD is blocking.
+    // If GSocket FD is non-blocking by default, sys_read might return EAGAIN.
+    // The swank_reader_thread_global has a basic EAGAIN check.
+
+    g_debug("real_swank_process: Connected to Swank server. FD: %d", g_swank_fd);
+
+    // Start the Swank message reader thread
+    if (g_swank_fd >=0 && !g_swank_reader_thread) {
+        g_swank_reader_thread = g_thread_new("swank-reader", swank_reader_thread_global, NULL);
+    }
+}
+
+void real_swank_process_global_start() {
+    g_debug("real_swank_process_global_start");
+    if (g_swank_process_started) {
+        g_warning("real_swank_process_global_start: Swank process already started.");
+        return;
+    }
+
+    start_lisp_and_swank_server(); // This starts the underlying Lisp process via real_process_global_start()
+    connect_to_swank_server();
+
+    if (g_swank_fd >= 0) { // Successfully connected
+        g_swank_process_started = TRUE;
+        g_debug("real_swank_process_global_start: Swank process started successfully.");
     } else {
-      if (n == -1)
-        g_printerr("swank_reader_thread read error: %s (errno %d)\n", g_strerror(errno), errno);
-      else
-        g_debug("RealSwankProcess.swank_reader_thread eof");
-      break;
+        g_printerr("real_swank_process_global_start: Failed to start Swank process (connection failed).\n");
+        // Perform partial cleanup if connection failed after Lisp started
+        real_swank_process_cleanup_globals(); // This will also cleanup the underlying real_process
     }
-  }
-  return NULL;
 }
 
-static void
-read_until(RealSwankProcess *self, const char *pattern)
-{
-  g_debug("RealSwankProcess.read_until %s", pattern);
-  const gsize patlen = strlen(pattern);
-  g_mutex_lock(&self->out_mutex);
-  while (TRUE) {
-    const char *start = self->out_data->str + self->out_consumed;
-    const char *hit = strstr(start, pattern);
-    if (hit) {
-      gsize end = (hit - self->out_data->str) + patlen;
-      self->out_consumed = end;
-      g_mutex_unlock(&self->out_mutex);
-      return;
+void real_swank_process_global_send(const GString *payload) {
+    if (!g_swank_process_started || g_swank_fd < 0) {
+        g_warning("real_swank_process_global_send: Swank process not started or FD invalid.");
+        return;
     }
-    g_cond_wait(&self->out_cond, &self->out_mutex);
-  }
+
+    size_t len = payload->len;
+    char hdr[7]; // 6 hex chars for length + null terminator
+    g_snprintf(hdr, sizeof(hdr), "%06zx", len); // Format length as 6-digit hex
+
+    g_debug("real_swank_process_global_send: Sending Swank message: Header='%s', Payload='%.*s'", hdr, (int)len, payload->str);
+
+    ssize_t nw_hdr = sys_write(g_swank_fd, hdr, 6);
+    if (nw_hdr != 6) {
+        g_printerr("real_swank_process_global_send: Failed to write Swank header (wrote %zd, errno %d)\n", nw_hdr, errno);
+        // Consider this a critical failure; perhaps reset state or attempt reconnect.
+        return;
+    }
+
+    ssize_t nw_payload = sys_write(g_swank_fd, payload->str, len);
+    if (nw_payload != (ssize_t)len) {
+        g_printerr("real_swank_process_global_send: Failed to write Swank payload (wrote %zd of %zu, errno %d)\n", nw_payload, len, errno);
+        return;
+    }
+    g_debug("real_swank_process_global_send: Message sent successfully.");
 }
 
-static void
-on_proc_out(GString *data, gpointer user_data)
-{
-  g_debug("RealSwankProcess.on_proc_out %s", data->str);
-  RealSwankProcess *self = user_data;
-  g_mutex_lock(&self->out_mutex);
-  g_string_append_len(self->out_data, data->str, data->len);
-  g_cond_broadcast(&self->out_cond);
-  g_mutex_unlock(&self->out_mutex);
+void real_swank_process_global_set_message_cb(GlobalSwankProcessMessageCallback cb, gpointer user_data) {
+    g_debug("real_swank_process_global_set_message_cb");
+    g_mutex_lock(&g_swank_incoming_mutex);
+    g_swank_message_cb = cb;
+    g_swank_message_cb_data = user_data;
+    g_mutex_unlock(&g_swank_incoming_mutex);
 }
 
-static void
-on_proc_err(GString *data, gpointer /*user_data*/)
-{
-  g_debug("RealSwankProcess.on_proc_err %s", data->str);
+void real_swank_process_global_set_socket_fd(int fd) {
+    g_debug("real_swank_process_global_set_socket_fd: Setting Swank FD to %d", fd);
+    if (g_swank_fd >= 0 && g_swank_fd != fd) { // If there's an existing valid FD
+        g_warning("real_swank_process_global_set_socket_fd: Closing existing Swank FD %d", g_swank_fd);
+        close(g_swank_fd); // Close the old one
+        if (g_swank_connection) {
+             g_object_unref(g_swank_connection); // Release connection if we manage it
+             g_swank_connection = NULL;
+        }
+    }
+    g_swank_fd = fd;
+    // If a reader thread was running on the old FD, it needs to be stopped and restarted for the new FD.
+    // This function is a bit risky if not managed carefully with the reader thread.
+    if (g_swank_reader_thread) {
+        g_debug("real_swank_process_global_set_socket_fd: Existing reader thread found. It might need manual restart.");
+        // For simplicity, current cleanup/init handles restarting reader thread if needed.
+    }
 }
 
-static void start_swank(RealSwankProcess *self)
-{
-  g_debug("RealSwankProcess.start_swank");
-  if (!self->proc)
-    return;
-  read_until(self, "* ");
-  // TODO: select the right loading command: (ql:quickload :swank) or (require :swank)
-  const char *ql_cmd = "(require :swank)\n";
-  g_debug("RealSwankProcess.start_swank send:%s", ql_cmd);
-  process_write(self->proc, ql_cmd, -1);
-  // TODO: select the right output:
-  // - (:SWANK) for quickload
-  // - ("SB-INTROSPECT" "SB-CLTL2") for require
-  read_until(self, "(\"SB-INTROSPECT\" \"SB-CLTL2\")");
-  read_until(self, "* ");
-  char create_cmd[128];
-  g_snprintf(create_cmd, sizeof(create_cmd),
-      "(swank:create-server :port %d :dont-close t)\n", self->port);
-  g_debug("RealSwankProcess.start_swank send:%s", create_cmd);
-  process_write(self->proc, create_cmd, -1);
-  read_until(self, "* ");
+void real_swank_process_cleanup_globals() {
+    g_debug("real_swank_process_cleanup_globals: Starting cleanup.");
+
+    // Close Swank connection and FD
+    if (g_swank_fd >= 0) {
+        g_debug("real_swank_process_cleanup_globals: Closing Swank FD %d.", g_swank_fd);
+        // If GSocketConnection is used, closing it should close the underlying FD.
+        // However, we got FD via g_socket_get_fd, so direct close might be okay IF GSocketConnection is also unreffed.
+        // Prefer closing GSocketConnection first.
+        if (g_swank_connection) {
+            GError *close_err = NULL;
+            g_io_stream_close(G_IO_STREAM(g_swank_connection), NULL, &close_err);
+            if(close_err) {
+                g_warning("Error closing GSocketConnection: %s", close_err->message);
+                g_error_free(close_err);
+            }
+            g_object_unref(g_swank_connection);
+            g_swank_connection = NULL;
+        } else {
+             // If no GSocketConnection, close FD directly (e.g. if set by _set_socket_fd)
+            close(g_swank_fd);
+        }
+        g_swank_fd = -1; // Mark as closed to stop reader thread
+    }
+
+    // Join reader thread
+    if (g_swank_reader_thread) {
+        g_debug("real_swank_process_cleanup_globals: Joining Swank reader thread.");
+        g_thread_join(g_swank_reader_thread); // This also unrefs the thread object
+        g_swank_reader_thread = NULL;
+    }
+
+    // Cleanup underlying Lisp process (RealProcess)
+    // This is important as RealSwankProcess manages RealProcess.
+    // real_process_cleanup_globals(); // This will be called from main.c after this.
+                                    // Or, if RealSwankProcess is the sole manager, call it here.
+                                    // For now, assume main.c sequence: cleanup swank_proc, then proc.
+                                    // Let's assume RealSwankProcess doesn't *own* RealProcess cleanup.
+                                    // This is safer if RealProcess is used by other things (not in this app).
+
+    // Free buffers and other resources
+    g_string_free(g_swank_out_buffer, TRUE); g_swank_out_buffer = NULL;
+    g_string_free(g_swank_incoming_data_buffer, TRUE); g_swank_incoming_data_buffer = NULL;
+
+    g_mutex_clear(&g_swank_out_mutex);
+    g_cond_clear(&g_swank_out_cond);
+    g_mutex_clear(&g_swank_incoming_mutex);
+
+    g_swank_message_cb = NULL;
+    g_swank_message_cb_data = NULL;
+    g_swank_process_started = FALSE;
+
+    g_debug("real_swank_process_cleanup_globals: Cleanup complete.");
 }
 
-static void connect_swank(RealSwankProcess *self)
-{
-  g_debug("RealSwankProcess.connect_swank port:%d", self->port);
-  GSocketClient *client = g_socket_client_new();
-  GError *conn_err = NULL;
-  GSocketConnection *conn = g_socket_client_connect_to_host(
-      client, "127.0.0.1", self->port, NULL, &conn_err);
-  g_object_unref(client);
-  if (!conn) {
-    g_clear_error(&conn_err);
-    return;
-  }
-  self->swank_fd = g_socket_get_fd(g_socket_connection_get_socket(conn));
-  self->connection = conn;
-  g_debug("RealSwankProcess.connect_swank connected fd:%d", self->swank_fd);
-  self->swank_thread = g_thread_new("swank-reader", swank_reader_thread, self);
-}
-
-static void
-sp_start(SwankProcess *base)
-{
-  g_debug("RealSwankProcess.start");
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
-  if (self->started)
-    return;
-  if (!self->proc || !self->prefs)
-    return;
-  process_start(self->proc);
-  start_swank(self);
-  connect_swank(self);
-  self->started = TRUE;
-}
-
-SwankProcess *
-real_swank_process_new(Process *proc, Preferences *prefs)
-{
-  g_debug("RealSwankProcess.new");
-  RealSwankProcess *self = g_object_new(REAL_SWANK_PROCESS_TYPE, NULL);
-  self->proc = proc ? g_object_ref(proc) : NULL;
-  self->prefs = prefs ? g_object_ref(prefs) : NULL;
-  self->port = prefs ? preferences_get_swank_port(prefs) : 4005;
-
-  if (proc) {
-    process_set_stdout_cb(proc, on_proc_out, self);
-    process_set_stderr_cb(proc, on_proc_err, self);
-  }
-  return GLIDE_SWANK_PROCESS(self);
-}
-
-void
-real_swank_process_set_socket(RealSwankProcess *self, int fd)
-{
-  g_debug("RealSwankProcess.set_socket %d", fd);
-  if (self->swank_fd >= 0)
-    close(self->swank_fd);
-  self->swank_fd = fd;
-}
-
-static void
-sp_send(SwankProcess *base, const GString *payload)
-{
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
-  size_t len = payload->len;
-  char hdr[7];
-  g_snprintf(hdr, sizeof(hdr), "%06zx", len);
-  g_debug("RealSwankProcess.send %s%.*s", hdr, (int)len, payload->str);
-  ssize_t nw = sys_write(self->swank_fd, hdr, 6);
-  if (nw != 6)
-    g_printerr("Failed to write swank header (errno %d)\n", errno);
-  nw = sys_write(self->swank_fd, payload->str, len);
-  if (nw != (ssize_t)len)
-    g_printerr("Failed to write swank payload (errno %d)\n", errno);
-}
-
-static void
-sp_set_message_cb(SwankProcess *base, SwankProcessMessageCallback cb,
-                  gpointer user_data)
-{
-  g_debug("RealSwankProcess.set_message_cb");
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
-  g_mutex_lock(&self->swank_mutex);
-  self->msg_cb = cb;
-  self->msg_cb_data = user_data;
-  g_mutex_unlock(&self->swank_mutex);
-}
-
+// Note: The original RealSwankProcess had a finalize which unreffed proc and prefs.
+// Since these are now global, their cleanup is handled by their respective units.
+// real_swank_process_cleanup_globals focuses on resources directly managed by it (sockets, threads, buffers).

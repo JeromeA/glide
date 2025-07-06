@@ -5,21 +5,34 @@
  * remote execution.
  */
 
-#include "swank_session.h"
+// #include "swank_session.h" // DELETED: This was causing the build error.
+#include "evaluate.h" // Include self header
 #include "interaction.h"
-#include "evaluate.h"
+// real_swank_session.h is included further down, which is correct.
 
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
+
+// These globals are defined in main.c
+// They will be used directly instead of App* self
+extern GtkSourceBuffer *buffer_global;
+// SwankSession is now fully global, no more swank_session_global_ptr.
+// We will include real_swank_session.h for real_swank_session_global_eval.
+#include "real_swank_session.h"
+
 
 /* ------------------------------------------------------------------------- */
 /* Callback triggered when the user requests evaluation of the current line. */
 /* ------------------------------------------------------------------------- */
 void
-on_evaluate(App *self)
+on_evaluate_global()
 {
-  g_debug("Evaluate.on_evaluate");
-  GtkSourceBuffer *source_buffer = app_get_source_buffer(self);
+  g_debug("Evaluate.on_evaluate_global");
+  GtkSourceBuffer *source_buffer = buffer_global;
+  if (!source_buffer) {
+    g_warning("Evaluate.on_evaluate_global: buffer_global is NULL");
+    return;
+  }
 
   /* 1. Locate the iterator at the caret (insert mark). */
   GtkTextMark *insert_mark = gtk_text_buffer_get_insert(GTK_TEXT_BUFFER(source_buffer));
@@ -40,20 +53,29 @@ on_evaluate(App *self)
       FALSE);          /* no hidden chars */
 
   if (expr == NULL || *expr == '\0') {
-    g_debug("Evaluate.on_evaluate: nothing to evaluate on the current line");
+    g_debug("Evaluate.on_evaluate_global: nothing to evaluate on the current line");
     g_free(expr);
     return;
   }
 
   /* 4. Send the expression to SWANK for remote execution. */
-  SwankSession *swank = app_get_swank(self);
-  if (swank) {
-    Interaction *interaction = g_new0(Interaction, 1);
-    interaction_init(interaction, expr);
-    swank_session_eval(swank, interaction);
-    /* The interaction will be cleared when the session returns the result. */
-  }
+  // SwankSession *swank = app_get_swank(self); // Old way
+  // extern SwankSession *swank_session_global_ptr; // Old way with pointer
+  // if (swank_session_global_ptr) { // Old way
 
+  // New way: directly call the global eval function
+  Interaction *interaction = g_new0(Interaction, 1);
+  interaction_init(interaction, expr); // expr is owned by interaction now
+  real_swank_session_global_eval(interaction);
+  // Interaction will be managed (and eventually freed) by RealSwankSession logic.
+  // } else { // This check is no longer needed as real_swank_session_global_eval handles its own state.
+  //   g_warning("Evaluate.on_evaluate_global: swank_session_global_ptr is NULL");
+  // }
+
+  // Do not free expr here as interaction_init takes ownership (or should)
+  // If interaction_init only copies, then expr should be freed.
+  // Looking at interaction.c, interaction_init(i,e) { i->expression = g_strdup(e); }
+  // So, expr from gtk_text_buffer_get_text should be freed here.
   g_free(expr);
 }
 
