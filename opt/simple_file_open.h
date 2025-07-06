@@ -1,6 +1,9 @@
-#ifndef OPEN_FILE
-#define OPEN_FILE
+#ifndef OPT_SIMPLE_FILE_OPEN_H
+#define OPT_SIMPLE_FILE_OPEN_H
 
-void file_open(GtkWidget *, gpointer data);
+#include <gtk/gtk.h> // For GtkWidget
 
-#endif // OPEN_FILE
+// Operates on global filename_global and buffer_global
+void simple_file_open_global(GtkWidget *triggering_widget);
+
+#endif // OPT_SIMPLE_FILE_OPEN_H

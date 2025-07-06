@@ -1,22 +1,25 @@
 
 #include <gtk/gtk.h>
-#include "preferences.h"
+#include "preferences.h" // For global preference functions
 #include "find_executables.h"
-#if __has_include("app.h")
-# define WITH_APP
-# include "app.h"
-#endif
+#include "preferences_dialog.h" // For on_preferences_global (self include)
+
+// App related includes and defines are removed as App class is gone.
+// #if __has_include("app.h")
+// # define WITH_APP
+// # include "app.h"
+// #endif
 
 typedef struct {
   GtkWidget *dialog;
   GtkWidget *binary_combo_box;
-  Preferences *preferences;
+  // Preferences *preferences; // Removed, preferences are global
 } PreferencesDialog;
 
 PreferencesDialog *
-preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
+preferences_dialog_new(GtkWindow *parent) { // `Preferences *preferences` argument removed
   PreferencesDialog *self = g_new0(PreferencesDialog, 1);
-  self->preferences = preferences;
+  // self->preferences = preferences; // Removed
 
   self->dialog = gtk_dialog_new_with_buttons(
       "Preferences", parent, GTK_DIALOG_MODAL,
@@ -43,59 +46,54 @@ preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
     const gchar *executable = g_ptr_array_index(executables, i);
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(self->binary_combo_box), executable, executable);
   }
-  g_ptr_array_free(executables, TRUE);
+  g_ptr_array_free(executables, TRUE); // Free the array and its contents (char*)
 
   gtk_grid_attach(GTK_GRID(grid), binary_label, 0, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), self->binary_combo_box, 1, 0, 1, 1);
 
-  gtk_widget_show_all(self->dialog);
-
+  // gtk_widget_show_all(self->dialog); // Show is usually done by the caller or run function
   return self;
 }
 
-void preferences_dialog_free(PreferencesDialog *prefs) {
-  gtk_widget_destroy(prefs->dialog);
-  g_free(prefs);
+void preferences_dialog_free(PreferencesDialog *prefs_dialog) {
+  if (prefs_dialog) {
+    gtk_widget_destroy(prefs_dialog->dialog);
+    g_free(prefs_dialog);
+  }
 }
 
-void preferences_dialog_load(PreferencesDialog *prefs) {
-    // Set current value from preferences
-    const gchar *current_sdk = preferences_get_sdk(prefs->preferences);
-    gtk_combo_box_set_active_id(GTK_COMBO_BOX(prefs->binary_combo_box), current_sdk);
-
-    gtk_widget_show_all(prefs->dialog);
+void preferences_dialog_load(PreferencesDialog *prefs_dialog) {
+    // Set current value from global preferences
+    const gchar *current_sdk = preferences_get_sdk_global();
+    gtk_combo_box_set_active_id(GTK_COMBO_BOX(prefs_dialog->binary_combo_box), current_sdk);
+    // gtk_widget_show_all(prefs_dialog->dialog); // Not needed here, run will show it
 }
 
-void preferences_dialog_save(PreferencesDialog *prefs) {
-  const gchar *selected_sdk = gtk_combo_box_get_active_id(GTK_COMBO_BOX(prefs->binary_combo_box));
-  preferences_set_sdk(prefs->preferences, selected_sdk);
+void preferences_dialog_save(PreferencesDialog *prefs_dialog) {
+  const gchar *selected_sdk = gtk_combo_box_get_active_id(GTK_COMBO_BOX(prefs_dialog->binary_combo_box));
+  preferences_set_sdk_global(selected_sdk);
 }
 
-gboolean preferences_dialog_run(PreferencesDialog *prefs) {
-    preferences_dialog_load(prefs);
-    gboolean confirmed = gtk_dialog_run(GTK_DIALOG(prefs->dialog)) == GTK_RESPONSE_OK;
+gboolean preferences_dialog_run(PreferencesDialog *prefs_dialog) {
+    preferences_dialog_load(prefs_dialog);
+    gtk_widget_show_all(prefs_dialog->dialog); // Show the dialog before running it
+    gboolean confirmed = gtk_dialog_run(GTK_DIALOG(prefs_dialog->dialog)) == GTK_RESPONSE_OK;
     if (confirmed) {
-        preferences_dialog_save(prefs);
+        preferences_dialog_save(prefs_dialog);
     }
-    gtk_widget_hide(prefs->dialog);
+    gtk_widget_hide(prefs_dialog->dialog); // Hide after run, free is separate
     return confirmed;
 }
 
-void on_preferences(GtkWidget *widget, gpointer data) {
-  GtkWindow *main_window = NULL;
-  Preferences *preferences = NULL;
-  main_window = GTK_WINDOW(gtk_widget_get_toplevel(widget));
+// Renamed and signature changed
+void on_preferences_global(GtkWidget *widget) {
+  GtkWindow *main_window = GTK_WINDOW(gtk_widget_get_toplevel(widget));
 
-#ifdef WITH_APP
-  App *app = GLIDE_APP(data);
-  preferences = app_get_preferences(app);
-#else
-  preferences = (Preferences *)data;
-#endif
-
-  PreferencesDialog *prefs = preferences_dialog_new(main_window, preferences);
-  preferences_dialog_run(prefs);
-  preferences_dialog_free(prefs);
+  // Preferences are no longer passed around or fetched from App
+  // PreferencesDialog *prefs_dialog = preferences_dialog_new(main_window, preferences);
+  PreferencesDialog *prefs_dialog = preferences_dialog_new(main_window);
+  preferences_dialog_run(prefs_dialog);
+  preferences_dialog_free(prefs_dialog);
 }
 
 
