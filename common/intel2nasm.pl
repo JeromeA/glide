@@ -24,7 +24,9 @@ s/^\s*\.align\s+\d+\n(\.LC\d+:\n\s*\.string\s".*"\n)/$1/gm;
 # Change the format for litterals.
 s/\.align/align/g;
 s/\.string\s"(.*)"/db `$1`, 0/g;
+s/\.ascii\s"(.*)"/db `$1`/g;
 s/\.byte\s(-?\d+)/db $1/g;
+s/\.value\s(-?\d+)/dw $1/g;
 s/\.long\s(-?\d+)/dd $1/g;
 s/\.quad\s(-?\d+)/dq $1/g;
 s/\.quad\s(\S+)/dq BASE_ADDR + $1/g;
@@ -49,7 +51,7 @@ s/(\d+)\[([A-Za-z0-9_]+)\]/[$2+$1]/g;
 s/XMMWORD/OWORD/g;
 
 # moveabs is just a mov.
-s/movabs\s+(.*)$/mov $1, $2/mg;
+s/movabs\s+(.*)$/mov $1/mg;
 
 # Save bss entries.
 s/(\S+):\n\s+\.zero\s+(\d+)\n/push @bss, "$1: resb $2"; ""/ge;
