@@ -101,9 +101,9 @@ void process_global_start() {
     // Cleanup partially initialized state if spawn fails
     g_strfreev(g_process_argv);
     g_process_argv = NULL;
-    if(g_process_in_fd >=0) { close(g_process_in_fd); g_process_in_fd = -1; }
-    if(g_process_out_fd >=0) { close(g_process_out_fd); g_process_out_fd = -1; }
-    if(g_process_err_fd >=0) { close(g_process_err_fd); g_process_err_fd = -1; }
+    if(g_process_in_fd >=0) { sys_close(g_process_in_fd); g_process_in_fd = -1; }
+    if(g_process_out_fd >=0) { sys_close(g_process_out_fd); g_process_out_fd = -1; }
+    if(g_process_err_fd >=0) { sys_close(g_process_err_fd); g_process_err_fd = -1; }
     return;
   }
 

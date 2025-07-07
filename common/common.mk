@@ -62,5 +62,5 @@ cov: app-cov
 	genhtml coverage.info --output-directory out
 
 clean:
-	rm -f $(CLEANABLES)
+	rm -rf $(CLEANABLES)
 
