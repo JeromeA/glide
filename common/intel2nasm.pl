@@ -1,7 +1,7 @@
 #!/usr/bin/perl -p -0777
 
 # Delete all the directives that NASM doesn't understand.
-s/.*\.(loc|cfi|file|size|type|text|section|p2align|globl|intel_syntax|data|bss).*\n//g;
+s/^\s*\.(loc|cfi|file|size|type|text|section|p2align|globl|intel_syntax|data|bss).*\n//gm;
 
 # Delete the .LFB and .LFE labels.
 s/^\.LF[BE].*\n//gm;
@@ -33,6 +33,7 @@ s/\.quad\s(\S+)/dq BASE_ADDR + $1/g;
 
 # Replace local labels with global ones.
 s/\.LC(\d+)/LC$1/g;
+s/\.L(\d+)/L$1/g;
 
 # Change call/jmp to external symbols.
 s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
