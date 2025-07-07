@@ -341,13 +341,6 @@ static void connect_to_swank_server() {
 void swank_process_global_start() {
     start_lisp_and_swank_server(); // This starts the underlying Lisp process via process_global_start()
     connect_to_swank_server();
-
-    if (g_swank_fd >= 0) { // Successfully connected
-    } else {
-        g_printerr("swank_process_global_start: Failed to start Swank process (connection failed).\n");
-        // Perform partial cleanup if connection failed after Lisp started
-        swank_process_cleanup_globals(); // This will also cleanup the underlying process
-    }
 }
 
 void swank_process_global_send(const GString *payload) {
@@ -373,42 +366,5 @@ void swank_process_global_send(const GString *payload) {
         g_printerr("swank_process_global_send: Failed to write Swank payload (wrote %zd of %zu, errno %d)\n", nw_payload, len, errno);
         return;
     }
-}
-
-void swank_process_cleanup_globals() {
-
-    // Close Swank connection and FD
-    if (g_swank_fd >= 0) {
-        // Prefer closing GSocketConnection first if it exists.
-        if (g_swank_connection) {
-            GError *close_err = NULL;
-            g_io_stream_close(G_IO_STREAM(g_swank_connection), NULL, &close_err);
-            if(close_err) {
-                g_warning("Error closing GSocketConnection: %s", close_err->message);
-                g_error_free(close_err);
-            }
-            g_object_unref(g_swank_connection);
-            g_swank_connection = NULL;
-        } else {
-             // If no GSocketConnection, close FD directly (e.g. if set by _set_socket_fd)
-            close(g_swank_fd);
-        }
-        g_swank_fd = -1; // Mark as closed to stop reader thread
-    }
-
-    // Join reader thread
-    if (g_swank_reader_thread) {
-        g_thread_join(g_swank_reader_thread); // This also unrefs the thread object
-        g_swank_reader_thread = NULL;
-    }
-
-    // Free buffers and other resources
-    g_string_free(g_swank_out_buffer, TRUE); g_swank_out_buffer = NULL;
-    g_string_free(g_swank_incoming_data_buffer, TRUE); g_swank_incoming_data_buffer = NULL;
-
-    g_mutex_clear(&g_swank_out_mutex);
-    g_cond_clear(&g_swank_out_cond);
-    g_mutex_clear(&g_swank_incoming_mutex);
-
 }
 

@@ -25,7 +25,7 @@ reloc.full.o reloc.reloc.o: reloc.c reloc.h symbols.inc
 	$(CC) $(CFLAGS) -c $< -o $@
 
 app-full: $(FULL_OBJECTS)
-	$(CC) $^ -o $@ $(LDLIBS)
+	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
 
 app-reloc: $(RELOC_OBJECTS)
 	$(CC) $^ -o $@ $(LDLIBS)

@@ -117,8 +117,6 @@ static gchar *static_unescape_string(const char *token) {
 #define unescape_string static_unescape_string
 
 // --- Forward declarations for internal static functions (session specific) ---
-static void interaction_free_members_static(Interaction *interaction);
-// swank_session_on_message_internal is now non-static and declared in swank_session.h
 static gboolean swank_session_handle_message_on_main_thread(gpointer data);
 static void parse_and_handle_return_message(const gchar *message_payload);
 static gboolean parse_return_ok(const gchar *token, gchar **output, gchar **result);
@@ -128,32 +126,17 @@ typedef struct {
     GString *msg_payload;
 } MessageDataForMainThread;
 
-void interaction_free_members_static(Interaction *interaction) {
-    if (interaction) {
-        g_free(interaction->expression); interaction->expression = NULL;
-        g_free(interaction->output); interaction->output = NULL;
-        g_free(interaction->result); interaction->result = NULL;
-        g_free(interaction->error); interaction->error = NULL;
-        g_free(interaction);
-    }
-}
-
 void swank_session_init_globals() {
-    if (g_swank_session_interactions_table) {
-        g_warning("swank_session_init_globals: Already initialized. Cleaning up old state.");
-        swank_session_cleanup_globals();
-    }
     g_swank_session_started = FALSE;
     g_swank_session_next_tag = 1;
     g_swank_session_interactions_table = g_hash_table_new_full(g_direct_hash,
                                                                g_direct_equal,
                                                                NULL,
-                                                               (GDestroyNotify)interaction_free_members_static);
+                                                               NULL);
 }
 
 void swank_session_global_eval(Interaction *interaction) {
     if (!interaction || !interaction->expression) {
-        g_warning("swank_session_global_eval: NULL interaction or expression.");
         if(interaction) g_free(interaction);
         return;
     }
@@ -164,11 +147,7 @@ void swank_session_global_eval(Interaction *interaction) {
     interaction->tag = g_swank_session_next_tag++;
     interaction->status = INTERACTION_RUNNING;
     g_hash_table_insert(g_swank_session_interactions_table, GUINT_TO_POINTER(interaction->tag), interaction);
-    if (interactions_view_global) {
-        interactions_view_add_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
-    } else {
-        g_warning("swank_session_global_eval: interactions_view_global is NULL. Cannot add interaction to view.");
-    }
+    interactions_view_add_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
     gchar *escaped_expr = escape_string(interaction->expression); // Uses static_escape_string
     gchar *rpc_call = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)",
                                       escaped_expr, interaction->tag);
@@ -206,7 +185,6 @@ static void parse_and_handle_return_message(const char *message_payload_str) {
     gchar *return_type_token = next_token(&p); // Uses static_next_token
     gchar *tag_id_token = next_token(&p);      // Uses static_next_token
     if (!return_type_token || !tag_id_token) {
-        g_warning("swank_session: Could not parse :return message. Payload: %s", message_payload_str);
         g_free(return_type_token);
         g_free(tag_id_token);
         return;
@@ -215,7 +193,6 @@ static void parse_and_handle_return_message(const char *message_payload_str) {
     guint64 tag_val_64 = g_ascii_strtoull(tag_id_token, &end_ptr, 10);
     guint32 tag_id = 0;
     if (*end_ptr != '\0' || tag_val_64 == 0 || tag_val_64 > G_MAXUINT32) {
-        g_warning("swank_session: Invalid tag_id in :return message: '%s'", tag_id_token);
         g_free(return_type_token);
         g_free(tag_id_token);
         return;
@@ -223,7 +200,6 @@ static void parse_and_handle_return_message(const char *message_payload_str) {
     tag_id = (guint32)tag_val_64;
     Interaction *interaction = (Interaction *)g_hash_table_lookup(g_swank_session_interactions_table, GUINT_TO_POINTER(tag_id));
     if (!interaction) {
-        g_warning("swank_session: Received :return for unknown tag_id: %u", tag_id);
         g_free(return_type_token);
         g_free(tag_id_token);
         return;
@@ -239,16 +215,11 @@ static void parse_and_handle_return_message(const char *message_payload_str) {
         g_free(interaction->error); interaction->error = abort_reason_str;
         interaction->status = INTERACTION_ERROR;
     } else {
-        g_warning("swank_session: Failed to parse specific return type: %s", return_type_token);
         interaction->status = INTERACTION_ERROR;
         g_free(interaction->error);
         interaction->error = g_strdup("Failed to parse return from Swank");
     }
-    if (interactions_view_global) {
-        interactions_view_update_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
-    } else {
-        g_warning("parse_and_handle_return_message: interactions_view_global is NULL. Cannot update interaction in view.");
-    }
+    interactions_view_update_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
     g_free(return_type_token);
     g_free(tag_id_token);
 }
@@ -283,11 +254,3 @@ static gboolean parse_return_abort(const gchar *token, gchar **reason) {
     return TRUE;
 }
 
-void swank_session_cleanup_globals() {
-    if (g_swank_session_interactions_table) {
-        g_hash_table_destroy(g_swank_session_interactions_table);
-        g_swank_session_interactions_table = NULL;
-    }
-    g_swank_session_started = FALSE;
-    g_swank_session_next_tag = 1;
-}

@@ -23,18 +23,7 @@ G_DEFINE_TYPE(InteractionsView, interactions_view, GTK_TYPE_BOX)
 
 // Forward declare static helper functions
 static void interaction_row_update(InteractionRow *row, Interaction *interaction);
-static void interaction_row_free(gpointer data);
 static void set_text_view(GtkBox *box, GtkWidget **view, const gchar *text, const gchar *css_class, gboolean hide_if_empty);
-
-
-static void
-interaction_row_free(gpointer data)
-{
-  InteractionRow *row = data;
-  if (row && row->frame) // Check row itself before accessing frame
-    gtk_widget_destroy(row->frame); // This should destroy all child widgets of frame too
-  g_free(row);
-}
 
 static void
 set_text_view(GtkBox *box,
@@ -89,21 +78,10 @@ interaction_row_update(InteractionRow *row, Interaction *interaction)
 }
 
 static void
-interactions_view_finalize(GObject *obj)
-{
-  InteractionsView *self = GLIDE_INTERACTIONS_VIEW(obj);
-  if (self->rows) {
-    g_hash_table_destroy(self->rows);
-    self->rows = NULL;
-  }
-  G_OBJECT_CLASS(interactions_view_parent_class)->finalize(obj);
-}
-
-static void
 interactions_view_class_init(InteractionsViewClass *klass)
 {
   GObjectClass *obj = G_OBJECT_CLASS(klass);
-  obj->finalize = interactions_view_finalize;
+  obj->finalize = NULL;
 }
 
 static void
@@ -128,7 +106,7 @@ interactions_view_init(InteractionsView *self)
   g_object_unref(provider);
 
   self->rows = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-      NULL, interaction_row_free);
+      NULL, NULL);
 }
 
 // Constructor, takes no arguments

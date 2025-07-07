@@ -22,11 +22,6 @@ void simple_file_save_global(GtkWidget *triggering_widget) {
         parent_window = GTK_WINDOW(gtk_widget_get_toplevel(triggering_widget));
     }
 
-    if (!buffer_global) {
-        g_printerr("simple_file_save_global: buffer_global is NULL. Cannot save file.\n");
-        return;
-    }
-
     const gchar *current_filename = main_get_filename();
     gchar *filename_to_save = NULL;
 
@@ -80,10 +75,7 @@ void simple_file_save_global(GtkWidget *triggering_widget) {
         total_written += written;
     }
 
-    if (sys_close(fd) == -1) {
-        g_printerr("Error closing %s (errno %d)\n", filename_to_save, errno);
-    }
-
+    sys_close(fd);
     g_free(buffer_text);
     g_free(filename_to_save); // Free if strdup'd or from chooser
 }
