@@ -1,5 +1,4 @@
 #include "includes.h"
-// #include "process.h" // Merged into swank_process.h
 #include "swank_process.h"
 #include "swank_session.h"
 
@@ -16,7 +15,6 @@
 #include "simple_file_open.c"
 #include "simple_file_save.c"
 #include "interactions_view.c"
-// #include "process.c" // Merged into swank_process.c
 #include "swank_process.c"
 #include "swank_session.c"
 #include "reloc.c"

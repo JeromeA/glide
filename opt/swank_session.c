@@ -152,7 +152,6 @@ void swank_session_init_globals() {
                                                                g_direct_equal,
                                                                NULL,
                                                                (GDestroyNotify)interaction_free_members_static);
-    // swank_process_global_set_message_cb(swank_session_on_message_internal, NULL); // Callback is now hardcoded
     g_debug("swank_session_init_globals: Complete.");
 }
 
