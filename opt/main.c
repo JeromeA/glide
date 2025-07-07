@@ -110,9 +110,9 @@ int main(int argc, char *argv[]) {
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
 
   // Connect to new file operations
-  g_signal_connect(open_item, "activate", G_CALLBACK(simple_file_open_ui), open_item);
-  g_signal_connect(save_item, "activate", G_CALLBACK(simple_file_save_ui), save_item);
-  g_signal_connect(saveas_item, "activate", G_CALLBACK(simple_file_saveas_ui), saveas_item);
+  g_signal_connect(open_item, "activate", G_CALLBACK(file_open), open_item);
+  g_signal_connect(save_item, "activate", G_CALLBACK(file_save), save_item);
+  g_signal_connect(saveas_item, "activate", G_CALLBACK(file_saveas), saveas_item);
   g_signal_connect(quit_item, "activate", G_CALLBACK(quit_menu_item_handler), NULL);
 
   // Store the created InteractionsView for RealSwankSession to use.
