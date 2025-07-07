@@ -9,14 +9,14 @@
 #include "reloc.h"
 #include "syscalls.h"
 
-// Global variables defined in main.c
-extern GtkSourceBuffer *buffer_global;
-// filename_global is managed via main_get_filename and main_set_filename
+// Variables defined in main.c
+extern GtkSourceBuffer *buffer;
+// filename is managed via main_get_filename and main_set_filename
 extern const gchar* main_get_filename();
 extern void main_set_filename(const gchar *new_filename);
 
 
-void simple_file_save_global(GtkWidget *triggering_widget) {
+void simple_file_save_ui(GtkWidget *triggering_widget) {
     GtkWindow *parent_window = NULL;
     if (triggering_widget) {
         parent_window = GTK_WINDOW(gtk_widget_get_toplevel(triggering_widget));
@@ -37,7 +37,7 @@ void simple_file_save_global(GtkWidget *triggering_widget) {
 
         if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
             filename_to_save = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-            main_set_filename(filename_to_save); // Update global filename
+            main_set_filename(filename_to_save); // Update filename
         }
         gtk_widget_destroy(dialog);
 
@@ -45,13 +45,13 @@ void simple_file_save_global(GtkWidget *triggering_widget) {
             return;
         }
     } else {
-        filename_to_save = g_strdup(current_filename); // Use existing global filename
+        filename_to_save = g_strdup(current_filename); // Use existing filename
     }
 
     GtkTextIter start, end;
-    gtk_text_buffer_get_start_iter(GTK_TEXT_BUFFER(buffer_global), &start);
-    gtk_text_buffer_get_end_iter(GTK_TEXT_BUFFER(buffer_global), &end);
-    gchar *buffer_text = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffer_global), &start, &end, FALSE);
+    gtk_text_buffer_get_start_iter(GTK_TEXT_BUFFER(buffer), &start);
+    gtk_text_buffer_get_end_iter(GTK_TEXT_BUFFER(buffer), &end);
+    gchar *buffer_text = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffer), &start, &end, FALSE);
 
     int fd = sys_open(filename_to_save, O_WRONLY | O_CREAT | O_TRUNC, 0666);
     if (fd == -1) {
@@ -80,17 +80,17 @@ void simple_file_save_global(GtkWidget *triggering_widget) {
     g_free(filename_to_save); // Free if strdup'd or from chooser
 }
 
-void simple_file_saveas_global(GtkWidget *triggering_widget) {
-    // Store current filename, then set global to NULL to force Save As dialog in simple_file_save_global
+void simple_file_saveas_ui(GtkWidget *triggering_widget) {
+    // Store current filename, then set it to NULL to force Save As dialog in simple_file_save_ui
     gchar *original_filename_backup = NULL;
-    const gchar* current_global_filename = main_get_filename();
-    if (current_global_filename) {
-        original_filename_backup = g_strdup(current_global_filename);
+    const gchar* current_filename = main_get_filename();
+    if (current_filename) {
+        original_filename_backup = g_strdup(current_filename);
     }
 
-    main_set_filename(NULL); // Force simple_file_save_global to open "Save As" dialog
+    main_set_filename(NULL); // Force simple_file_save_ui to open "Save As" dialog
 
-    simple_file_save_global(triggering_widget);
+    simple_file_save_ui(triggering_widget);
 
     // If save was cancelled, main_get_filename() would still be NULL (or whatever new name if saved).
     // If it's NULL (cancelled), restore original.

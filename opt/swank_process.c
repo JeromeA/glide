@@ -29,7 +29,7 @@ static GThread *g_process_err_thread = NULL;
 static gchar **g_process_argv = NULL;
 
 // Thread function to read stdout
-static gpointer stdout_thread_global(gpointer /*data*/) {
+static gpointer stdout_thread(gpointer /*data*/) {
   char buf[256];
   ssize_t n = 0;
   while (g_process_out_fd >= 0 && (n = sys_read(g_process_out_fd, buf, sizeof(buf))) > 0) {
@@ -41,7 +41,7 @@ static gpointer stdout_thread_global(gpointer /*data*/) {
 }
 
 // Thread function to read stderr
-static gpointer stderr_thread_global(gpointer /*data*/) {
+static gpointer stderr_thread(gpointer /*data*/) {
   char buf[256];
   ssize_t n = 0;
   while (g_process_err_fd >=0 && (n = sys_read(g_process_err_fd, buf, sizeof(buf))) > 0) {
@@ -53,31 +53,31 @@ static gpointer stderr_thread_global(gpointer /*data*/) {
 }
 
 // g_spawn_async_with_pipes child_setup function
-static void child_setup_global(gpointer /*user_data*/) {
+static void child_setup(gpointer /*user_data*/) {
   setsid(); // Create a new session and set process group ID.
   prctl(PR_SET_PDEATHSIG, SIGKILL); // Ensure child dies if parent dies.
 }
 
-// Initialize global process state from argv
-static void process_init_globals_from_argv(const gchar *const *argv) {
+// Initialize process state from argv
+static void process_init_from_argv(const gchar *const *argv) {
   g_strfreev(g_process_argv);
   g_process_argv = g_strdupv((gchar**)argv);
 }
 
-// Initialize global process state from a single command
-void process_init_globals(const gchar *cmd) {
+// Initialize process state from a single command
+void process_init(const gchar *cmd) {
   if (!cmd) {
-    g_warning("process_init_globals: cmd is NULL.");
-    process_init_globals_from_argv(NULL);
+    g_warning("process_init: cmd is NULL.");
+    process_init_from_argv(NULL);
     return;
   }
   const gchar *argv[] = { cmd, NULL };
-  process_init_globals_from_argv(argv);
+  process_init_from_argv(argv);
 }
 
-void process_global_start() {
+void process_start() {
   if (!g_process_argv || !g_process_argv[0]) {
-    g_printerr("process_global_start: No command (argv) to start.\n");
+    g_printerr("process_start: No command (argv) to start.\n");
     return;
   }
 
@@ -89,14 +89,14 @@ void process_global_start() {
                                 g_process_argv,
                                 NULL, // envp (current)
                                 G_SPAWN_DO_NOT_REAP_CHILD | G_SPAWN_SEARCH_PATH,
-                                child_setup_global, // function to run in child before exec
+                                child_setup, // function to run in child before exec
                                 NULL, // user_data for child_setup
                                 &g_process_pid,
                                 &g_process_in_fd,  // child's stdin
                                 &g_process_out_fd, // child's stdout
                                 &g_process_err_fd, // child's stderr
                                 &error)) {
-    g_printerr("process_global_start: g_spawn_async_with_pipes failed: %s\n", error ? error->message : "Unknown error");
+    g_printerr("process_start: g_spawn_async_with_pipes failed: %s\n", error ? error->message : "Unknown error");
     g_clear_error(&error);
     // Cleanup partially initialized state if spawn fails
     g_strfreev(g_process_argv);
@@ -109,17 +109,17 @@ void process_global_start() {
 
   // Start stdout thread if output FD is valid and thread not already running
   if (!g_process_out_thread && g_process_out_fd >=0) {
-    g_process_out_thread = g_thread_new("process-stdout", stdout_thread_global, NULL);
+    g_process_out_thread = g_thread_new("process-stdout", stdout_thread, NULL);
   }
   // Start stderr thread if error FD is valid and thread not already running
   if (!g_process_err_thread && g_process_err_fd >=0) {
-    g_process_err_thread = g_thread_new("process-stderr", stderr_thread_global, NULL);
+    g_process_err_thread = g_thread_new("process-stderr", stderr_thread, NULL);
   }
 }
 
-gboolean process_global_write(const gchar *data, gssize len) {
+gboolean process_write(const gchar *data, gssize len) {
   if (g_process_in_fd < 0) {
-    g_warning("process_global_write: Process not started or input FD is invalid.");
+    g_warning("process_write: Process not started or input FD is invalid.");
     return FALSE;
   }
   if (len < 0) {
@@ -127,16 +127,16 @@ gboolean process_global_write(const gchar *data, gssize len) {
   }
   ssize_t written = sys_write(g_process_in_fd, data, len);
   if (written == -1) {
-      g_printerr("process_global_write: write error to fd %d: %s (errno %d)\n", g_process_in_fd, g_strerror(errno), errno);
+      g_printerr("process_write: write error to fd %d: %s (errno %d)\n", g_process_in_fd, g_strerror(errno), errno);
   } else if (written < len) {
-      g_warning("process_global_write: partial write to fd %d. Wrote %zd of %zd bytes.", g_process_in_fd, written, len);
+      g_warning("process_write: partial write to fd %d. Wrote %zd of %zd bytes.", g_process_in_fd, written, len);
   }
   return written == len;
 }
 
 // --- End of Merged from process.c ---
 
-// Global static variables for SwankProcess's state (distinct from general process)
+// Static variables for SwankProcess's state (distinct from general process)
 static gint g_swank_fd = -1;
 static GSocketConnection *g_swank_connection = NULL; // Store the connection to manage its lifecycle
 
@@ -153,12 +153,12 @@ static gint    g_swank_port_number = 4005; // Default, will be updated from glob
 static GThread *g_swank_reader_thread = NULL;
 
 // --- Forward declarations for internal static functions ---
-static gpointer swank_reader_thread_global(gpointer data);
+static gpointer swank_reader_thread(gpointer data);
 static void read_until_from_lisp_output(const char *pattern);
 static void start_lisp_and_swank_server();
 static void connect_to_swank_server();
 
-void swank_process_init_globals() {
+void swank_process_init() {
 
     // Initialize mutexes and cond var
     g_mutex_init(&g_swank_out_mutex);
@@ -171,7 +171,7 @@ void swank_process_init_globals() {
 
 }
 
-static gpointer swank_reader_thread_global(gpointer /*data*/) {
+static gpointer swank_reader_thread(gpointer /*data*/) {
     char buf[1024]; // Read buffer
     ssize_t n_read;
 
@@ -228,7 +228,7 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
                 g_usleep(10000); // Sleep a bit and retry
                 continue;
             }
-            g_printerr("swank_process: swank_reader_thread_global read error on fd %d: %s (errno %d)\n", g_swank_fd, g_strerror(errno), errno);
+            g_printerr("swank_process: swank_reader_thread read error on fd %d: %s (errno %d)\n", g_swank_fd, g_strerror(errno), errno);
             break;
         }
     }
@@ -272,7 +272,7 @@ static void on_lisp_stderr(GString *data) {
 
 static void start_lisp_and_swank_server() {
 
-    process_global_start(); // Start the Lisp process
+    process_start(); // Start the Lisp process
 
     // Wait for Lisp prompt (e.g., "* ")
     read_until_from_lisp_output("* "); // This pattern may need to be more robust or configurable.
@@ -280,7 +280,7 @@ static void start_lisp_and_swank_server() {
     // This command depends on the Lisp implementation (e.g., ql:quickload vs require).
     // Using (require :swank) for now.
     const char *load_swank_cmd = "(require :swank)\n";
-    process_global_write(load_swank_cmd, -1);
+    process_write(load_swank_cmd, -1);
 
     read_until_from_lisp_output(")"); // A simple heuristic: wait for some closing paren. This needs improvement.
     read_until_from_lisp_output("* "); // Wait for prompt again
@@ -288,7 +288,7 @@ static void start_lisp_and_swank_server() {
     char create_server_cmd[128];
     g_snprintf(create_server_cmd, sizeof(create_server_cmd),
                "(swank:create-server :port %d :dont-close t)\n", g_swank_port_number);
-    process_global_write(create_server_cmd, -1);
+    process_write(create_server_cmd, -1);
 
     // Wait for Swank server to report its port or for prompt again
     read_until_from_lisp_output("* "); // Or a specific message like ";; Swank started on port XXXX."
@@ -329,23 +329,23 @@ static void connect_to_swank_server() {
     // Make the socket blocking for sys_read if necessary, or adapt sys_read logic.
     // For simplicity, we assume sys_read handles non-blocking behavior or FD is blocking.
     // If GSocket FD is non-blocking by default, sys_read might return EAGAIN.
-    // The swank_reader_thread_global has a basic EAGAIN check.
+    // The swank_reader_thread has a basic EAGAIN check.
 
 
     // Start the Swank message reader thread
     if (g_swank_fd >=0 && !g_swank_reader_thread) {
-        g_swank_reader_thread = g_thread_new("swank-reader", swank_reader_thread_global, NULL);
+        g_swank_reader_thread = g_thread_new("swank-reader", swank_reader_thread, NULL);
     }
 }
 
-void swank_process_global_start() {
-    start_lisp_and_swank_server(); // This starts the underlying Lisp process via process_global_start()
+void swank_process_start() {
+    start_lisp_and_swank_server(); // This starts the underlying Lisp process via process_start()
     connect_to_swank_server();
 }
 
-void swank_process_global_send(const GString *payload) {
+void swank_process_send(const GString *payload) {
     if (g_swank_fd < 0) {
-        g_warning("swank_process_global_send: Swank process not started or FD invalid.");
+        g_warning("swank_process_send: Swank process not started or FD invalid.");
         return;
     }
 
@@ -356,14 +356,14 @@ void swank_process_global_send(const GString *payload) {
 
     ssize_t nw_hdr = sys_write(g_swank_fd, hdr, 6);
     if (nw_hdr != 6) {
-        g_printerr("swank_process_global_send: Failed to write Swank header (wrote %zd, errno %d)\n", nw_hdr, errno);
+        g_printerr("swank_process_send: Failed to write Swank header (wrote %zd, errno %d)\n", nw_hdr, errno);
         // Consider this a critical failure; perhaps reset state or attempt reconnect.
         return;
     }
 
     ssize_t nw_payload = sys_write(g_swank_fd, payload->str, len);
     if (nw_payload != (ssize_t)len) {
-        g_printerr("swank_process_global_send: Failed to write Swank payload (wrote %zd of %zu, errno %d)\n", nw_payload, len, errno);
+        g_printerr("swank_process_send: Failed to write Swank payload (wrote %zd of %zu, errno %d)\n", nw_payload, len, errno);
         return;
     }
 }

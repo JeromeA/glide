@@ -8,19 +8,19 @@
 #include "reloc.h"    // For relocate() - though not used directly here, often in main
 #include "syscalls.h" // For sys_open, sys_read, sys_close, sys_fstat
 
-// Global variables defined in main.c
-extern GtkSourceBuffer *buffer_global;
+// Variables defined in main.c
+extern GtkSourceBuffer *buffer;
 extern void main_set_filename(const gchar *new_filename); // Defined in main.c
 
 
-void simple_file_open_global(GtkWidget *triggering_widget) {
+void simple_file_open_ui(GtkWidget *triggering_widget) {
     GtkWindow *parent_window = NULL;
     if (triggering_widget) {
         parent_window = GTK_WINDOW(gtk_widget_get_toplevel(triggering_widget));
     }
 
-    if (!buffer_global) {
-        g_printerr("simple_file_open_global: buffer_global is NULL. Cannot open file.\n");
+    if (!buffer) {
+        g_printerr("simple_file_open_ui: buffer is NULL. Cannot open file.\n");
         return;
     }
 
@@ -71,7 +71,7 @@ void simple_file_open_global(GtkWidget *triggering_widget) {
                     content[total_read] = '\0';
                     sys_close(fd);
 
-                    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(buffer_global), content, -1);
+                    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(buffer), content, -1);
                     g_free(content);
                 }
             }

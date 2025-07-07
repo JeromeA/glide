@@ -4,31 +4,31 @@
 #include <glib.h> // For gchar, gpointer, gboolean, GPid, GThread, etc.
 #include <gio/gio.h> // For GSocketConnection, GSocketClient
 
-// Initializes the global process a single command string
-void process_init_globals(const gchar *cmd);
+// Initializes the process a single command string
+void process_init(const gchar *cmd);
 
-// process_init_globals_from_argv is now static
+// process_init_from_argv is now static
 
 // Writes data to the process's stdin
-gboolean process_global_write(const gchar *data, gssize len);
+gboolean process_write(const gchar *data, gssize len);
 
 // Starts the process execution
-void process_global_start();
+void process_start();
 
-// Cleans up global process resources (e.g., at application exit)
-void process_cleanup_globals();
+// Cleans up process resources (e.g., at application exit)
+void process_cleanup();
 
-// Initializes the global Swank process state.
-// It will internally use global preferences (for port) and global process functions.
-void swank_process_init_globals();
+// Initializes the Swank process state.
+// It will internally use preferences (for port) and process functions.
+void swank_process_init();
 
-// Starts the global Swank process (which includes starting the underlying process if not already started)
-void swank_process_global_start();
+// Starts the Swank process (which includes starting the underlying process if not already started)
+void swank_process_start();
 
-// Sends a payload to the global Swank process
-void swank_process_global_send(const GString *payload);
+// Sends a payload to the Swank process
+void swank_process_send(const GString *payload);
 
-// Cleans up global Swank process resources
-void swank_process_cleanup_globals();
+// Cleans up Swank process resources
+void swank_process_cleanup();
 
 #endif /* SWANK_PROCESS_H */

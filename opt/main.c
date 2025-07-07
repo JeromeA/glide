@@ -20,53 +20,53 @@
 #include "reloc.c"
 #endif
 
-// Global variables
-GtkSourceBuffer *buffer_global = NULL;
-gchar           *filename_global = NULL;
-GtkWidget* interactions_view_global = NULL; // For SwankSession to call updates
+// Variables
+GtkSourceBuffer *buffer = NULL;
+gchar           *filename = NULL;
+GtkWidget* interactions_view_widget = NULL; // For SwankSession to call updates
 
 
 // Forward declarations for signal handlers
 static gboolean quit_delete_event_handler(GtkWidget *widget, GdkEvent *event, gpointer data);
 static void quit_menu_item_handler(GtkWidget *item, gpointer data);
 static gboolean on_key_press_handler(GtkWidget *widget, GdkEventKey *event, gpointer user_data);
-void on_evaluate_global();
+void on_evaluate();
 
 
 const gchar *main_get_filename() {
-    return filename_global;
+    return filename;
 }
 
 void main_set_filename(const gchar *new_filename) {
     gchar *dup = new_filename ? g_strdup(new_filename) : NULL;
-    g_free(filename_global);
-    filename_global = dup;
+    g_free(filename);
+    filename = dup;
 }
 
 GtkSourceBuffer *main_get_source_buffer() {
-    return buffer_global;
+    return buffer;
 }
 
-static void app_quit_global() {
+static void app_quit() {
   gtk_main_quit();
 }
 
-static void app_on_quit_global() {
-  app_quit_global();
+static void app_on_quit() {
+  app_quit();
 }
 
 static gboolean quit_delete_event_handler(GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer /*data*/) {
-  app_on_quit_global();
+  app_on_quit();
   return TRUE;
 }
 
 static void quit_menu_item_handler(GtkWidget * /*item*/, gpointer /*data*/) {
-  app_on_quit_global();
+  app_on_quit();
 }
 
 static gboolean on_key_press_handler(GtkWidget * /*widget*/, GdkEventKey *event, gpointer /*user_data*/) {
   if ((event->keyval == GDK_KEY_Return) && (event->state & GDK_MOD1_MASK)) {
-    on_evaluate_global();
+    on_evaluate();
     return TRUE;
   }
   return FALSE;
@@ -77,14 +77,14 @@ int main(int argc, char *argv[]) {
   relocate();
   gtk_init(&argc, &argv);
 
-  // Initialize global Process
-  process_init_globals("/usr/bin/sbcl");
+  // Initialize Process
+  process_init("/usr/bin/sbcl");
 
-  // Initialize global SwankProcess
-  swank_process_init_globals();
+  // Initialize SwankProcess
+  swank_process_init();
 
-  // Initialize global SwankSession
-  swank_session_init_globals();
+  // Initialize SwankSession
+  swank_session_init();
 
   // --- UI Setup ---
   GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -96,9 +96,9 @@ int main(int argc, char *argv[]) {
 
   GtkSourceLanguageManager *lm = gtk_source_language_manager_get_default();
   GtkSourceLanguage *lang = gtk_source_language_manager_get_language(lm, "commonlisp");
-  buffer_global = gtk_source_buffer_new_with_language(lang);
+  buffer = gtk_source_buffer_new_with_language(lang);
 
-  GtkWidget *view = gtk_source_view_new_with_buffer(buffer_global);
+  GtkWidget *view = gtk_source_view_new_with_buffer(buffer);
   gtk_source_view_set_show_line_numbers(GTK_SOURCE_VIEW(view), TRUE);
   gtk_container_add(GTK_CONTAINER(scrolled), view);
 
@@ -119,17 +119,17 @@ int main(int argc, char *argv[]) {
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), quit_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
 
-  // Connect to new global file operations
-  g_signal_connect(open_item, "activate", G_CALLBACK(simple_file_open_global), open_item);
-  g_signal_connect(save_item, "activate", G_CALLBACK(simple_file_save_global), save_item);
-  g_signal_connect(saveas_item, "activate", G_CALLBACK(simple_file_saveas_global), saveas_item);
+  // Connect to new file operations
+  g_signal_connect(open_item, "activate", G_CALLBACK(simple_file_open_ui), open_item);
+  g_signal_connect(save_item, "activate", G_CALLBACK(simple_file_save_ui), save_item);
+  g_signal_connect(saveas_item, "activate", G_CALLBACK(simple_file_saveas_ui), saveas_item);
   g_signal_connect(quit_item, "activate", G_CALLBACK(quit_menu_item_handler), NULL);
 
-  // Store the created InteractionsView globally for RealSwankSession to use.
-  interactions_view_global = GTK_WIDGET(interactions_view_new());
+  // Store the created InteractionsView for RealSwankSession to use.
+  interactions_view_widget = GTK_WIDGET(interactions_view_new());
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
   gtk_paned_pack1(GTK_PANED(paned), scrolled, TRUE, TRUE);
-  gtk_paned_pack2(GTK_PANED(paned), interactions_view_global, FALSE, TRUE);
+  gtk_paned_pack2(GTK_PANED(paned), interactions_view_widget, FALSE, TRUE);
 
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);

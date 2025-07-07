@@ -11,8 +11,8 @@
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
 
-// These globals are defined in main.c
-extern GtkSourceBuffer *buffer_global;
+// These variables are defined in main.c
+extern GtkSourceBuffer *buffer;
 #include "swank_session.h"
 
 
@@ -20,11 +20,11 @@ extern GtkSourceBuffer *buffer_global;
 /* Callback triggered when the user requests evaluation of the current line. */
 /* ------------------------------------------------------------------------- */
 void
-on_evaluate_global()
+on_evaluate()
 {
-  GtkSourceBuffer *source_buffer = buffer_global;
+  GtkSourceBuffer *source_buffer = buffer;
   if (!source_buffer) {
-    g_warning("Evaluate.on_evaluate_global: buffer_global is NULL");
+    g_warning("Evaluate.on_evaluate: buffer is NULL");
     return;
   }
 
@@ -52,10 +52,10 @@ on_evaluate_global()
   }
 
   /* 4. Send the expression to SWANK for remote execution. */
-  // Directly call the global eval function
+  // Directly call the eval function
   Interaction *interaction = g_new0(Interaction, 1);
   interaction_init(interaction, expr); // expr is owned by interaction now
-  swank_session_global_eval(interaction);
+  swank_session_eval(interaction);
   // Interaction will be managed (and eventually freed) by RealSwankSession logic.
 
 
