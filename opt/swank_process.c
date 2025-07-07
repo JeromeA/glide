@@ -5,6 +5,10 @@
 #include "syscalls.h"     // For sys_read, sys_write
 #include "util.h"         // For g_debug_40
 
+// Forward declarations for static functions called by threads
+static void on_lisp_stdout(GString *data, gpointer user_data);
+static void on_lisp_stderr(GString *data, gpointer user_data);
+
 #include <gio/gio.h>
 #include <unistd.h>    // For close, setsid
 #include <errno.h>
@@ -152,10 +156,12 @@ void process_global_start() {
 
   g_process_started = TRUE;
 
-  if (g_process_out_cb && !g_process_out_thread && g_process_out_fd >=0) {
+  // Start stdout thread if output FD is valid and thread not already running
+  if (!g_process_out_thread && g_process_out_fd >=0) {
     g_process_out_thread = g_thread_new("process-stdout", stdout_thread_global, NULL);
   }
-  if (g_process_err_cb && !g_process_err_thread && g_process_err_fd >=0) {
+  // Start stderr thread if error FD is valid and thread not already running
+  if (!g_process_err_thread && g_process_err_fd >=0) {
     g_process_err_thread = g_thread_new("process-stderr", stderr_thread_global, NULL);
   }
 }
@@ -259,10 +265,9 @@ static gboolean g_swank_process_started = FALSE;
 
 
 // --- Forward declarations for internal static functions ---
+// on_lisp_stdout and on_lisp_stderr moved to top of file
 static gpointer swank_reader_thread_global(gpointer data);
 static void read_until_from_lisp_output(const char *pattern);
-static void on_lisp_stdout(GString *data, gpointer user_data);
-static void on_lisp_stderr(GString *data, gpointer user_data);
 static void start_lisp_and_swank_server();
 static void connect_to_swank_server();
 
@@ -317,10 +322,11 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
             g_mutex_lock(&g_swank_incoming_mutex);
             g_string_append_len(g_swank_incoming_data_buffer, buf, n_read);
 
-            if (g_swank_message_cb) {
-                while (TRUE) { // Process all complete messages in buffer
-                    if (g_swank_incoming_data_buffer->len - g_swank_incoming_consumed >= 6) { // Enough for header?
-                        char hdr[7];
+            // Removed if(g_swank_message_cb) check as the callback is now hardcoded
+            // and dispatch should always be attempted if data is present.
+            while (TRUE) { // Process all complete messages in buffer
+                if (g_swank_incoming_data_buffer->len - g_swank_incoming_consumed >= 6) { // Enough for header?
+                    char hdr[7];
                         memcpy(hdr, g_swank_incoming_data_buffer->str + g_swank_incoming_consumed, 6);
                         hdr[6] = '\0';
                         gsize msg_len = g_ascii_strtoull(hdr, NULL, 16); // Hex string to size_t
@@ -346,7 +352,7 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
                     }
                     break; // Not enough data for header or full message body
                 }
-            }
+            // } // End of removed if(g_swank_message_cb)
              // Compact the buffer if a lot has been consumed
             if (g_swank_incoming_consumed > 0 && g_swank_incoming_data_buffer->len > g_swank_incoming_consumed) {
                 g_string_erase(g_swank_incoming_data_buffer, 0, g_swank_incoming_consumed);
