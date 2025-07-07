@@ -4,17 +4,17 @@
 #include <glib.h>
 #include "interaction.h" // For Interaction struct, used in eval
 
-// Initializes the global Swank session state.
-// It will internally set itself up as the callback for the global Swank process.
-void swank_session_init_globals();
+// Initializes the Swank session state.
+// It will internally set itself up as the callback for the Swank process.
+void swank_session_init();
 
-// Evaluates an expression using the global Swank session.
+// Evaluates an expression using the Swank session.
 // The Interaction object should be allocated by the caller and will be managed (and eventually freed)
 // by the SwankSession logic or through explicit cleanup if needed.
-void swank_session_global_eval(Interaction *interaction);
+void swank_session_eval(Interaction *interaction);
 
-// Cleans up global Swank session resources (e.g., hash table).
-void swank_session_cleanup_globals();
+// Cleans up Swank session resources (e.g., hash table).
+void swank_session_cleanup();
 
 // Function to handle messages from Swank, now called directly by swank_process.c
 void swank_session_on_message_internal(GString *msg, gpointer user_data);

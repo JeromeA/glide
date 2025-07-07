@@ -6,8 +6,8 @@
 #include <string.h>       // For strstr, etc.
 #include <gtk/gtk.h>      // For g_main_context_invoke, if message handling needs to be on main thread
 
-// Global static variables for SwankSession's state
-extern GtkWidget* interactions_view_global; // Defined in main.c
+// Static variables for SwankSession's state
+extern GtkWidget* interactions_view_widget; // Defined in main.c
 static gboolean   g_swank_session_started = FALSE;
 static guint32    g_swank_session_next_tag = 1;
 static GHashTable *g_swank_session_interactions_table = NULL; // Stores Interaction* keyed by tag
@@ -126,7 +126,7 @@ typedef struct {
     GString *msg_payload;
 } MessageDataForMainThread;
 
-void swank_session_init_globals() {
+void swank_session_init() {
     g_swank_session_started = FALSE;
     g_swank_session_next_tag = 1;
     g_swank_session_interactions_table = g_hash_table_new_full(g_direct_hash,
@@ -135,26 +135,26 @@ void swank_session_init_globals() {
                                                                NULL);
 }
 
-void swank_session_global_eval(Interaction *interaction) {
+void swank_session_eval(Interaction *interaction) {
     if (!interaction || !interaction->expression) {
         if(interaction) g_free(interaction);
         return;
     }
     if (!g_swank_session_started) {
-        swank_process_global_start();
+        swank_process_start();
         g_swank_session_started = TRUE;
     }
     interaction->tag = g_swank_session_next_tag++;
     interaction->status = INTERACTION_RUNNING;
     g_hash_table_insert(g_swank_session_interactions_table, GUINT_TO_POINTER(interaction->tag), interaction);
-    interactions_view_add_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
+    interactions_view_add_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_widget), interaction);
     gchar *escaped_expr = escape_string(interaction->expression); // Uses static_escape_string
     gchar *rpc_call = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)",
                                       escaped_expr, interaction->tag);
     g_free(escaped_expr);
     GString *payload = g_string_new(rpc_call);
     g_free(rpc_call);
-    swank_process_global_send(payload);
+    swank_process_send(payload);
     g_string_free(payload, TRUE);
 }
 
@@ -219,7 +219,7 @@ static void parse_and_handle_return_message(const char *message_payload_str) {
         g_free(interaction->error);
         interaction->error = g_strdup("Failed to parse return from Swank");
     }
-    interactions_view_update_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
+    interactions_view_update_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_widget), interaction);
     g_free(return_type_token);
     g_free(tag_id_token);
 }
