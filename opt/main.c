@@ -1,6 +1,6 @@
 #include "includes.h"
 // #include "app.h" // App has been removed
-#include "preferences.h" // Using new global preferences API
+// #include "preferences.h" // Using new global preferences API
 #include "real_process.h" // Will be refactored
 #include "real_swank_process.h" // Will be refactored
 #include "real_swank_session.h" // Will be refactored
@@ -8,7 +8,7 @@
 // For file operations
 #include "simple_file_open.h"
 #include "simple_file_save.h"
-#include "preferences_dialog.h"
+// #include "preferences_dialog.h"
 #include "evaluate.h"
 #include "interactions_view.h"
 
@@ -20,10 +20,10 @@
 // Replace old file_open/save with new simple global versions
 #include "simple_file_open.c"
 #include "simple_file_save.c"
-#include "find_executables.c"
+// #include "find_executables.c"
 #include "interactions_view.c"
-#include "preferences.c" // Now uses global static fields
-#include "preferences_dialog.c" // Will be refactored to use global prefs
+// #include "preferences.c" // Now uses global static fields
+// #include "preferences_dialog.c" // Will be refactored to use global prefs
 // Interface .c files are/will be deleted:
 // #include "process.c" // Deleted
 // #include "swank_process.c" // Deleted
@@ -110,12 +110,8 @@ int main(int argc, char *argv[]) {
   relocate();
   gtk_init(&argc, &argv);
 
-  // Initialize global Preferences
-  preferences_init_globals(g_get_user_config_dir());
-
   // Initialize global Process
-  const gchar *sdk_path = preferences_get_sdk_global();
-  real_process_init_globals(sdk_path);
+  real_process_init_globals("/usr/bin/sbcl");
 
   // Initialize global SwankProcess
   real_swank_process_init_globals(); // Initializes global static SwankProcess fields
@@ -153,14 +149,12 @@ int main(int argc, char *argv[]) {
   GtkWidget *open_item = gtk_menu_item_new_with_label("Open…");
   GtkWidget *save_item = gtk_menu_item_new_with_label("Save");
   GtkWidget *saveas_item = gtk_menu_item_new_with_label("Save as…");
-  GtkWidget *pref_item = gtk_menu_item_new_with_label("Preferences…");
   GtkWidget *quit_item = gtk_menu_item_new_with_label("Quit");
 
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_item), file_menu);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), open_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), save_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), saveas_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), pref_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), quit_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
 
@@ -168,8 +162,6 @@ int main(int argc, char *argv[]) {
   g_signal_connect(open_item, "activate", G_CALLBACK(simple_file_open_global), open_item);
   g_signal_connect(save_item, "activate", G_CALLBACK(simple_file_save_global), save_item);
   g_signal_connect(saveas_item, "activate", G_CALLBACK(simple_file_saveas_global), saveas_item);
-  // on_preferences is now on_preferences_global and takes no data.
-  g_signal_connect(pref_item, "activate", G_CALLBACK(on_preferences_global), NULL);
   g_signal_connect(quit_item, "activate", G_CALLBACK(quit_menu_item_handler), NULL);
 
   // interactions_view_new used to take SwankSession*. Now SwankSession is global.
@@ -192,7 +184,7 @@ int main(int argc, char *argv[]) {
 
   g_free(filename_global);
   // if (preferences_global_ptr) g_object_unref(preferences_global_ptr); // Removed
-  preferences_cleanup_globals();
+  // preferences_cleanup_globals();
 
   // SwankSession cleanup
   // if (swank_session_global_ptr) g_object_unref(swank_session_global_ptr); // swank_session_global_ptr removed
