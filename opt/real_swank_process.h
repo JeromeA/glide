@@ -2,9 +2,7 @@
 #define REAL_SWANK_PROCESS_H
 
 #include <glib.h>
-#include <gio/gio.h> // For GSocketConnection, GSocketClient if still used directly for connection logic
-
-// swank_process.h has been removed
+#include <gio/gio.h> // For GSocketConnection, GSocketClient
 
 // Callback type for Swank messages
 typedef void (*GlobalSwankProcessMessageCallback)(GString *msg, gpointer user_data);
@@ -23,7 +21,6 @@ void real_swank_process_global_send(const GString *payload);
 void real_swank_process_global_set_message_cb(GlobalSwankProcessMessageCallback cb, gpointer user_data);
 
 // Allows setting the Swank socket FD directly (e.g., for testing or alternative connection methods)
-// This might be less used if connection is always established internally.
 void real_swank_process_global_set_socket_fd(int fd);
 
 // Cleans up global Swank process resources

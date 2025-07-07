@@ -1,56 +1,40 @@
 #include "includes.h"
-// #include "app.h" // App has been removed
-// #include "preferences.h" // Using new global preferences API
-#include "real_process.h" // Will be refactored
-#include "real_swank_process.h" // Will be refactored
-#include "real_swank_session.h" // Will be refactored
+#include "real_process.h"
+#include "real_swank_process.h"
+#include "real_swank_session.h"
 
 // For file operations
 #include "simple_file_open.h"
 #include "simple_file_save.h"
-// #include "preferences_dialog.h"
 #include "evaluate.h"
 #include "interactions_view.h"
 
 
 #ifdef INLINE
 #define STATIC static
-// #include "app.c" // App has been removed
-#include "evaluate.c" // Already updated for global_evaluate
-// Replace old file_open/save with new simple global versions
+#include "evaluate.c"
 #include "simple_file_open.c"
 #include "simple_file_save.c"
-// #include "find_executables.c"
 #include "interactions_view.c"
-// #include "preferences.c" // Now uses global static fields
-// #include "preferences_dialog.c" // Will be refactored to use global prefs
-// Interface .c files are/will be deleted:
-// #include "process.c" // Deleted
-// #include "swank_process.c" // Deleted
-// #include "swank_session.c" // Deleted
-#include "real_process.c" // Now uses global static fields
-#include "real_swank_process.c" // Now uses global static fields
-#include "real_swank_session.c" // Now uses global static fields
+#include "real_process.c"
+#include "real_swank_process.c"
+#include "real_swank_session.c"
 #include "reloc.c"
 #endif
 
-// Global variables that were previously in App struct (and made static)
-// Removing 'static' to allow 'extern' access from other .c files for INLINE builds.
+// Global variables
 GtkSourceBuffer *buffer_global = NULL;
 gchar           *filename_global = NULL;
-// static Preferences     *preferences_global_ptr = NULL; // Preferences is no longer a GObject instance
-// static SwankSession    *swank_session_global_ptr = NULL; // SwankSession is no longer a GObject instance
 GtkWidget* interactions_view_global = NULL; // For RealSwankSession to call updates
 
 
-// Forward declarations for signal handlers adapted from app.c
+// Forward declarations for signal handlers
 static gboolean quit_delete_event_handler(GtkWidget *widget, GdkEvent *event, gpointer data);
 static void quit_menu_item_handler(GtkWidget *item, gpointer data);
 static gboolean on_key_press_handler(GtkWidget *widget, GdkEventKey *event, gpointer user_data);
 void on_evaluate_global();
 
 
-// Getter/Setter for filename_global (mimicking app_get_filename, app_set_filename)
 const gchar *main_get_filename() {
     return filename_global;
 }
@@ -62,16 +46,9 @@ void main_set_filename(const gchar *new_filename) {
     filename_global = dup;
 }
 
-// Getter for buffer_global (mimicking app_get_source_buffer)
 GtkSourceBuffer *main_get_source_buffer() {
     return buffer_global;
 }
-
-// Preferences are now accessed via global functions like preferences_get_sdk_global()
-// So, main_get_preferences() is removed.
-
-// SwankSession is now global static fields, so main_get_swank_session() is removed.
-// Operations are done via e.g. real_swank_session_global_eval().
 
 static void app_quit_global() {
   g_debug("app_quit_global");
@@ -102,8 +79,6 @@ static gboolean on_key_press_handler(GtkWidget * /*widget*/, GdkEventKey *event,
   return FALSE;
 }
 
-// on_evaluate_global() is defined in evaluate.c and uses global buffer and swank session
-
 
 int main(int argc, char *argv[]) {
   g_debug("Main.main");
@@ -114,18 +89,13 @@ int main(int argc, char *argv[]) {
   real_process_init_globals("/usr/bin/sbcl");
 
   // Initialize global SwankProcess
-  real_swank_process_init_globals(); // Initializes global static SwankProcess fields
-  // SwankProcess *swank_proc = real_swank_process_new(...); // Old way, swank_proc is now global
-
-  // Initialize global SwankProcess
   real_swank_process_init_globals();
 
   // Initialize global SwankSession
-  real_swank_session_init_globals(); // Initializes global static SwankSession fields
-  // swank_session_global_ptr = real_swank_session_new(NULL ...); // Old way
+  real_swank_session_init_globals();
 
 
-  // --- UI Setup (taken from app_activate) ---
+  // --- UI Setup ---
   GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
   g_signal_connect(window, "delete-event", G_CALLBACK(quit_delete_event_handler), NULL);
@@ -164,14 +134,11 @@ int main(int argc, char *argv[]) {
   g_signal_connect(saveas_item, "activate", G_CALLBACK(simple_file_saveas_global), saveas_item);
   g_signal_connect(quit_item, "activate", G_CALLBACK(quit_menu_item_handler), NULL);
 
-  // interactions_view_new used to take SwankSession*. Now SwankSession is global.
-  // interactions_view_new() will be changed to take no arguments.
-  // Store the created view globally for RealSwankSession to use.
+  // Store the created InteractionsView globally for RealSwankSession to use.
   interactions_view_global = GTK_WIDGET(interactions_view_new());
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
   gtk_paned_pack1(GTK_PANED(paned), scrolled, TRUE, TRUE);
-  // gtk_paned_pack2(GTK_PANED(paned), interactions, FALSE, TRUE);
-  gtk_paned_pack2(GTK_PANED(paned), interactions_view_global, FALSE, TRUE); // Use the global var
+  gtk_paned_pack2(GTK_PANED(paned), interactions_view_global, FALSE, TRUE);
 
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
@@ -183,19 +150,15 @@ int main(int argc, char *argv[]) {
   gtk_main();
 
   g_free(filename_global);
-  // if (preferences_global_ptr) g_object_unref(preferences_global_ptr); // Removed
-  // preferences_cleanup_globals();
 
-  // SwankSession cleanup
-  // if (swank_session_global_ptr) g_object_unref(swank_session_global_ptr); // swank_session_global_ptr removed
-  real_swank_session_cleanup_globals(); // New cleanup for global SwankSession
+  // Cleanup global SwankSession
+  real_swank_session_cleanup_globals();
 
-  // if (proc) g_object_unref(proc); // proc is no longer a GObject instance
+  // Cleanup global Process
   real_process_cleanup_globals();
 
-  // SwankProcess cleanup
-  // if (swank_proc) g_object_unref(swank_proc); // swank_proc is no longer a GObject instance
-  real_swank_process_cleanup_globals(); // New cleanup for global SwankProcess
+  // Cleanup global SwankProcess
+  real_swank_process_cleanup_globals();
 
   exit(0);
 }

@@ -112,11 +112,11 @@ static gchar *static_unescape_string(const char *token) {
   return g_strdup(token);
 }
 
-// Use static versions via #define to avoid changing all call sites immediately
+// Use static versions
 #define escape_string static_escape_string
 #define next_token static_next_token
 #define unescape_string static_unescape_string
-// g_debug_40 is a macro from util.h, so it's fine.
+// g_debug_40 is a macro from util.h
 
 // --- Forward declarations for internal static functions (session specific) ---
 static void interaction_free_members_static(Interaction *interaction);

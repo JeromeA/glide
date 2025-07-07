@@ -2,7 +2,6 @@
 #define REAL_PROCESS_H
 
 #include <glib.h> // For gchar, gpointer, gboolean, GPid, GThread, etc.
-// process.h has been removed
 
 // Callback type for stdout/stderr data
 typedef void (*GlobalProcessCallback)(GString *data, gpointer user_data);

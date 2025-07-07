@@ -1,6 +1,5 @@
 #include "interactions_view.h"
 #include "interaction.h"
-// #include "swank_session.h" // No longer needed here, session is global
 
 #define CSS_CLASS_OUTPUT "interaction-output"
 #define CSS_CLASS_ERROR  "interaction-error"
@@ -17,9 +16,6 @@ typedef struct {
 
 struct _InteractionsView {
   GtkBox parent_instance;
-  // SwankSession *session; // Removed
-  // gulong handler_id; // Removed
-  // gulong update_handler_id; // Removed
   GHashTable *rows; // Stores InteractionRow* keyed by Interaction* (pointer address)
 };
 
@@ -30,8 +26,6 @@ static void interaction_row_update(InteractionRow *row, Interaction *interaction
 static void interaction_row_free(gpointer data);
 static void set_text_view(GtkBox *box, GtkWidget **view, const gchar *text, const gchar *css_class, gboolean hide_if_empty);
 
-// Static functions on_interaction_added and on_interaction_updated are removed.
-// Their logic is moved into the new public functions.
 
 static void
 interaction_row_free(gpointer data)
@@ -93,7 +87,6 @@ interaction_row_update(InteractionRow *row, Interaction *interaction)
   if (row->result) {
     gtk_box_reorder_child(GTK_BOX(row->box), row->result, -1); // Move to end
   }
-  // gtk_widget_show_all(row->frame); // Caller (add/update) will show_all on frame.
 }
 
 static void
@@ -101,12 +94,6 @@ interactions_view_finalize(GObject *obj)
 {
   g_debug("InteractionsView.finalize");
   InteractionsView *self = GLIDE_INTERACTIONS_VIEW(obj);
-  // if (self->session && self->handler_id) // Signal handlers removed
-  //   g_signal_handler_disconnect(self->session, self->handler_id);
-  // if (self->session && self->update_handler_id)
-  //   g_signal_handler_disconnect(self->session, self->update_handler_id);
-  // if (self->session) // Session object removed
-  //   g_object_unref(self->session);
   if (self->rows) {
     g_hash_table_destroy(self->rows);
     self->rows = NULL;
@@ -144,29 +131,20 @@ interactions_view_init(InteractionsView *self)
       GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
   g_object_unref(provider);
 
-  // self->session = NULL; // Removed
-  // self->handler_id = 0; // Removed
-  // self->update_handler_id = 0; // Removed
   self->rows = g_hash_table_new_full(g_direct_hash, g_direct_equal,
       NULL, interaction_row_free);
 }
 
-// New constructor, takes no arguments
+// Constructor, takes no arguments
 InteractionsView *
 interactions_view_new()
 {
   g_debug("InteractionsView.new (no-args)");
-  // g_return_val_if_fail(GLIDE_IS_SWANK_SESSION(session), NULL); // Session check removed
   InteractionsView *self = g_object_new(INTERACTIONS_VIEW_TYPE, NULL);
-  // self->session = g_object_ref(session); // Session storage and signal connections removed
-  // self->handler_id = g_signal_connect(self->session, "interaction-added",
-  //     G_CALLBACK(on_interaction_added), self);
-  // self->update_handler_id = g_signal_connect(self->session, "interaction-updated",
-  //     G_CALLBACK(on_interaction_updated), self);
   return self;
 }
 
-// New public function to add an interaction display
+// Public function to add an interaction display
 void
 interactions_view_add_interaction(InteractionsView *self, Interaction *interaction)
 {
@@ -193,7 +171,7 @@ interactions_view_add_interaction(InteractionsView *self, Interaction *interacti
   gtk_widget_show_all(row->frame);
 }
 
-// New public function to update an existing interaction display
+// Public function to update an existing interaction display
 void
 interactions_view_update_interaction(InteractionsView *self, Interaction *interaction)
 {

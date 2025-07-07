@@ -39,7 +39,6 @@ void simple_file_save_global(GtkWidget *triggering_widget) {
             "_Save", GTK_RESPONSE_ACCEPT,
             NULL);
         gtk_file_chooser_set_do_overwrite_confirmation(GTK_FILE_CHOOSER(dialog), TRUE);
-        // gtk_file_chooser_set_current_name(GTK_FILE_CHOOSER(dialog), "Untitled"); // Optional
 
         if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
             filename_to_save = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
