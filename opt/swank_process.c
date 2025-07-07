@@ -1,6 +1,5 @@
 #include "swank_process.h"
 #include "swank_session.h" // For swank_session_on_message_internal
-// #include "process.h" // For global process functions - Will be merged
 #include "preferences.h"  // For global preferences functions
 #include "syscalls.h"     // For sys_read, sys_write
 #include "util.h"         // For g_debug_40
@@ -25,9 +24,6 @@ static GPid g_process_pid = 0;
 static gint g_process_in_fd = -1;  // Parent's write end to child's stdin
 static gint g_process_out_fd = -1; // Parent's read end from child's stdout
 static gint g_process_err_fd = -1; // Parent's read end from child's stderr
-
-// Removed g_process_out_cb, g_process_out_user_data, g_process_err_cb, g_process_err_user_data
-// Callbacks are now hardcoded.
 
 static GThread *g_process_out_thread = NULL;
 static GThread *g_process_err_thread = NULL;
@@ -90,10 +86,6 @@ static void process_init_globals_from_argv(const gchar *const *argv) {
   g_process_in_fd = -1;
   g_process_out_fd = -1;
   g_process_err_fd = -1;
-  // g_process_out_cb = NULL; // Removed
-  // g_process_out_user_data = NULL; // Removed
-  // g_process_err_cb = NULL; // Removed
-  // g_process_err_user_data = NULL; // Removed
   g_process_out_thread = NULL;
   g_process_err_thread = NULL;
   g_process_started = FALSE; // Set to TRUE in _start()
@@ -110,9 +102,6 @@ void process_init_globals(const gchar *cmd) {
   const gchar *argv[] = { cmd, NULL };
   process_init_globals_from_argv(argv);
 }
-
-// Removed process_global_set_stdout_cb as callback is hardcoded
-// Removed process_global_set_stderr_cb as callback is hardcoded
 
 void process_global_start() {
   g_debug("process_global_start");
@@ -230,10 +219,6 @@ void process_cleanup_globals() {
   g_process_argv = NULL;
 
   g_process_started = FALSE;
-  // g_process_out_cb = NULL; // Removed
-  // g_process_err_cb = NULL; // Removed
-  // g_process_out_user_data = NULL; // Removed
-  // g_process_err_user_data = NULL; // Removed
 
   g_debug("process_cleanup_globals: Cleanup complete.");
 }
@@ -255,9 +240,6 @@ static GCond    g_swank_out_cond;         // To signal new data in g_swank_out_b
 static GString *g_swank_incoming_data_buffer = NULL; // Buffer for data coming directly from Swank socket
 static gsize    g_swank_incoming_consumed = 0;
 static GMutex   g_swank_incoming_mutex;   // To protect g_swank_incoming_data_buffer and g_swank_incoming_consumed
-
-// Removed g_swank_message_cb, g_swank_message_cb_data
-// Callback is now hardcoded to swank_session_on_message_internal
 
 static gint    g_swank_port_number = 4005; // Default, will be updated from global preferences
 static GThread *g_swank_reader_thread = NULL;
@@ -292,8 +274,6 @@ void swank_process_init_globals() {
 
     g_swank_fd = -1;
     g_swank_connection = NULL;
-    // g_swank_message_cb = NULL; // Removed
-    // g_swank_message_cb_data = NULL; // Removed
     g_swank_reader_thread = NULL;
 
     // Get Swank port from global preferences
@@ -322,8 +302,6 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
             g_mutex_lock(&g_swank_incoming_mutex);
             g_string_append_len(g_swank_incoming_data_buffer, buf, n_read);
 
-            // Removed if(g_swank_message_cb) check as the callback is now hardcoded
-            // and dispatch should always be attempted if data is present.
             while (TRUE) { // Process all complete messages in buffer
                 if (g_swank_incoming_data_buffer->len - g_swank_incoming_consumed >= 6) { // Enough for header?
                     char hdr[7];
@@ -339,7 +317,6 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
 
                             // Dispatch the message by directly calling swank_session_on_message_internal
                             swank_session_on_message_internal(actual_msg, NULL); // g_swank_message_cb_data was NULL
-                            // The original RealSwankProcess freed the GString after the callback, so we follow that.
                             g_string_free(actual_msg, TRUE);
 
                             // If buffer fully consumed, reset pointers for efficiency
@@ -547,10 +524,6 @@ void swank_process_global_send(const GString *payload) {
     g_debug("swank_process_global_send: Message sent successfully.");
 }
 
-// Removed swank_process_global_set_message_cb as callback is hardcoded
-
-// Removed unused function swank_process_global_set_socket_fd
-
 void swank_process_cleanup_globals() {
     g_debug("swank_process_cleanup_globals: Starting cleanup.");
 
@@ -591,8 +564,6 @@ void swank_process_cleanup_globals() {
     g_cond_clear(&g_swank_out_cond);
     g_mutex_clear(&g_swank_incoming_mutex);
 
-    // g_swank_message_cb = NULL; // Removed
-    // g_swank_message_cb_data = NULL; // Removed
     g_swank_process_started = FALSE;
 
     g_debug("swank_process_cleanup_globals: Cleanup complete.");
