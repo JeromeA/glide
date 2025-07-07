@@ -1,7 +1,6 @@
 #include "swank_session.h"
 #include "swank_process.h" // For global Swank process functions
 #include "interaction.h"
-#include "util.h"         // For g_debug_40.
 #include "interactions_view.h" // For calling update functions
 
 #include <string.h>       // For strstr, etc.
@@ -116,7 +115,6 @@ static gchar *static_unescape_string(const char *token) {
 #define escape_string static_escape_string
 #define next_token static_next_token
 #define unescape_string static_unescape_string
-// g_debug_40 is a macro from util.h
 
 // --- Forward declarations for internal static functions (session specific) ---
 static void interaction_free_members_static(Interaction *interaction);
@@ -141,7 +139,6 @@ void interaction_free_members_static(Interaction *interaction) {
 }
 
 void swank_session_init_globals() {
-    g_debug("swank_session_init_globals");
     if (g_swank_session_interactions_table) {
         g_warning("swank_session_init_globals: Already initialized. Cleaning up old state.");
         swank_session_cleanup_globals();
@@ -152,7 +149,6 @@ void swank_session_init_globals() {
                                                                g_direct_equal,
                                                                NULL,
                                                                (GDestroyNotify)interaction_free_members_static);
-    g_debug("swank_session_init_globals: Complete.");
 }
 
 void swank_session_global_eval(Interaction *interaction) {
@@ -161,7 +157,6 @@ void swank_session_global_eval(Interaction *interaction) {
         if(interaction) g_free(interaction);
         return;
     }
-    g_debug("swank_session_global_eval: expr='%s'", interaction->expression);
     if (!g_swank_session_started) {
         swank_process_global_start();
         g_swank_session_started = TRUE;
@@ -169,7 +164,6 @@ void swank_session_global_eval(Interaction *interaction) {
     interaction->tag = g_swank_session_next_tag++;
     interaction->status = INTERACTION_RUNNING;
     g_hash_table_insert(g_swank_session_interactions_table, GUINT_TO_POINTER(interaction->tag), interaction);
-    g_debug("Interaction %u added (expression: %s)", interaction->tag, interaction->expression);
     if (interactions_view_global) {
         interactions_view_add_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
     } else {
@@ -187,7 +181,6 @@ void swank_session_global_eval(Interaction *interaction) {
 
 // Made non-static to be called directly from swank_process.c
 void swank_session_on_message_internal(GString *msg, gpointer /*user_data*/) {
-    g_debug_40("swank_session_on_message_internal: Received raw msg:", msg->str);
     MessageDataForMainThread *main_thread_data = g_new(MessageDataForMainThread, 1);
     main_thread_data->msg_payload = g_string_new_len(msg->str, msg->len);
     g_main_context_invoke(NULL, swank_session_handle_message_on_main_thread, main_thread_data);
@@ -196,16 +189,12 @@ void swank_session_on_message_internal(GString *msg, gpointer /*user_data*/) {
 static gboolean swank_session_handle_message_on_main_thread(gpointer data) {
     MessageDataForMainThread *main_thread_data = (MessageDataForMainThread *)data;
     GString *msg_payload = main_thread_data->msg_payload;
-    g_debug_40("swank_session_handle_message_on_main_thread: Processing msg:", msg_payload->str);
     const char *p = msg_payload->str;
     if (g_str_has_prefix(p, "(:return ")) {
         parse_and_handle_return_message(p);
     } else if (g_str_has_prefix(p, "(:new-features ")) {
-        g_debug_40("Received Swank :new-features:", p);
     } else if (g_str_has_prefix(p, "(:indentation-update ")) {
-        g_debug_40("Received Swank :indentation-update:", p);
     } else {
-        g_debug_40("Received unknown Swank message type:", p);
     }
     g_string_free(msg_payload, TRUE);
     g_free(main_thread_data);
@@ -243,12 +232,10 @@ static void parse_and_handle_return_message(const char *message_payload_str) {
     gchar *result_str = NULL;
     gchar *abort_reason_str = NULL;
     if (parse_return_ok(return_type_token, &output_str, &result_str)) {
-        g_debug("Interaction %u OK: output='%s', result='%s'", tag_id, output_str, result_str);
         g_free(interaction->output); interaction->output = output_str;
         g_free(interaction->result); interaction->result = result_str;
         interaction->status = INTERACTION_OK;
     } else if (parse_return_abort(return_type_token, &abort_reason_str)) {
-        g_debug("Interaction %u ABORT: reason='%s'", tag_id, abort_reason_str);
         g_free(interaction->error); interaction->error = abort_reason_str;
         interaction->status = INTERACTION_ERROR;
     } else {
@@ -257,7 +244,6 @@ static void parse_and_handle_return_message(const char *message_payload_str) {
         g_free(interaction->error);
         interaction->error = g_strdup("Failed to parse return from Swank");
     }
-    g_debug("Interaction %u updated (status: %d)", tag_id, interaction->status);
     if (interactions_view_global) {
         interactions_view_update_interaction(GLIDE_INTERACTIONS_VIEW(interactions_view_global), interaction);
     } else {
@@ -298,7 +284,6 @@ static gboolean parse_return_abort(const gchar *token, gchar **reason) {
 }
 
 void swank_session_cleanup_globals() {
-    g_debug("swank_session_cleanup_globals");
     if (g_swank_session_interactions_table) {
         g_hash_table_destroy(g_swank_session_interactions_table);
         g_swank_session_interactions_table = NULL;

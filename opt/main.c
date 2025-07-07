@@ -38,7 +38,6 @@ const gchar *main_get_filename() {
 }
 
 void main_set_filename(const gchar *new_filename) {
-    g_debug("main_set_filename %s", new_filename ? new_filename : "(null)");
     gchar *dup = new_filename ? g_strdup(new_filename) : NULL;
     g_free(filename_global);
     filename_global = dup;
@@ -49,23 +48,19 @@ GtkSourceBuffer *main_get_source_buffer() {
 }
 
 static void app_quit_global() {
-  g_debug("app_quit_global");
   gtk_main_quit();
 }
 
 static void app_on_quit_global() {
-  g_debug("app_on_quit_global");
   app_quit_global();
 }
 
 static gboolean quit_delete_event_handler(GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer /*data*/) {
-  g_debug("quit_delete_event_handler");
   app_on_quit_global();
   return TRUE;
 }
 
 static void quit_menu_item_handler(GtkWidget * /*item*/, gpointer /*data*/) {
-  g_debug("quit_menu_item_handler");
   app_on_quit_global();
 }
 
@@ -79,7 +74,6 @@ static gboolean on_key_press_handler(GtkWidget * /*widget*/, GdkEventKey *event,
 
 
 int main(int argc, char *argv[]) {
-  g_debug("Main.main");
   relocate();
   gtk_init(&argc, &argv);
 

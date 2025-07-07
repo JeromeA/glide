@@ -2,7 +2,6 @@
 #include "swank_session.h" // For swank_session_on_message_internal
 #include "preferences.h"  // For global preferences functions
 #include "syscalls.h"     // For sys_read, sys_write
-#include "util.h"         // For g_debug_40
 
 // Forward declarations for static functions called by threads
 static void on_lisp_stdout(GString *data);
@@ -31,7 +30,6 @@ static gchar **g_process_argv = NULL;
 
 // Thread function to read stdout
 static gpointer stdout_thread_global(gpointer /*data*/) {
-  g_debug("process_global: stdout_thread_global starting");
   char buf[256];
   ssize_t n = 0;
   while (g_process_out_fd >= 0 && (n = sys_read(g_process_out_fd, buf, sizeof(buf))) > 0) {
@@ -39,13 +37,11 @@ static gpointer stdout_thread_global(gpointer /*data*/) {
     on_lisp_stdout(s); // g_process_out_user_data was NULL for this path
     g_string_free(s, TRUE);
   }
-  g_debug("process_global: stdout_thread_global exiting, n=%zd, errno=%d", n, n == -1 ? errno : 0);
   return NULL;
 }
 
 // Thread function to read stderr
 static gpointer stderr_thread_global(gpointer /*data*/) {
-  g_debug("process_global: stderr_thread_global starting");
   char buf[256];
   ssize_t n = 0;
   while (g_process_err_fd >=0 && (n = sys_read(g_process_err_fd, buf, sizeof(buf))) > 0) {
@@ -53,27 +49,23 @@ static gpointer stderr_thread_global(gpointer /*data*/) {
     on_lisp_stderr(s); // g_process_err_user_data was NULL for this path
     g_string_free(s, TRUE);
   }
-  g_debug("process_global: stderr_thread_global exiting, n=%zd, errno=%d", n, n == -1 ? errno : 0);
   return NULL;
 }
 
 // g_spawn_async_with_pipes child_setup function
 static void child_setup_global(gpointer /*user_data*/) {
-  g_debug("process_global: child_setup_global");
   setsid(); // Create a new session and set process group ID.
   prctl(PR_SET_PDEATHSIG, SIGKILL); // Ensure child dies if parent dies.
 }
 
 // Initialize global process state from argv
 static void process_init_globals_from_argv(const gchar *const *argv) {
-  g_debug("process_init_globals_from_argv: cmd=%s", argv && argv[0] ? argv[0] : "(null)");
   g_strfreev(g_process_argv);
   g_process_argv = g_strdupv((gchar**)argv);
 }
 
 // Initialize global process state from a single command
 void process_init_globals(const gchar *cmd) {
-  g_debug("process_init_globals: cmd=%s", cmd ? cmd : "(null)");
   if (!cmd) {
     g_warning("process_init_globals: cmd is NULL.");
     process_init_globals_from_argv(NULL);
@@ -84,7 +76,6 @@ void process_init_globals(const gchar *cmd) {
 }
 
 void process_global_start() {
-  g_debug("process_global_start");
   if (!g_process_argv || !g_process_argv[0]) {
     g_printerr("process_global_start: No command (argv) to start.\n");
     return;
@@ -116,9 +107,6 @@ void process_global_start() {
     return;
   }
 
-  g_debug("process_global_start: Spawned PID %d, in_fd=%d, out_fd=%d, err_fd=%d",
-          g_process_pid, g_process_in_fd, g_process_out_fd, g_process_err_fd);
-
   // Start stdout thread if output FD is valid and thread not already running
   if (!g_process_out_thread && g_process_out_fd >=0) {
     g_process_out_thread = g_thread_new("process-stdout", stdout_thread_global, NULL);
@@ -137,7 +125,6 @@ gboolean process_global_write(const gchar *data, gssize len) {
   if (len < 0) {
     len = strlen(data);
   }
-  g_debug("process_global_write: Writing %zd bytes to process stdin (fd %d)", len, g_process_in_fd);
   ssize_t written = sys_write(g_process_in_fd, data, len);
   if (written == -1) {
       g_printerr("process_global_write: write error to fd %d: %s (errno %d)\n", g_process_in_fd, g_strerror(errno), errno);
@@ -172,7 +159,6 @@ static void start_lisp_and_swank_server();
 static void connect_to_swank_server();
 
 void swank_process_init_globals() {
-    g_debug("swank_process_init_globals");
 
     // Initialize mutexes and cond var
     g_mutex_init(&g_swank_out_mutex);
@@ -183,11 +169,9 @@ void swank_process_init_globals() {
     g_swank_out_buffer = g_string_new(NULL);
     g_swank_incoming_data_buffer = g_string_new(NULL);
 
-    g_debug("swank_process_init_globals: complete. Port: %d", g_swank_port_number);
 }
 
 static gpointer swank_reader_thread_global(gpointer /*data*/) {
-    g_debug("swank_process: swank_reader_thread_global starting for fd %d", g_swank_fd);
     char buf[1024]; // Read buffer
     ssize_t n_read;
 
@@ -195,7 +179,6 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
         n_read = sys_read(g_swank_fd, buf, sizeof(buf));
         if (n_read > 0) {
             char *dbg_str = g_strndup(buf, n_read);
-            g_debug_40("swank_process: swank_reader_thread_global received data:", dbg_str);
             g_free(dbg_str);
 
             g_mutex_lock(&g_swank_incoming_mutex);
@@ -239,7 +222,6 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
             g_mutex_unlock(&g_swank_incoming_mutex);
 
         } else if (n_read == 0) { // EOF
-            g_debug("swank_process: swank_reader_thread_global: EOF on Swank FD %d", g_swank_fd);
             break;
         } else { // Error
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -250,14 +232,12 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
             break;
         }
     }
-    g_debug("swank_process: swank_reader_thread_global exiting for fd %d", g_swank_fd);
     // FD closure is handled by the cleanup function.
     return NULL;
 }
 
 // Reads from the Lisp process's stdout (g_swank_out_buffer) until pattern is found
 static void read_until_from_lisp_output(const char *pattern) {
-    g_debug("swank_process: read_until_from_lisp_output: waiting for '%s'", pattern);
     const gsize pattern_len = strlen(pattern);
     g_mutex_lock(&g_swank_out_mutex);
     while (TRUE) {
@@ -266,7 +246,6 @@ static void read_until_from_lisp_output(const char *pattern) {
 
         if (found_at) {
             g_swank_out_consumed = (found_at - g_swank_out_buffer->str) + pattern_len;
-            g_debug("swank_process: read_until_from_lisp_output: found '%s'. Consumed up to %zu.", pattern, g_swank_out_consumed);
             // Optional: Compact g_swank_out_buffer if needed
             if (g_swank_out_consumed == g_swank_out_buffer->len) {
                 g_string_set_size(g_swank_out_buffer, 0);
@@ -276,14 +255,11 @@ static void read_until_from_lisp_output(const char *pattern) {
             return;
         }
         // Wait for more data to arrive in on_lisp_stdout
-        g_debug("swank_process: read_until_from_lisp_output: pattern not found, waiting on g_swank_out_cond.");
         g_cond_wait(&g_swank_out_cond, &g_swank_out_mutex);
-        g_debug("swank_process: read_until_from_lisp_output: woken up.");
     }
 }
 
 static void on_lisp_stdout(GString *data) {
-    g_debug_40("swank_process: on_lisp_stdout received:", data->str);
     g_mutex_lock(&g_swank_out_mutex);
     g_string_append_len(g_swank_out_buffer, data->str, data->len);
     g_cond_signal(&g_swank_out_cond); // Signal that new data is available
@@ -295,7 +271,6 @@ static void on_lisp_stderr(GString *data) {
 }
 
 static void start_lisp_and_swank_server() {
-    g_debug("swank_process: start_lisp_and_swank_server");
 
     process_global_start(); // Start the Lisp process
 
@@ -305,7 +280,6 @@ static void start_lisp_and_swank_server() {
     // This command depends on the Lisp implementation (e.g., ql:quickload vs require).
     // Using (require :swank) for now.
     const char *load_swank_cmd = "(require :swank)\n";
-    g_debug("swank_process: Sending Lisp command: %s", load_swank_cmd);
     process_global_write(load_swank_cmd, -1);
 
     read_until_from_lisp_output(")"); // A simple heuristic: wait for some closing paren. This needs improvement.
@@ -314,16 +288,13 @@ static void start_lisp_and_swank_server() {
     char create_server_cmd[128];
     g_snprintf(create_server_cmd, sizeof(create_server_cmd),
                "(swank:create-server :port %d :dont-close t)\n", g_swank_port_number);
-    g_debug("swank_process: Sending Lisp command: %s", create_server_cmd);
     process_global_write(create_server_cmd, -1);
 
     // Wait for Swank server to report its port or for prompt again
     read_until_from_lisp_output("* "); // Or a specific message like ";; Swank started on port XXXX."
-    g_debug("swank_process: Swank server presumed started on Lisp side.");
 }
 
 static void connect_to_swank_server() {
-    g_debug("swank_process: connect_to_swank_server trying port %d", g_swank_port_number);
     GSocketClient *client = g_socket_client_new();
     GError *conn_error = NULL;
 
@@ -337,7 +308,6 @@ static void connect_to_swank_server() {
         if (g_swank_connection) {
             break; // Success
         }
-        g_debug("swank_process: Connection attempt %d failed: %s. Retrying...", i+1, conn_error ? conn_error->message : "Unknown error");
         g_clear_error(&conn_error);
         g_usleep(500000); // Wait 0.5 sec before retrying
     }
@@ -361,7 +331,6 @@ static void connect_to_swank_server() {
     // If GSocket FD is non-blocking by default, sys_read might return EAGAIN.
     // The swank_reader_thread_global has a basic EAGAIN check.
 
-    g_debug("swank_process: Connected to Swank server. FD: %d", g_swank_fd);
 
     // Start the Swank message reader thread
     if (g_swank_fd >=0 && !g_swank_reader_thread) {
@@ -370,12 +339,10 @@ static void connect_to_swank_server() {
 }
 
 void swank_process_global_start() {
-    g_debug("swank_process_global_start");
     start_lisp_and_swank_server(); // This starts the underlying Lisp process via process_global_start()
     connect_to_swank_server();
 
     if (g_swank_fd >= 0) { // Successfully connected
-        g_debug("swank_process_global_start: Swank process started successfully.");
     } else {
         g_printerr("swank_process_global_start: Failed to start Swank process (connection failed).\n");
         // Perform partial cleanup if connection failed after Lisp started
@@ -393,7 +360,6 @@ void swank_process_global_send(const GString *payload) {
     char hdr[7]; // 6 hex chars for length + null terminator
     g_snprintf(hdr, sizeof(hdr), "%06zx", len); // Format length as 6-digit hex
 
-    g_debug("swank_process_global_send: Sending Swank message: Header='%s', Payload='%.*s'", hdr, (int)len, payload->str);
 
     ssize_t nw_hdr = sys_write(g_swank_fd, hdr, 6);
     if (nw_hdr != 6) {
@@ -407,15 +373,12 @@ void swank_process_global_send(const GString *payload) {
         g_printerr("swank_process_global_send: Failed to write Swank payload (wrote %zd of %zu, errno %d)\n", nw_payload, len, errno);
         return;
     }
-    g_debug("swank_process_global_send: Message sent successfully.");
 }
 
 void swank_process_cleanup_globals() {
-    g_debug("swank_process_cleanup_globals: Starting cleanup.");
 
     // Close Swank connection and FD
     if (g_swank_fd >= 0) {
-        g_debug("swank_process_cleanup_globals: Closing Swank FD %d.", g_swank_fd);
         // Prefer closing GSocketConnection first if it exists.
         if (g_swank_connection) {
             GError *close_err = NULL;
@@ -435,7 +398,6 @@ void swank_process_cleanup_globals() {
 
     // Join reader thread
     if (g_swank_reader_thread) {
-        g_debug("swank_process_cleanup_globals: Joining Swank reader thread.");
         g_thread_join(g_swank_reader_thread); // This also unrefs the thread object
         g_swank_reader_thread = NULL;
     }
@@ -448,6 +410,5 @@ void swank_process_cleanup_globals() {
     g_cond_clear(&g_swank_out_cond);
     g_mutex_clear(&g_swank_incoming_mutex);
 
-    g_debug("swank_process_cleanup_globals: Cleanup complete.");
 }
 

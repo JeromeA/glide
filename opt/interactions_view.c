@@ -73,7 +73,6 @@ set_text_view(GtkBox *box,
 static void
 interaction_row_update(InteractionRow *row, Interaction *interaction)
 {
-  g_debug("InteractionsView.row_update for expr: %s", interaction->expression);
   set_text_view(GTK_BOX(row->box), &row->expression,
       interaction->expression, NULL, FALSE);
   set_text_view(GTK_BOX(row->box), &row->output,
@@ -92,7 +91,6 @@ interaction_row_update(InteractionRow *row, Interaction *interaction)
 static void
 interactions_view_finalize(GObject *obj)
 {
-  g_debug("InteractionsView.finalize");
   InteractionsView *self = GLIDE_INTERACTIONS_VIEW(obj);
   if (self->rows) {
     g_hash_table_destroy(self->rows);
@@ -104,7 +102,6 @@ interactions_view_finalize(GObject *obj)
 static void
 interactions_view_class_init(InteractionsViewClass *klass)
 {
-  g_debug("InteractionsView.class_init");
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = interactions_view_finalize;
 }
@@ -112,7 +109,6 @@ interactions_view_class_init(InteractionsViewClass *klass)
 static void
 interactions_view_init(InteractionsView *self)
 {
-  g_debug("InteractionsView.init");
   gtk_orientable_set_orientation(GTK_ORIENTABLE(self), GTK_ORIENTATION_VERTICAL);
   gtk_widget_set_vexpand(GTK_WIDGET(self), TRUE); // Make the box expand
 
@@ -139,7 +135,6 @@ interactions_view_init(InteractionsView *self)
 InteractionsView *
 interactions_view_new()
 {
-  g_debug("InteractionsView.new (no-args)");
   InteractionsView *self = g_object_new(INTERACTIONS_VIEW_TYPE, NULL);
   return self;
 }
@@ -151,7 +146,6 @@ interactions_view_add_interaction(InteractionsView *self, Interaction *interacti
   g_return_if_fail(GLIDE_IS_INTERACTIONS_VIEW(self));
   g_return_if_fail(interaction != NULL);
 
-  g_debug("InteractionsView.add_interaction for expr: %s", interaction->expression);
   InteractionRow *row = g_new0(InteractionRow, 1);
   row->frame = gtk_frame_new(NULL);
   gtk_widget_set_margin_start(row->frame, 5);
@@ -178,12 +172,8 @@ interactions_view_update_interaction(InteractionsView *self, Interaction *intera
   g_return_if_fail(GLIDE_IS_INTERACTIONS_VIEW(self));
   g_return_if_fail(interaction != NULL);
 
-  g_debug("InteractionsView.update_interaction for expr: %s", interaction->expression);
   InteractionRow *row = g_hash_table_lookup(self->rows, interaction);
   if (!row) {
-    g_warning("InteractionsView.update_interaction: row not found for interaction with expr: %s (tag: %u)", interaction->expression, interaction->tag);
-    // This might happen if add was missed or interaction pointer changed.
-    // Optionally, could call add_interaction here as a fallback, but that might indicate a deeper issue.
     return;
   }
   interaction_row_update(row, interaction);

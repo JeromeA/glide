@@ -22,7 +22,6 @@ extern GtkSourceBuffer *buffer_global;
 void
 on_evaluate_global()
 {
-  g_debug("Evaluate.on_evaluate_global");
   GtkSourceBuffer *source_buffer = buffer_global;
   if (!source_buffer) {
     g_warning("Evaluate.on_evaluate_global: buffer_global is NULL");
@@ -48,7 +47,6 @@ on_evaluate_global()
       FALSE);          /* no hidden chars */
 
   if (expr == NULL || *expr == '\0') {
-    g_debug("Evaluate.on_evaluate_global: nothing to evaluate on the current line");
     g_free(expr);
     return;
   }
