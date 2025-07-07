@@ -1,13 +1,10 @@
 #include "includes.h"
 #include "swank_process.h"
 #include "swank_session.h"
-
-// For file operations
 #include "simple_file_open.h"
 #include "simple_file_save.h"
 #include "evaluate.h"
 #include "interactions_view.h"
-
 
 #ifdef INLINE
 #define STATIC static
@@ -24,22 +21,6 @@
 GtkSourceBuffer *buffer = NULL;
 gchar           *filename = NULL;
 GtkWidget* interactions_view_widget = NULL; // For SwankSession to call updates
-
-// Forward declarations for signal handlers
-static gboolean quit_delete_event_handler(GtkWidget *widget, GdkEvent *event, gpointer data);
-static void quit_menu_item_handler(GtkWidget *item, gpointer data);
-static gboolean on_key_press_handler(GtkWidget *widget, GdkEventKey *event, gpointer user_data);
-void on_evaluate();
-
-const gchar *main_get_filename() {
-    return filename;
-}
-
-void main_set_filename(const gchar *new_filename) {
-    gchar *dup = new_filename ? g_strdup(new_filename) : NULL;
-    g_free(filename);
-    filename = dup;
-}
 
 GtkSourceBuffer *main_get_source_buffer() {
     return buffer;
