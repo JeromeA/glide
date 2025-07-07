@@ -92,7 +92,6 @@ int main(int argc, char *argv[]) {
   // Initialize global SwankSession
   swank_session_init_globals();
 
-
   // --- UI Setup ---
   GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
@@ -146,17 +145,6 @@ int main(int argc, char *argv[]) {
   gtk_widget_show_all(window);
 
   gtk_main();
-
-  g_free(filename_global);
-
-  // Cleanup global SwankSession
-  swank_session_cleanup_globals();
-
-  // Cleanup global Process
-  process_cleanup_globals();
-
-  // Cleanup global SwankProcess
-  swank_process_cleanup_globals();
 
   exit(0);
 }
