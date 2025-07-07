@@ -64,11 +64,7 @@ void swank_process_init_globals() {
     g_swank_reader_thread = NULL;
 
     // Get Swank port from global preferences
-    g_swank_port_number = preferences_get_swank_port_global();
-    if (g_swank_port_number == 0) { // Simple check if port is uninitialized or invalid from prefs
-        g_swank_port_number = 4005; // Fallback
-        g_warning("swank_process_init_globals: Invalid Swank port from preferences, using default %d", g_swank_port_number);
-    }
+    g_swank_port_number = 4005;
 
     // Set up callbacks for the underlying Lisp process output
     process_global_set_stdout_cb(on_lisp_stdout, NULL);

@@ -7,15 +7,13 @@
 
 #include "evaluate.h" // Include self header
 #include "interaction.h"
-// real_swank_session.h is included further down, which is correct.
 
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
 
 // These globals are defined in main.c
 extern GtkSourceBuffer *buffer_global;
-// We will include real_swank_session.h for real_swank_session_global_eval.
-#include "real_swank_session.h"
+#include "swank_session.h"
 
 
 /* ------------------------------------------------------------------------- */
@@ -59,7 +57,7 @@ on_evaluate_global()
   // Directly call the global eval function
   Interaction *interaction = g_new0(Interaction, 1);
   interaction_init(interaction, expr); // expr is owned by interaction now
-  real_swank_session_global_eval(interaction);
+  swank_session_global_eval(interaction);
   // Interaction will be managed (and eventually freed) by RealSwankSession logic.
 
 
