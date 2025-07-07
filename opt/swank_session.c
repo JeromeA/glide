@@ -120,7 +120,7 @@ static gchar *static_unescape_string(const char *token) {
 
 // --- Forward declarations for internal static functions (session specific) ---
 static void interaction_free_members_static(Interaction *interaction);
-static void swank_session_on_message_internal(GString *msg, gpointer user_data);
+// swank_session_on_message_internal is now non-static and declared in swank_session.h
 static gboolean swank_session_handle_message_on_main_thread(gpointer data);
 static void parse_and_handle_return_message(const gchar *message_payload);
 static gboolean parse_return_ok(const gchar *token, gchar **output, gchar **result);
@@ -152,8 +152,8 @@ void swank_session_init_globals() {
                                                                g_direct_equal,
                                                                NULL,
                                                                (GDestroyNotify)interaction_free_members_static);
-    swank_process_global_set_message_cb(swank_session_on_message_internal, NULL);
-    g_debug("swank_session_init_globals: Complete. Registered message callback.");
+    // swank_process_global_set_message_cb(swank_session_on_message_internal, NULL); // Callback is now hardcoded
+    g_debug("swank_session_init_globals: Complete.");
 }
 
 void swank_session_global_eval(Interaction *interaction) {
@@ -186,7 +186,8 @@ void swank_session_global_eval(Interaction *interaction) {
     g_string_free(payload, TRUE);
 }
 
-static void swank_session_on_message_internal(GString *msg, gpointer /*user_data*/) {
+// Made non-static to be called directly from swank_process.c
+void swank_session_on_message_internal(GString *msg, gpointer /*user_data*/) {
     g_debug_40("swank_session_on_message_internal: Received raw msg:", msg->str);
     MessageDataForMainThread *main_thread_data = g_new(MessageDataForMainThread, 1);
     main_thread_data->msg_payload = g_string_new_len(msg->str, msg->len);

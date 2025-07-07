@@ -1,8 +1,13 @@
 #include "swank_process.h"
+#include "swank_session.h" // For swank_session_on_message_internal
 // #include "process.h" // For global process functions - Will be merged
 #include "preferences.h"  // For global preferences functions
 #include "syscalls.h"     // For sys_read, sys_write
 #include "util.h"         // For g_debug_40
+
+// Forward declarations for static functions called by threads
+static void on_lisp_stdout(GString *data, gpointer user_data);
+static void on_lisp_stderr(GString *data, gpointer user_data);
 
 #include <gio/gio.h>
 #include <unistd.h>    // For close, setsid
@@ -21,10 +26,8 @@ static gint g_process_in_fd = -1;  // Parent's write end to child's stdin
 static gint g_process_out_fd = -1; // Parent's read end from child's stdout
 static gint g_process_err_fd = -1; // Parent's read end from child's stderr
 
-static GlobalProcessCallback g_process_out_cb = NULL;
-static gpointer g_process_out_user_data = NULL;
-static GlobalProcessCallback g_process_err_cb = NULL;
-static gpointer g_process_err_user_data = NULL;
+// Removed g_process_out_cb, g_process_out_user_data, g_process_err_cb, g_process_err_user_data
+// Callbacks are now hardcoded.
 
 static GThread *g_process_out_thread = NULL;
 static GThread *g_process_err_thread = NULL;
@@ -37,13 +40,10 @@ static gpointer stdout_thread_global(gpointer /*data*/) {
   char buf[256];
   ssize_t n = 0;
   while (g_process_out_fd >= 0 && (n = sys_read(g_process_out_fd, buf, sizeof(buf))) > 0) {
-    if (g_process_out_cb) {
-      GString *s = g_string_new_len(buf, n);
-      g_process_out_cb(s, g_process_out_user_data);
-      // The original ProcessCallback implied data was transient and freed the GString after the call.
-      // We follow that pattern here.
-      g_string_free(s, TRUE);
-    }
+    // Directly call on_lisp_stdout, assuming it's the intended hardcoded callback
+    GString *s = g_string_new_len(buf, n);
+    on_lisp_stdout(s, NULL); // g_process_out_user_data was NULL for this path
+    g_string_free(s, TRUE);
   }
   g_debug("process_global: stdout_thread_global exiting, n=%zd, errno=%d", n, n == -1 ? errno : 0);
   return NULL;
@@ -55,11 +55,10 @@ static gpointer stderr_thread_global(gpointer /*data*/) {
   char buf[256];
   ssize_t n = 0;
   while (g_process_err_fd >=0 && (n = sys_read(g_process_err_fd, buf, sizeof(buf))) > 0) {
-    if (g_process_err_cb) {
-      GString *s = g_string_new_len(buf, n);
-      g_process_err_cb(s, g_process_err_user_data);
-      g_string_free(s, TRUE);
-    }
+    // Directly call on_lisp_stderr, assuming it's the intended hardcoded callback
+    GString *s = g_string_new_len(buf, n);
+    on_lisp_stderr(s, NULL); // g_process_err_user_data was NULL for this path
+    g_string_free(s, TRUE);
   }
   g_debug("process_global: stderr_thread_global exiting, n=%zd, errno=%d", n, n == -1 ? errno : 0);
   return NULL;
@@ -77,7 +76,7 @@ static void child_setup_global(gpointer /*user_data*/) {
 }
 
 // Initialize global process state from argv
-void process_init_globals_from_argv(const gchar *const *argv) {
+static void process_init_globals_from_argv(const gchar *const *argv) {
   g_debug("process_init_globals_from_argv: cmd=%s", argv && argv[0] ? argv[0] : "(null)");
   if (g_process_started) {
     g_warning("process_init_globals_from_argv: Process already initialized or started. Cleaning up old one.");
@@ -91,10 +90,10 @@ void process_init_globals_from_argv(const gchar *const *argv) {
   g_process_in_fd = -1;
   g_process_out_fd = -1;
   g_process_err_fd = -1;
-  g_process_out_cb = NULL;
-  g_process_out_user_data = NULL;
-  g_process_err_cb = NULL;
-  g_process_err_user_data = NULL;
+  // g_process_out_cb = NULL; // Removed
+  // g_process_out_user_data = NULL; // Removed
+  // g_process_err_cb = NULL; // Removed
+  // g_process_err_user_data = NULL; // Removed
   g_process_out_thread = NULL;
   g_process_err_thread = NULL;
   g_process_started = FALSE; // Set to TRUE in _start()
@@ -112,23 +111,8 @@ void process_init_globals(const gchar *cmd) {
   process_init_globals_from_argv(argv);
 }
 
-void process_global_set_stdout_cb(GlobalProcessCallback cb, gpointer user_data) {
-  g_debug("process_global_set_stdout_cb");
-  g_process_out_cb = cb;
-  g_process_out_user_data = user_data;
-  if (cb && g_process_started && !g_process_out_thread && g_process_out_fd >=0) {
-    g_process_out_thread = g_thread_new("process-stdout", stdout_thread_global, NULL);
-  }
-}
-
-void process_global_set_stderr_cb(GlobalProcessCallback cb, gpointer user_data) {
-  g_debug("process_global_set_stderr_cb");
-  g_process_err_cb = cb;
-  g_process_err_user_data = user_data;
-  if (cb && g_process_started && !g_process_err_thread && g_process_err_fd >=0) {
-    g_process_err_thread = g_thread_new("process-stderr", stderr_thread_global, NULL);
-  }
-}
+// Removed process_global_set_stdout_cb as callback is hardcoded
+// Removed process_global_set_stderr_cb as callback is hardcoded
 
 void process_global_start() {
   g_debug("process_global_start");
@@ -172,10 +156,12 @@ void process_global_start() {
 
   g_process_started = TRUE;
 
-  if (g_process_out_cb && !g_process_out_thread && g_process_out_fd >=0) {
+  // Start stdout thread if output FD is valid and thread not already running
+  if (!g_process_out_thread && g_process_out_fd >=0) {
     g_process_out_thread = g_thread_new("process-stdout", stdout_thread_global, NULL);
   }
-  if (g_process_err_cb && !g_process_err_thread && g_process_err_fd >=0) {
+  // Start stderr thread if error FD is valid and thread not already running
+  if (!g_process_err_thread && g_process_err_fd >=0) {
     g_process_err_thread = g_thread_new("process-stderr", stderr_thread_global, NULL);
   }
 }
@@ -244,10 +230,10 @@ void process_cleanup_globals() {
   g_process_argv = NULL;
 
   g_process_started = FALSE;
-  g_process_out_cb = NULL;
-  g_process_err_cb = NULL;
-  g_process_out_user_data = NULL;
-  g_process_err_user_data = NULL;
+  // g_process_out_cb = NULL; // Removed
+  // g_process_err_cb = NULL; // Removed
+  // g_process_out_user_data = NULL; // Removed
+  // g_process_err_user_data = NULL; // Removed
 
   g_debug("process_cleanup_globals: Cleanup complete.");
 }
@@ -270,8 +256,8 @@ static GString *g_swank_incoming_data_buffer = NULL; // Buffer for data coming d
 static gsize    g_swank_incoming_consumed = 0;
 static GMutex   g_swank_incoming_mutex;   // To protect g_swank_incoming_data_buffer and g_swank_incoming_consumed
 
-static GlobalSwankProcessMessageCallback g_swank_message_cb = NULL;
-static gpointer g_swank_message_cb_data = NULL;
+// Removed g_swank_message_cb, g_swank_message_cb_data
+// Callback is now hardcoded to swank_session_on_message_internal
 
 static gint    g_swank_port_number = 4005; // Default, will be updated from global preferences
 static GThread *g_swank_reader_thread = NULL;
@@ -279,10 +265,9 @@ static gboolean g_swank_process_started = FALSE;
 
 
 // --- Forward declarations for internal static functions ---
+// on_lisp_stdout and on_lisp_stderr moved to top of file
 static gpointer swank_reader_thread_global(gpointer data);
 static void read_until_from_lisp_output(const char *pattern);
-static void on_lisp_stdout(GString *data, gpointer user_data);
-static void on_lisp_stderr(GString *data, gpointer user_data);
 static void start_lisp_and_swank_server();
 static void connect_to_swank_server();
 
@@ -307,16 +292,16 @@ void swank_process_init_globals() {
 
     g_swank_fd = -1;
     g_swank_connection = NULL;
-    g_swank_message_cb = NULL;
-    g_swank_message_cb_data = NULL;
+    // g_swank_message_cb = NULL; // Removed
+    // g_swank_message_cb_data = NULL; // Removed
     g_swank_reader_thread = NULL;
 
     // Get Swank port from global preferences
     g_swank_port_number = 4005;
 
-    // Set up callbacks for the underlying Lisp process output
-    process_global_set_stdout_cb(on_lisp_stdout, NULL);
-    process_global_set_stderr_cb(on_lisp_stderr, NULL);
+    // Callbacks on_lisp_stdout and on_lisp_stderr are now directly called
+    // by their respective threads (stdout_thread_global, stderr_thread_global).
+    // Thus, no need to set them via process_global_set_stdout_cb here.
 
     g_swank_process_started = FALSE; // Will be set to TRUE in _global_start
     g_debug("swank_process_init_globals: complete. Port: %d", g_swank_port_number);
@@ -337,10 +322,11 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
             g_mutex_lock(&g_swank_incoming_mutex);
             g_string_append_len(g_swank_incoming_data_buffer, buf, n_read);
 
-            if (g_swank_message_cb) {
-                while (TRUE) { // Process all complete messages in buffer
-                    if (g_swank_incoming_data_buffer->len - g_swank_incoming_consumed >= 6) { // Enough for header?
-                        char hdr[7];
+            // Removed if(g_swank_message_cb) check as the callback is now hardcoded
+            // and dispatch should always be attempted if data is present.
+            while (TRUE) { // Process all complete messages in buffer
+                if (g_swank_incoming_data_buffer->len - g_swank_incoming_consumed >= 6) { // Enough for header?
+                    char hdr[7];
                         memcpy(hdr, g_swank_incoming_data_buffer->str + g_swank_incoming_consumed, 6);
                         hdr[6] = '\0';
                         gsize msg_len = g_ascii_strtoull(hdr, NULL, 16); // Hex string to size_t
@@ -351,8 +337,8 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
 
                             g_swank_incoming_consumed += (6 + msg_len);
 
-                            // Dispatch the message
-                            g_swank_message_cb(actual_msg, g_swank_message_cb_data);
+                            // Dispatch the message by directly calling swank_session_on_message_internal
+                            swank_session_on_message_internal(actual_msg, NULL); // g_swank_message_cb_data was NULL
                             // The original RealSwankProcess freed the GString after the callback, so we follow that.
                             g_string_free(actual_msg, TRUE);
 
@@ -366,7 +352,7 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
                     }
                     break; // Not enough data for header or full message body
                 }
-            }
+            // } // End of removed if(g_swank_message_cb)
              // Compact the buffer if a lot has been consumed
             if (g_swank_incoming_consumed > 0 && g_swank_incoming_data_buffer->len > g_swank_incoming_consumed) {
                 g_string_erase(g_swank_incoming_data_buffer, 0, g_swank_incoming_consumed);
@@ -561,32 +547,9 @@ void swank_process_global_send(const GString *payload) {
     g_debug("swank_process_global_send: Message sent successfully.");
 }
 
-void swank_process_global_set_message_cb(GlobalSwankProcessMessageCallback cb, gpointer user_data) {
-    g_debug("swank_process_global_set_message_cb");
-    g_mutex_lock(&g_swank_incoming_mutex);
-    g_swank_message_cb = cb;
-    g_swank_message_cb_data = user_data;
-    g_mutex_unlock(&g_swank_incoming_mutex);
-}
+// Removed swank_process_global_set_message_cb as callback is hardcoded
 
-void swank_process_global_set_socket_fd(int fd) {
-    g_debug("swank_process_global_set_socket_fd: Setting Swank FD to %d", fd);
-    if (g_swank_fd >= 0 && g_swank_fd != fd) { // If there's an existing valid FD
-        g_warning("swank_process_global_set_socket_fd: Closing existing Swank FD %d", g_swank_fd);
-        close(g_swank_fd); // Close the old one
-        if (g_swank_connection) {
-             g_object_unref(g_swank_connection); // Release connection if we manage it
-             g_swank_connection = NULL;
-        }
-    }
-    g_swank_fd = fd;
-    // If a reader thread was running on the old FD, it needs to be stopped and restarted for the new FD.
-    // This function is a bit risky if not managed carefully with the reader thread.
-    if (g_swank_reader_thread) {
-        g_debug("swank_process_global_set_socket_fd: Existing reader thread found. It might need manual restart.");
-        // For simplicity, current cleanup/init handles restarting reader thread if needed.
-    }
-}
+// Removed unused function swank_process_global_set_socket_fd
 
 void swank_process_cleanup_globals() {
     g_debug("swank_process_cleanup_globals: Starting cleanup.");
@@ -628,8 +591,8 @@ void swank_process_cleanup_globals() {
     g_cond_clear(&g_swank_out_cond);
     g_mutex_clear(&g_swank_incoming_mutex);
 
-    g_swank_message_cb = NULL;
-    g_swank_message_cb_data = NULL;
+    // g_swank_message_cb = NULL; // Removed
+    // g_swank_message_cb_data = NULL; // Removed
     g_swank_process_started = FALSE;
 
     g_debug("swank_process_cleanup_globals: Cleanup complete.");
