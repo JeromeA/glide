@@ -16,7 +16,8 @@ void swank_session_global_eval(Interaction *interaction);
 // Cleans up global Swank session resources (e.g., hash table).
 void swank_session_cleanup_globals();
 
-// The on_message callback is internal and registered with the global swank_process.
+// Function to handle messages from Swank, now called directly by swank_process.c
+void swank_session_on_message_internal(GString *msg, gpointer user_data);
 
 // InteractionsView is updated directly by new functions.
 
