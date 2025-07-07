@@ -10,7 +10,7 @@ void process_init(const gchar *cmd);
 // process_init_from_argv is now static
 
 // Writes data to the process's stdin
-gboolean process_write(const gchar *data, gssize len);
+void process_write(const gchar *data, gssize len);
 
 // Starts the process execution
 void process_start();

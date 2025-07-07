@@ -1,10 +1,6 @@
 #include "interactions_view.h"
 #include "interaction.h"
 
-#define CSS_CLASS_OUTPUT "interaction-output"
-#define CSS_CLASS_ERROR  "interaction-error"
-#define CSS_CLASS_RESULT "interaction-result"
-
 typedef struct {
   GtkWidget *frame;
   GtkWidget *box;
@@ -21,15 +17,10 @@ struct _InteractionsView {
 
 G_DEFINE_TYPE(InteractionsView, interactions_view, GTK_TYPE_BOX)
 
-// Forward declare static helper functions
-static void interaction_row_update(InteractionRow *row, Interaction *interaction);
-static void set_text_view(GtkBox *box, GtkWidget **view, const gchar *text, const gchar *css_class, gboolean hide_if_empty);
-
 static void
 set_text_view(GtkBox *box,
     GtkWidget **view, // Pointer to the GtkWidget* field in InteractionRow
     const gchar *text,
-    const gchar *css_class,
     gboolean hide_if_empty)
 {
   // If text is empty (and hide_if_empty is true) and the view exists, remove and NULL it
@@ -44,10 +35,6 @@ set_text_view(GtkBox *box,
     *view = gtk_text_view_new();
     gtk_text_view_set_editable(GTK_TEXT_VIEW(*view), FALSE);
     gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(*view), GTK_WRAP_WORD_CHAR);
-    if (css_class) {
-      GtkStyleContext *context = gtk_widget_get_style_context(*view);
-      gtk_style_context_add_class(context, css_class);
-    }
     gtk_box_pack_start(box, *view, FALSE, FALSE, 0);
     gtk_widget_show(*view); // Show the newly created text view
   }
@@ -62,14 +49,10 @@ set_text_view(GtkBox *box,
 static void
 interaction_row_update(InteractionRow *row, Interaction *interaction)
 {
-  set_text_view(GTK_BOX(row->box), &row->expression,
-      interaction->expression, NULL, FALSE);
-  set_text_view(GTK_BOX(row->box), &row->output,
-      interaction->output, CSS_CLASS_OUTPUT, TRUE);
-  set_text_view(GTK_BOX(row->box), &row->error,
-      interaction->error, CSS_CLASS_ERROR, TRUE);
-  set_text_view(GTK_BOX(row->box), &row->result,
-      interaction->result, CSS_CLASS_RESULT, TRUE);
+  set_text_view(GTK_BOX(row->box), &row->expression, interaction->expression, FALSE);
+  set_text_view(GTK_BOX(row->box), &row->output, interaction->output, TRUE);
+  set_text_view(GTK_BOX(row->box), &row->error, interaction->error, TRUE);
+  set_text_view(GTK_BOX(row->box), &row->result, interaction->result, TRUE);
 
   // Ensure result is last if it exists
   if (row->result) {
@@ -89,24 +72,7 @@ interactions_view_init(InteractionsView *self)
 {
   gtk_orientable_set_orientation(GTK_ORIENTABLE(self), GTK_ORIENTATION_VERTICAL);
   gtk_widget_set_vexpand(GTK_WIDGET(self), TRUE); // Make the box expand
-
-  // Load CSS (remains the same)
-  GtkCssProvider *provider = gtk_css_provider_new();
-  gtk_css_provider_load_from_data(provider,
-      "." CSS_CLASS_OUTPUT " text { background-color: #f2f2f2; font-family: monospace; }"
-      " ." CSS_CLASS_ERROR " text { background-color: #ffe5e5; font-family: monospace; color: #c00; }"
-      " ." CSS_CLASS_RESULT " text { background-color: #e5ffe5; font-family: monospace; color: #060; }",
-      -1, NULL);
-
-  GdkScreen *screen = gtk_widget_get_screen(GTK_WIDGET(self));
-  gtk_style_context_add_provider_for_screen(
-      screen, //gdk_screen_get_default(),
-      GTK_STYLE_PROVIDER(provider),
-      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
-  g_object_unref(provider);
-
-  self->rows = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-      NULL, NULL);
+  self->rows = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, NULL);
 }
 
 // Constructor, takes no arguments
