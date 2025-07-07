@@ -10,13 +10,7 @@
 
 // Global variables defined in main.c
 extern GtkSourceBuffer *buffer_global;
-// filename_global is also in main.c, but we'll use main_set_filename to change it.
-// Need declaration for main_set_filename if not in a common header included by both.
-// Assuming for INLINE builds, main.c definitions are visible.
-// For non-INLINE, this would need `extern void main_set_filename(const gchar*);`
-// or main_set_filename needs to be in a shared utility header.
-// Let's add the extern declaration for clarity, assuming it's defined in main.c.
-extern void main_set_filename(const gchar *new_filename);
+extern void main_set_filename(const gchar *new_filename); // Defined in main.c
 
 
 void simple_file_open_global(GtkWidget *triggering_widget) {

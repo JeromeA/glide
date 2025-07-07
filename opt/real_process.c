@@ -30,23 +30,17 @@ static gboolean g_real_process_started = FALSE;
 static gpointer stdout_thread_global(gpointer /*data*/) {
   g_debug("real_process_global: stdout_thread_global starting");
   char buf[256];
-  ssize_t n = 0; // Initialize n to fix potential uninitialized use warning
+  ssize_t n = 0;
   while (g_real_process_out_fd >= 0 && (n = sys_read(g_real_process_out_fd, buf, sizeof(buf))) > 0) {
     if (g_real_process_out_cb) {
       GString *s = g_string_new_len(buf, n);
-      g_real_process_out_cb(s, g_real_process_out_user_data); // Callback owns the GString
-      // g_string_free(s, TRUE); // Caller of callback should free if needed, or cb copies.
-                                // The original ProcessCallback implies data is transient.
-                                // Let's assume callback copies if it needs to persist beyond its scope.
-                                // For safety, let's ensure GString is freed by callback or here.
-                                // The original code: p->out_cb(s, p->out_user); g_string_free(s, TRUE);
-                                // So, we should free it after the call.
+      g_real_process_out_cb(s, g_real_process_out_user_data);
+      // The original ProcessCallback implied data was transient and freed the GString after the call.
+      // We follow that pattern here.
       g_string_free(s, TRUE);
     }
   }
   g_debug("real_process_global: stdout_thread_global exiting, n=%zd, errno=%d", n, n == -1 ? errno : 0);
-  // close(g_real_process_out_fd); // Closing FD here might be premature if main process wants to check it
-  // g_real_process_out_fd = -1;
   return NULL;
 }
 
@@ -54,7 +48,7 @@ static gpointer stdout_thread_global(gpointer /*data*/) {
 static gpointer stderr_thread_global(gpointer /*data*/) {
   g_debug("real_process_global: stderr_thread_global starting");
   char buf[256];
-  ssize_t n = 0; // Initialize n to fix potential uninitialized use warning
+  ssize_t n = 0;
   while (g_real_process_err_fd >=0 && (n = sys_read(g_real_process_err_fd, buf, sizeof(buf))) > 0) {
     if (g_real_process_err_cb) {
       GString *s = g_string_new_len(buf, n);
@@ -63,8 +57,6 @@ static gpointer stderr_thread_global(gpointer /*data*/) {
     }
   }
   g_debug("real_process_global: stderr_thread_global exiting, n=%zd, errno=%d", n, n == -1 ? errno : 0);
-  // close(g_real_process_err_fd);
-  // g_real_process_err_fd = -1;
   return NULL;
 }
 
@@ -108,11 +100,9 @@ void real_process_init_globals(const gchar *cmd) {
   g_debug("real_process_init_globals: cmd=%s", cmd ? cmd : "(null)");
   if (!cmd) {
     g_warning("real_process_init_globals: cmd is NULL.");
-    // Initialize with NULL argv to indicate no command, or handle error appropriately.
     real_process_init_globals_from_argv(NULL);
     return;
   }
-  // g_shell_parse_argv might be better for complex commands, but for a single path, this is fine.
   const gchar *argv[] = { cmd, NULL };
   real_process_init_globals_from_argv(argv);
 }
@@ -148,7 +138,7 @@ void real_process_global_start() {
 
   GError *error = NULL;
   // G_SPAWN_SEARCH_PATH looks for the command in PATH.
-  // G_SPAWN_DO_NOT_REAP_CHILD means we are responsible for the child process (e.g. waitpid or let it be a zombie until exit).
+  // G_SPAWN_DO_NOT_REAP_CHILD means we are responsible for the child process.
   // g_spawn_close_pid() will be used in cleanup.
   if (!g_spawn_async_with_pipes(NULL, // working directory (current)
                                 g_real_process_argv,
@@ -241,7 +231,6 @@ void real_process_cleanup_globals() {
   // Terminate and reap child process if it's still running
   if (g_real_process_pid > 0) {
     g_debug("real_process_cleanup_globals: Closing PID %d", g_real_process_pid);
-    // GError *error = NULL; // This was unused
     g_spawn_close_pid(g_real_process_pid);
     g_real_process_pid = 0;
   }

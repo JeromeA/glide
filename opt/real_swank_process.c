@@ -109,8 +109,7 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
 
                             // Dispatch the message
                             g_swank_message_cb(actual_msg, g_swank_message_cb_data);
-                            // g_string_free(actual_msg, TRUE); // Callback is responsible for the GString
-                            // The original RealSwankProcess freed it, so let's stick to that.
+                            // The original RealSwankProcess freed the GString after the callback, so we follow that.
                             g_string_free(actual_msg, TRUE);
 
                             // If buffer fully consumed, reset pointers for efficiency
@@ -146,10 +145,7 @@ static gpointer swank_reader_thread_global(gpointer /*data*/) {
         }
     }
     g_debug("real_swank_process: swank_reader_thread_global exiting for fd %d", g_swank_fd);
-    if (g_swank_fd >=0) { // Defensive: if fd was closed by cleanup, don't try to close again.
-        // close(g_swank_fd); // Let cleanup handle this
-        // g_swank_fd = -1;
-    }
+    // FD closure is handled by the cleanup function.
     return NULL;
 }
 
@@ -198,16 +194,13 @@ static void on_lisp_stderr(GString *data, gpointer /*user_data*/) {
 static void start_lisp_and_swank_server() {
     g_debug("real_swank_process: start_lisp_and_swank_server");
 
-    // This function assumes real_process_global_start() has been called or will be called by it.
-    // The original RealSwankProcess called process_start(self->proc).
-    // We should call real_process_global_start() here.
     real_process_global_start(); // Start the Lisp process
 
     // Wait for Lisp prompt (e.g., "* ")
-    read_until_from_lisp_output("* "); // TODO: Make this pattern configurable or more robust
+    read_until_from_lisp_output("* "); // This pattern may need to be more robust or configurable.
 
-    // TODO: Select the right loading command: (ql:quickload :swank) or (require :swank)
-    // This depends on the Lisp implementation. For now, hardcoding for SBCL-like `require`.
+    // This command depends on the Lisp implementation (e.g., ql:quickload vs require).
+    // Using (require :swank) for now.
     const char *load_swank_cmd = "(require :swank)\n";
     g_debug("real_swank_process: Sending Lisp command: %s", load_swank_cmd);
     real_process_global_write(load_swank_cmd, -1);
@@ -357,9 +350,7 @@ void real_swank_process_cleanup_globals() {
     // Close Swank connection and FD
     if (g_swank_fd >= 0) {
         g_debug("real_swank_process_cleanup_globals: Closing Swank FD %d.", g_swank_fd);
-        // If GSocketConnection is used, closing it should close the underlying FD.
-        // However, we got FD via g_socket_get_fd, so direct close might be okay IF GSocketConnection is also unreffed.
-        // Prefer closing GSocketConnection first.
+        // Prefer closing GSocketConnection first if it exists.
         if (g_swank_connection) {
             GError *close_err = NULL;
             g_io_stream_close(G_IO_STREAM(g_swank_connection), NULL, &close_err);
@@ -383,13 +374,7 @@ void real_swank_process_cleanup_globals() {
         g_swank_reader_thread = NULL;
     }
 
-    // Cleanup underlying Lisp process (RealProcess)
-    // This is important as RealSwankProcess manages RealProcess.
-    // real_process_cleanup_globals(); // This will be called from main.c after this.
-                                    // Or, if RealSwankProcess is the sole manager, call it here.
-                                    // For now, assume main.c sequence: cleanup swank_proc, then proc.
-                                    // Let's assume RealSwankProcess doesn't *own* RealProcess cleanup.
-                                    // This is safer if RealProcess is used by other things (not in this app).
+    // Cleanup of the underlying Lisp process (RealProcess) is handled externally (e.g., in main.c).
 
     // Free buffers and other resources
     g_string_free(g_swank_out_buffer, TRUE); g_swank_out_buffer = NULL;
@@ -406,6 +391,5 @@ void real_swank_process_cleanup_globals() {
     g_debug("real_swank_process_cleanup_globals: Cleanup complete.");
 }
 
-// Note: The original RealSwankProcess had a finalize which unreffed proc and prefs.
-// Since these are now global, their cleanup is handled by their respective units.
-// real_swank_process_cleanup_globals focuses on resources directly managed by it (sockets, threads, buffers).
+// Note: Cleanup of global proc and prefs is handled by their respective units.
+// This function focuses on resources directly managed by RealSwankProcess (sockets, threads, buffers).
