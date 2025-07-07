@@ -25,13 +25,11 @@ GtkSourceBuffer *buffer = NULL;
 gchar           *filename = NULL;
 GtkWidget* interactions_view_widget = NULL; // For SwankSession to call updates
 
-
 // Forward declarations for signal handlers
 static gboolean quit_delete_event_handler(GtkWidget *widget, GdkEvent *event, gpointer data);
 static void quit_menu_item_handler(GtkWidget *item, gpointer data);
 static gboolean on_key_press_handler(GtkWidget *widget, GdkEventKey *event, gpointer user_data);
 void on_evaluate();
-
 
 const gchar *main_get_filename() {
     return filename;
@@ -47,21 +45,13 @@ GtkSourceBuffer *main_get_source_buffer() {
     return buffer;
 }
 
-static void app_quit() {
-  gtk_main_quit();
-}
-
-static void app_on_quit() {
-  app_quit();
-}
-
 static gboolean quit_delete_event_handler(GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer /*data*/) {
-  app_on_quit();
+  gtk_main_quit();
   return TRUE;
 }
 
 static void quit_menu_item_handler(GtkWidget * /*item*/, gpointer /*data*/) {
-  app_on_quit();
+  gtk_main_quit();
 }
 
 static gboolean on_key_press_handler(GtkWidget * /*widget*/, GdkEventKey *event, gpointer /*user_data*/) {
