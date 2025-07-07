@@ -1,7 +1,7 @@
 #include "includes.h"
-#include "real_process.h"
-#include "real_swank_process.h"
-#include "real_swank_session.h"
+#include "process.h"
+#include "swank_process.h"
+#include "swank_session.h"
 
 // For file operations
 #include "simple_file_open.h"
@@ -16,16 +16,16 @@
 #include "simple_file_open.c"
 #include "simple_file_save.c"
 #include "interactions_view.c"
-#include "real_process.c"
-#include "real_swank_process.c"
-#include "real_swank_session.c"
+#include "process.c"
+#include "swank_process.c"
+#include "swank_session.c"
 #include "reloc.c"
 #endif
 
 // Global variables
 GtkSourceBuffer *buffer_global = NULL;
 gchar           *filename_global = NULL;
-GtkWidget* interactions_view_global = NULL; // For RealSwankSession to call updates
+GtkWidget* interactions_view_global = NULL; // For SwankSession to call updates
 
 
 // Forward declarations for signal handlers
@@ -86,13 +86,13 @@ int main(int argc, char *argv[]) {
   gtk_init(&argc, &argv);
 
   // Initialize global Process
-  real_process_init_globals("/usr/bin/sbcl");
+  process_init_globals("/usr/bin/sbcl");
 
   // Initialize global SwankProcess
-  real_swank_process_init_globals();
+  swank_process_init_globals();
 
   // Initialize global SwankSession
-  real_swank_session_init_globals();
+  swank_session_init_globals();
 
 
   // --- UI Setup ---
@@ -152,13 +152,13 @@ int main(int argc, char *argv[]) {
   g_free(filename_global);
 
   // Cleanup global SwankSession
-  real_swank_session_cleanup_globals();
+  swank_session_cleanup_globals();
 
   // Cleanup global Process
-  real_process_cleanup_globals();
+  process_cleanup_globals();
 
   // Cleanup global SwankProcess
-  real_swank_process_cleanup_globals();
+  swank_process_cleanup_globals();
 
   exit(0);
 }
