@@ -4,12 +4,14 @@ LIBS += gtk+-3.0
 CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS)
 LDLIBS += `pkg-config --libs $(LIBS)`
 
-TARGETS += app-full app-reloc app-gdb app
+TARGETS += app-full app-cov app-reloc app-gdb app
 SOURCES += main.c reloc.c
+COV_OBJECTS = $(SOURCES:.c=.cov.o)
 FULL_OBJECTS = $(SOURCES:.c=.full.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
-CLEANABLES += $(TARGETS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm
+CLEANABLES += $(TARGETS) $(COV_OBJECTS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm *.gcda *.gcno out/ coverage.info
 
+app-cov $(COV_OBJECTS): CFLAGS += -g -DDEBUG -fprofile-arcs -ftest-coverage
 app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG
 app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
 
@@ -18,14 +20,20 @@ all: $(TARGETS)
 main.full.o main.reloc.o: main.c reloc.h symbols.inc
 reloc.full.o reloc.reloc.o: reloc.c reloc.h symbols.inc
 
+%.cov.o: %.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
 %.full.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %.reloc.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
+app-cov: $(COV_OBJECTS)
+	$(CC) -fprofile-arcs -ftest-coverage $^ -o $@ $(LDLIBS)
+
 app-full: $(FULL_OBJECTS)
-	$(CC) $(LDFLAGS) $^ -o $@ $(LDLIBS)
+	$(CC) $^ -o $@ $(LDLIBS)
 
 app-reloc: $(RELOC_OBJECTS)
 	$(CC) $^ -o $@ $(LDLIBS)
@@ -47,6 +55,11 @@ app-gdb: app.asm
 app: app.asm
 	nasm -l $@.list $<
 	chmod +x $@
+
+cov: app-cov
+	./app-cov
+	lcov --capture --directory . --output-file coverage.info
+	genhtml coverage.info --output-directory out
 
 clean:
 	rm -f $(CLEANABLES)
