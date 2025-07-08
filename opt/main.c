@@ -22,10 +22,6 @@ GtkSourceBuffer *buffer = NULL;
 gchar           *filename = NULL;
 GtkWidget* interactions_view_widget = NULL; // For SwankSession to call updates
 
-GtkSourceBuffer *main_get_source_buffer() {
-    return buffer;
-}
-
 static gboolean quit_delete_event_handler(GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer /*data*/) {
   gtk_main_quit();
   return TRUE;
@@ -91,9 +87,9 @@ int main(int argc, char *argv[]) {
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
 
   // Connect to new file operations
-  g_signal_connect(open_item, "activate", G_CALLBACK(file_open), open_item);
-  g_signal_connect(save_item, "activate", G_CALLBACK(file_save), save_item);
-  g_signal_connect(saveas_item, "activate", G_CALLBACK(file_saveas), saveas_item);
+  g_signal_connect(open_item, "activate", G_CALLBACK(file_open), buffer);
+  g_signal_connect(save_item, "activate", G_CALLBACK(file_save), buffer);
+  g_signal_connect(saveas_item, "activate", G_CALLBACK(file_saveas), buffer);
   g_signal_connect(quit_item, "activate", G_CALLBACK(quit_menu_item_handler), NULL);
 
   // Store the created InteractionsView for RealSwankSession to use.
