@@ -52,6 +52,7 @@ Same as 4k, plus:
 
 Same as 16k, plus:
 * the code is all object oriented, with DI instead of global variables.
+* interactions are colored
 * persisted settings
 * a settings dialog
 

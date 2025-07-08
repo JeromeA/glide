@@ -16,6 +16,8 @@
 #include "reloc.c"
 #include "swank_process.c"
 #include "swank_session.c"
+#undef g_debug
+#define g_debug(...) do { } while (0)
 #endif
 
 #include "app.h"
