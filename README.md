@@ -45,14 +45,15 @@ Same as 4k, plus:
 
 ## 16k
 
-Same as 8k, plus:
-* the code is all object oriented, with DI instead of global variables.
-* TODO: add something useful. Swank doesn't fit.
+Same as 4k, plus:
+* can evaluate current line of code with alt-enter.
 
 ## 32k
 
 Same as 16k, plus:
-* can evaluate current line of code with alt-enter.
+* the code is all object oriented, with DI instead of global variables.
+* persisted settings
+* a settings dialog
 
 # Installation instructions
 
