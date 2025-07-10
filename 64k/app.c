@@ -5,6 +5,7 @@
 #include "preferences_dialog.h"
 #include "evaluate.h"
 #include "interactions_view.h"
+#include "lisp_source_view.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -63,13 +64,8 @@ app_activate (GApplication *app)
   GtkWidget *scrolled = gtk_scrolled_window_new (NULL, NULL);
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrolled), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
-  /* Source buffer + language */
-  GtkSourceLanguageManager *lm = gtk_source_language_manager_get_default ();
-  GtkSourceLanguage *lang = gtk_source_language_manager_get_language (lm, "commonlisp");
-  self->buffer = gtk_source_buffer_new_with_language (lang);
-
-  GtkWidget *view = gtk_source_view_new_with_buffer (self->buffer);
-  gtk_source_view_set_show_line_numbers (GTK_SOURCE_VIEW (view), TRUE);
+  GtkWidget *view = lisp_source_view_new ();
+  self->buffer = lisp_source_view_get_buffer (LISP_SOURCE_VIEW (view));
   gtk_container_add (GTK_CONTAINER (scrolled), view);
 
   /* Catch Alt+Enter in the view */
