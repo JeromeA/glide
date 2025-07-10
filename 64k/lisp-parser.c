@@ -1,7 +1,6 @@
 // Ensure all dependency headers are processed before our own header.
 #include <glib.h>
 #include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h> // For GtkSourceBuffer etc.
 #include "lisp-parser.h"
 // lisp-parser.h also includes these, but explicit order might matter for macros.
 
@@ -79,7 +78,7 @@ static gboolean lisp_syntax_element_free_node_data_cb(GNode *node, gpointer user
 // --- LispParser Implementation ---
 
 LispParser *lisp_parser_new(GtkSourceBuffer *buffer) {
-    g_return_val_if_fail(GTK_IS_SOURCE_BUFFER(buffer), NULL);
+    g_return_val_if_fail(GTK_SOURCE_IS_BUFFER(buffer), NULL);
 
     LispParser *parser = g_new(LispParser, 1);
 
@@ -127,7 +126,7 @@ GNode *lisp_parser_get_ast_root(LispParser *parser) {
 
 void lisp_parser_parse(LispParser *parser) {
     g_return_if_fail(parser != NULL);
-    g_return_if_fail(GTK_IS_SOURCE_BUFFER(parser->buffer));
+    g_return_if_fail(GTK_SOURCE_IS_BUFFER(parser->buffer));
 
     // 1. Clear existing AST data and structure
     if (parser->ast_root) {
