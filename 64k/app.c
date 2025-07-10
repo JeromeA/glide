@@ -1,5 +1,5 @@
 #include "includes.h"
-#include "app.h"
+#include "app.h" /* This should include custom_source_view.h now */
 #include "file_open.h"
 #include "file_save.h"
 #include "preferences_dialog.h"
@@ -17,7 +17,7 @@ struct _App
 
   /* UI pointers we want to reuse */
   GtkWidget      *window;
-  GtkSourceBuffer*buffer;
+  CustomSourceView *source_view; /* <<< CHANGED from GtkSourceBuffer* */
   gchar          *filename;   /* current file path or NULL */
   Preferences    *preferences;
   SwankSession   *swank;
@@ -63,17 +63,18 @@ app_activate (GApplication *app)
   GtkWidget *scrolled = gtk_scrolled_window_new (NULL, NULL);
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrolled), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
-  /* Source buffer + language */
-  GtkSourceLanguageManager *lm = gtk_source_language_manager_get_default ();
-  GtkSourceLanguage *lang = gtk_source_language_manager_get_language (lm, "commonlisp");
-  self->buffer = gtk_source_buffer_new_with_language (lang);
+  /* Scrolled source-view */
+  // GtkWidget *scrolled is already created above this section
 
-  GtkWidget *view = gtk_source_view_new_with_buffer (self->buffer);
-  gtk_source_view_set_show_line_numbers (GTK_SOURCE_VIEW (view), TRUE);
-  gtk_container_add (GTK_CONTAINER (scrolled), view);
+  /* Custom Source View */
+  self->source_view = custom_source_view_new();
+  // Buffer creation, language setting, and show line numbers are now handled
+  // within custom_source_view_init.
+
+  gtk_container_add(GTK_CONTAINER(scrolled), GTK_WIDGET(self->source_view));
 
   /* Catch Alt+Enter in the view */
-  g_signal_connect (view, "key-press-event", G_CALLBACK (on_key_press), self);
+  g_signal_connect(self->source_view, "key-press-event", G_CALLBACK(on_key_press), self);
 
   /* Menu bar ------------------------------------------------------ */
   GtkWidget *menu_bar      = gtk_menu_bar_new ();
@@ -130,6 +131,7 @@ app_dispose (GObject *object)
   g_clear_pointer (&self->filename, g_free);
   g_clear_object (&self->preferences);
   g_clear_object (&self->swank);
+  g_clear_object (&self->source_view); /* <<< ADDED */
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
 }
 
@@ -153,6 +155,7 @@ app_init (App *self)
   self->filename = NULL;
   self->preferences = NULL;
   self->swank = NULL;
+  self->source_view = NULL; /* <<< ADDED */
 }
 
 STATIC App *
@@ -177,7 +180,8 @@ app_get_source_buffer (App *self)
 {
   g_debug("App.get_source_buffer");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  return self->buffer;
+  g_return_val_if_fail (self->source_view != NULL, NULL); /* Ensure source_view is initialized */
+  return gtk_source_view_get_buffer(GTK_SOURCE_VIEW(self->source_view));
 }
 
 STATIC const gchar *

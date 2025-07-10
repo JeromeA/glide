@@ -2,7 +2,8 @@
 #define GLIDE_H
 
 #include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h>
+#include <gtksourceview/gtksource.h> /* GtkSourceView might still be needed for casting */
+#include "custom_source_view.h" /* New custom view */
 #include "preferences.h"
 #include "swank_session.h"
 
