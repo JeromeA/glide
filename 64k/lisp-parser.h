@@ -9,28 +9,44 @@ G_BEGIN_DECLS
 // Forward declaration for LispParser
 typedef struct _LispParser LispParser;
 
-// Enum for different types of syntax elements
+// Enum for different types of tokens
 typedef enum {
-    LISP_SYNTAX_ELEMENT_DOCUMENT_ROOT,  // Root of the AST
-    LISP_SYNTAX_ELEMENT_ATOM,           // Symbols, numbers, etc.
-    LISP_SYNTAX_ELEMENT_LIST_START,     // '('
-    LISP_SYNTAX_ELEMENT_LIST_END,       // ')'
-    LISP_SYNTAX_ELEMENT_STRING,         // "a string"
-    LISP_SYNTAX_ELEMENT_COMMENT,        // ; a comment
-    LISP_SYNTAX_ELEMENT_WHITESPACE,
-    LISP_SYNTAX_ELEMENT_INVALID_CHAR,   // A character that doesn't belong
-    LISP_SYNTAX_ELEMENT_UNMATCHED_CLOSE_PAREN, // A ')' without a matching '('
-    LISP_SYNTAX_ELEMENT_INCOMPLETE_LIST, // A list that was started but not closed by EOF
-    LISP_SYNTAX_ELEMENT_INCOMPLETE_STRING // A string that was started but not closed by EOF
-} LispSyntaxElementType;
+    LISP_TOKEN_TYPE_ATOM,
+    LISP_TOKEN_TYPE_LIST_START,     // (
+    LISP_TOKEN_TYPE_LIST_END,       // )
+    LISP_TOKEN_TYPE_STRING,
+    LISP_TOKEN_TYPE_COMMENT,
+    LISP_TOKEN_TYPE_WHITESPACE,
+    LISP_TOKEN_TYPE_INCOMPLETE_STRING,
+    // Note: No 'unmatched close paren' token type; that's a parsing error, not a token type.
+} LispTokenType;
 
-// Structure to hold information about each syntax element
+// Structure for a single token
 typedef struct {
-    LispSyntaxElementType type;
-    gchar *text; // The actual text of the token, owned by this struct
-    GtkTextIter start_iter; // Start position in the GtkTextBuffer
-    GtkTextIter end_iter;   // End position in the GtkTextBuffer
-} LispSyntaxElement;
+    LispTokenType type;
+    gchar *text;
+    GtkTextIter start_iter;
+    GtkTextIter end_iter;
+} LispToken;
+
+// Enum for AST node types
+typedef enum {
+    LISP_AST_NODE_TYPE_ATOM,
+    LISP_AST_NODE_TYPE_LIST,
+    LISP_AST_NODE_TYPE_STRING,
+    // Comments and whitespace are not typically included in the AST
+} LispAstNodeType;
+
+// Forward declaration
+typedef struct _LispAstNode LispAstNode;
+
+// Structure for an AST node
+struct _LispAstNode {
+    LispAstNodeType type;
+    const LispToken *start_token; // For a list, the '('. For an atom, the token itself.
+    const LispToken *end_token;   // For a list, the ')'. For an atom, same as start_token.
+    GArray *children;             // Array of LispAstNode* pointers, for lists only.
+};
 
 // Public API for the LispParser
 
@@ -63,25 +79,27 @@ void lisp_parser_free(LispParser *parser);
 void lisp_parser_parse(LispParser *parser);
 
 /**
- * lisp_parser_get_ast_root:
+ * lisp_parser_get_ast:
  * @parser: The LispParser instance.
  *
- * Gets the root GNode of the Abstract Syntax Tree (AST).
- * The GNode and its children contain LispSyntaxElement data.
- * The returned GNode is owned by the parser and should not be freed by the caller.
- * Its lifetime is tied to the parser or until the next call to `lisp_parser_parse`.
+ * Gets the root node of the Abstract Syntax Tree (AST).
+ * The returned AST is owned by the parser and should not be freed.
+ * Its lifetime is tied to the parser or until the next `lisp_parser_parse`.
  *
- * Returns: (transfer none): The root GNode of the AST.
+ * Returns: (transfer none): The root LispAstNode of the AST, or NULL if parsing failed.
  */
-GNode *lisp_parser_get_ast_root(LispParser *parser);
+const LispAstNode *lisp_parser_get_ast(LispParser *parser);
 
 /**
- * lisp_syntax_element_free:
- * @data: (transfer full): A pointer to a LispSyntaxElement to be freed.
+ * lisp_parser_get_tokens:
+ * @parser: The LispParser instance.
+ * @n_tokens: (out): Pointer to store the number of tokens.
  *
- * Frees the memory allocated for a LispSyntaxElement, including its text.
- * This function is suitable for use with GNode data freeing (e.g., g_node_destroy).
+ * Gets the stream of tokens from the last parse.
+ * The returned array is owned by the parser and should not be freed.
+ *
+ * Returns: (transfer none) (array length=n_tokens): The array of LispToken.
  */
-void lisp_syntax_element_free(gpointer data);
+const LispToken *lisp_parser_get_tokens(LispParser *parser, guint *n_tokens);
 
 G_END_DECLS
