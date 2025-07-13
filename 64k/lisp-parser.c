@@ -87,7 +87,7 @@ const LispToken *lisp_parser_get_tokens(LispParser *parser, guint *n_tokens) {
     if (n_tokens) {
         *n_tokens = parser->tokens ? parser->tokens->len : 0;
     }
-    return parser->tokens ? (const LispToken*)parser->tokens->pdata : NULL;
+    return parser->tokens ? (const LispToken*)parser->tokens->data : NULL;
 }
 
 void lisp_parser_parse(LispParser *parser) {

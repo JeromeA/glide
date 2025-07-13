@@ -1,8 +1,8 @@
 VPATH = ../common
-INCLUDES = -I../common -I../32k
+INCLUDES = -I../common -I../32k -I../64k
 CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0`
 LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0`
-TESTS = preferences_test process_test swank_process_test swank_session_test
+TESTS = preferences_test process_test swank_process_test swank_session_test lisp_parser_test
 CLEANABLES = $(TESTS)
 
 all: $(TESTS)
@@ -19,11 +19,15 @@ swank_process_test: swank_process_test.c ../32k/swank_process.c ../32k/real_swan
 swank_session_test: swank_session_test.c ../32k/swank_session.c ../32k/swank_process.c ../32k/real_swank_session.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
+lisp_parser_test: lisp_parser_test.c ../64k/lisp-parser.c
+	$(CC) $(CFLAGS) `pkg-config --cflags gtk+-3.0 gtksourceview-4` $^ -o $@ $(LDLIBS) `pkg-config --libs gtk+-3.0 gtksourceview-4`
+
 run: all
 	./preferences_test
 	./process_test
 	./swank_process_test
 	./swank_session_test
+	./lisp_parser_test
 
 clean:
 	rm -f $(CLEANABLES)
