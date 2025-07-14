@@ -9,15 +9,13 @@ struct _LispParser {
     GtkSourceBuffer *buffer; // Not owned
     GArray *tokens;          // Owns LispToken structs
     LispAstNode *ast;        // Owns the AST
-    // GArray of GError pointers for parsing errors
-    GArray *errors;
 };
 
 // --- Forward Declarations for Static Functions ---
 static void lisp_parser_clear_data(LispParser *parser);
 static void lisp_token_free(gpointer token);
 static void lisp_ast_node_free(LispAstNode *node);
-static LispAstNode* parse_expression(const GArray *tokens, guint *position, GArray *errors);
+static LispAstNode* parse_expression(const GArray *tokens, guint *position);
 
 // --- Memory Management ---
 
@@ -40,7 +38,7 @@ static void lisp_ast_node_free(LispAstNode *node) {
     g_free(node);
 }
 
-// Clears tokens, AST, and errors from the parser
+// Clears tokens and AST from the parser
 static void lisp_parser_clear_data(LispParser *parser) {
     if (parser->tokens) {
         g_array_free(parser->tokens, TRUE);
@@ -49,10 +47,6 @@ static void lisp_parser_clear_data(LispParser *parser) {
     if (parser->ast) {
         lisp_ast_node_free(parser->ast);
         parser->ast = NULL;
-    }
-    if (parser->errors) {
-        g_array_free(parser->errors, TRUE);
-        parser->errors = NULL;
     }
 }
 
@@ -98,8 +92,6 @@ void lisp_parser_parse(LispParser *parser) {
     // Initialize storage for new results
     parser->tokens = g_array_new(FALSE, TRUE, sizeof(LispToken));
     g_array_set_clear_func(parser->tokens, lisp_token_free);
-    parser->errors = g_array_new(FALSE, TRUE, sizeof(GError*));
-    g_array_set_clear_func(parser->errors, (GDestroyNotify)g_error_free);
 
     // 2. Tokenization Stage
     GtkTextIter current_iter;
@@ -190,19 +182,17 @@ void lisp_parser_parse(LispParser *parser) {
             continue;
         }
 
-        LispAstNode *expr = parse_expression(parser->tokens, &position, parser->errors);
+        LispAstNode *expr = parse_expression(parser->tokens, &position);
         if (expr) {
             g_array_append_val(parser->ast->children, expr);
         } else {
-            // If parse_expression returns NULL, it means an error occurred.
-            // The error is already in the errors list. We should stop or try to recover.
-            // For now, we'll stop. A more robust parser might try to find the next valid expression start.
-            break;
+            // Invalid expression; skip and continue parsing the rest
+            continue;
         }
     }
 }
 
-static LispAstNode* parse_expression(const GArray *tokens, guint *position, GArray *errors) {
+static LispAstNode* parse_expression(const GArray *tokens, guint *position) {
     // Skip leading whitespace/comments for the current expression
     while (*position < tokens->len) {
         const LispToken *token = &g_array_index(tokens, LispToken, *position);
@@ -242,16 +232,12 @@ static LispAstNode* parse_expression(const GArray *tokens, guint *position, GArr
                 continue;
             }
 
-            LispAstNode *child_expr = parse_expression(tokens, position, errors);
+            LispAstNode *child_expr = parse_expression(tokens, position);
             if (child_expr) {
                 g_array_append_val(list_node->children, child_expr);
             } else {
-                // Error parsing child, or end of tokens inside a list
-                // This means an unmatched open parenthesis.
-                // g_warning("Unmatched open parenthesis.");
-                // TODO: Add to GError list
-                lisp_ast_node_free(list_node); // Clean up the partially formed list node
-                return NULL;
+                // Ignore invalid tokens inside lists
+                continue;
             }
         }
 
@@ -273,9 +259,8 @@ static LispAstNode* parse_expression(const GArray *tokens, guint *position, GArr
 
     } else if (token->type == LISP_TOKEN_TYPE_LIST_END) {
         // --- Unmatched closing parenthesis ---
-        // g_warning("Unmatched closing parenthesis.");
-        // TODO: Add to GError list
-        (*position)++; // Consume ')' to allow parsing to potentially continue
+        // Consume and ignore it
+        (*position)++;
         return NULL;
     }
 
