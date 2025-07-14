@@ -113,6 +113,8 @@ populate_store(LispParserView *self)
   const LispAstNode *ast = lisp_parser_get_ast(self->parser);
   if (ast)
     add_ast_node(self, ast, NULL);
+
+  gtk_tree_view_expand_all(GTK_TREE_VIEW(self));
 }
 
 static void
