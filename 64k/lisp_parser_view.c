@@ -46,6 +46,9 @@ lisp_parser_view_dispose(GObject *object)
     self->parser = NULL;
   }
 
+  if (self->buffer)
+    g_signal_handlers_disconnect_by_data(self->buffer, self);
+
   g_clear_object(&self->buffer);
   g_clear_object(&self->store);
 
