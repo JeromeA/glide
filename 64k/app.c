@@ -6,6 +6,7 @@
 #include "evaluate.h"
 #include "interactions_view.h"
 #include "lisp_source_view.h"
+#include "lisp_parser_view.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -24,6 +25,15 @@ struct _App
   SwankSession   *swank;
 };
 
+static void
+on_show_parser(App *self)
+{
+  GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  GtkWidget *view = lisp_parser_view_new(self->buffer);
+  gtk_container_add(GTK_CONTAINER(win), view);
+  gtk_widget_show_all(win);
+}
+
 static gboolean
 on_key_press(GtkWidget * /*widget*/,
     GdkEventKey *event,
@@ -36,6 +46,12 @@ on_key_press(GtkWidget * /*widget*/,
   {
     on_evaluate(self);
     return TRUE;                  /* stop further propagation */
+  }
+  if ((event->keyval == GDK_KEY_p || event->keyval == GDK_KEY_P) &&
+      (event->state & GDK_MOD1_MASK))        /* Alt+P */
+  {
+    on_show_parser(self);
+    return TRUE;
   }
   return FALSE;
 }
