@@ -98,6 +98,27 @@ static void test_list_with_elements(void)
   lisp_parser_free(parser);
 }
 
+static void test_missing_closing_paren(void)
+{
+  LispParser *parser = parser_from_text("(a b");
+
+  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  g_assert_cmpint(ast->children->len, ==, 1);
+
+  const LispAstNode *list = g_array_index(ast->children, LispAstNode*, 0);
+  g_assert_cmpint(list->type, ==, LISP_AST_NODE_TYPE_LIST);
+  g_assert_cmpint(list->children->len, ==, 2);
+
+  const LispAstNode *a = g_array_index(list->children, LispAstNode*, 0);
+  const LispAstNode *b = g_array_index(list->children, LispAstNode*, 1);
+  g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_ATOM);
+  g_assert_cmpstr(a->start_token->text, ==, "a");
+  g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_ATOM);
+  g_assert_cmpstr(b->start_token->text, ==, "b");
+
+  lisp_parser_free(parser);
+}
+
 static void test_extra_closing_paren(void)
 {
   LispParser *parser = parser_from_text(")");
@@ -137,6 +158,7 @@ int main(int argc, char *argv[])
   g_test_add_func("/lisp_parser/atom_string", test_atom_string);
   g_test_add_func("/lisp_parser/empty_list", test_empty_list);
   g_test_add_func("/lisp_parser/list_with_elements", test_list_with_elements);
+  g_test_add_func("/lisp_parser/missing_closing_paren", test_missing_closing_paren);
   g_test_add_func("/lisp_parser/extra_closing_paren", test_extra_closing_paren);
   g_test_add_func("/lisp_parser/comment", test_comment);
   return g_test_run();

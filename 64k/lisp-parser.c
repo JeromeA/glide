@@ -255,11 +255,10 @@ static LispAstNode* parse_expression(const GArray *tokens, guint *position, GArr
             }
         }
 
-        // If we exit the loop here, the list was not closed.
-        // g_warning("Incomplete list at end of input.");
-        // TODO: Add to GError list
-        lisp_ast_node_free(list_node);
-        return NULL;
+        // If we exit the loop here, the list was not closed. We still create
+        // the list node and pretend a closing parenthesis existed at EOF.
+        list_node->end_token = NULL;
+        return list_node;
 
     } else if (token->type == LISP_TOKEN_TYPE_ATOM || token->type == LISP_TOKEN_TYPE_STRING) {
         // --- Parse an atom or string ---
