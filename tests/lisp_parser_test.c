@@ -18,7 +18,7 @@ static void test_empty_file(void)
   LispParser *parser = parser_from_text("");
 
   guint n_tokens = 0;
-  const LispToken *tokens = lisp_parser_get_tokens(parser, &n_tokens);
+  lisp_parser_get_tokens(parser, &n_tokens);
   g_assert_cmpint(n_tokens, ==, 0);
 
   const LispAstNode *ast = lisp_parser_get_ast(parser);
@@ -103,7 +103,7 @@ static void test_extra_closing_paren(void)
   LispParser *parser = parser_from_text(")");
 
   guint n_tokens = 0;
-  lisp_parser_get_tokens(parser, &n_tokens);
+  const LispToken *tokens = lisp_parser_get_tokens(parser, &n_tokens);
   g_assert_cmpint(n_tokens, ==, 1);
   g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_LIST_END);
 
