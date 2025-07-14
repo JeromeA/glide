@@ -43,7 +43,6 @@ static void lisp_ast_node_free(LispAstNode *node) {
 // Clears tokens, AST, and errors from the parser
 static void lisp_parser_clear_data(LispParser *parser) {
     if (parser->tokens) {
-        g_array_set_clear_func(parser->tokens, lisp_token_free);
         g_array_free(parser->tokens, TRUE);
         parser->tokens = NULL;
     }
@@ -52,7 +51,6 @@ static void lisp_parser_clear_data(LispParser *parser) {
         parser->ast = NULL;
     }
     if (parser->errors) {
-        g_array_set_clear_func(parser->errors, (GDestroyNotify)g_error_free);
         g_array_free(parser->errors, TRUE);
         parser->errors = NULL;
     }
@@ -99,7 +97,9 @@ void lisp_parser_parse(LispParser *parser) {
 
     // Initialize storage for new results
     parser->tokens = g_array_new(FALSE, TRUE, sizeof(LispToken));
+    g_array_set_clear_func(parser->tokens, lisp_token_free);
     parser->errors = g_array_new(FALSE, TRUE, sizeof(GError*));
+    g_array_set_clear_func(parser->errors, (GDestroyNotify)g_error_free);
 
     // 2. Tokenization Stage
     GtkTextIter current_iter;
