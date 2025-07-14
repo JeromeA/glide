@@ -7,7 +7,7 @@
 #include "file_save.c"
 #include "find_executables.c"
 #include "interactions_view.c"
-#include "lisp-parser.c"
+#include "lisp_parser.c"
 #include "lisp_source_view.c"
 #include "lisp_parser_view.c"
 #include "preferences.c"

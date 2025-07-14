@@ -1,7 +1,6 @@
 #pragma once
 
-// lisp-parser.h now includes <gtksourceview/gtksource.h>
-#include "lisp-parser.h"
+#include "lisp_parser.h"
 
 G_BEGIN_DECLS
 

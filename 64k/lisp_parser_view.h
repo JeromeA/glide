@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lisp-parser.h"
+#include "lisp_parser.h"
 
 G_BEGIN_DECLS
 

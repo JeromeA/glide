@@ -1,8 +1,7 @@
 // Ensure all dependency headers are processed before our own header.
 #include <glib.h>
 #include <gtk/gtk.h>
-#include "lisp-parser.h"
-// lisp-parser.h also includes these, but explicit order might matter for macros.
+#include "lisp_parser.h"
 
 // Define the LispParser structure
 struct _LispParser {
