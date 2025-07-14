@@ -9,6 +9,7 @@
 #include "interactions_view.c"
 #include "lisp-parser.c"
 #include "lisp_source_view.c"
+#include "lisp_parser_view.c"
 #include "preferences.c"
 #include "preferences_dialog.c"
 #include "process.c"
