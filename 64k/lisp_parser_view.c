@@ -76,13 +76,20 @@ add_ast_node(LispParserView *self, const LispAstNode *node, GtkTreeIter *parent)
 {
   GtkTreeIter iter;
   const gchar *type = node_type_to_string(node->type);
-  const gchar *text = node->start_token ? node->start_token->text : "";
+  const gchar *start_text = node->start_token ? node->start_token->text : "";
+  gchar *text;
+
+  if (node->end_token && node->end_token != node->start_token)
+    text = g_strdup_printf("%s ... %s", start_text, node->end_token->text);
+  else
+    text = g_strdup(start_text);
 
   gtk_tree_store_append(self->store, &iter, parent);
   gtk_tree_store_set(self->store, &iter,
       COL_TYPE, type,
       COL_TEXT, text,
       -1);
+  g_free(text);
 
   if (node->children)
   {
