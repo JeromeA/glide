@@ -59,6 +59,9 @@ lisp_source_view_dispose (GObject *object)
     self->parser = NULL;
   }
 
+  if (self->buffer)
+    g_signal_handlers_disconnect_by_data (self->buffer, self);
+
   // Buffer is a GObject, gtk_text_view_set_buffer increments its ref count.
   // It will be unref'd when GtkTextView is disposed, or we can g_clear_object it.
   // The original code used g_clear_object, which is fine.
