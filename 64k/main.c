@@ -6,6 +6,7 @@
 #include "file_open.c"
 #include "file_save.c"
 #include "find_executables.c"
+#include "gtk_text_provider.c"
 #include "interactions_view.c"
 #include "lisp_parser.c"
 #include "lisp_source_view.c"
@@ -17,8 +18,10 @@
 #include "real_swank_process.c"
 #include "real_swank_session.c"
 #include "reloc.c"
+#include "string_text_provider.c"
 #include "swank_process.c"
 #include "swank_session.c"
+#include "text_provider.c"
 #undef g_debug
 #define g_debug(...) do { } while (0)
 #endif
