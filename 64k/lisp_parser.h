@@ -1,8 +1,7 @@
 #pragma once
 
 #include <glib.h>
-#include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h> // For GtkSourceBuffer
+#include "text_provider.h"
 
 G_BEGIN_DECLS
 
@@ -25,8 +24,8 @@ typedef enum {
 typedef struct {
     LispTokenType type;
     gchar *text;
-    GtkTextIter start_iter;
-    GtkTextIter end_iter;
+    gsize start_offset;
+    gsize end_offset;
 } LispToken;
 
 // Enum for AST node types
@@ -52,14 +51,14 @@ struct _LispAstNode {
 
 /**
  * lisp_parser_new:
- * @buffer: The GtkSourceBuffer to parse.
+ * @provider: The TextProvider to parse.
  *
- * Creates a new LispParser instance for the given buffer.
- * The parser does not take ownership of the buffer.
+ * Creates a new LispParser instance for the given provider.
+ * The parser does not take ownership of the provider.
  *
  * Returns: (transfer full): A new LispParser instance.
  */
-LispParser *lisp_parser_new(GtkSourceBuffer *buffer);
+LispParser *lisp_parser_new(TextProvider *provider);
 
 /**
  * lisp_parser_free:
@@ -73,7 +72,7 @@ void lisp_parser_free(LispParser *parser);
  * lisp_parser_parse:
  * @parser: The LispParser instance.
  *
- * Parses or re-parses the content of the GtkSourceBuffer associated with the parser.
+ * Parses or re-parses the content provided by the TextProvider associated with the parser.
  * The existing AST in the parser is destroyed and a new one is built.
  */
 void lisp_parser_parse(LispParser *parser);

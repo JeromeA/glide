@@ -1,6 +1,8 @@
 #pragma once
 
 #include "lisp_parser.h"
+#include <gtk/gtk.h>
+#include <gtksourceview/gtksource.h>
 
 G_BEGIN_DECLS
 

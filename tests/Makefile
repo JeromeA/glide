@@ -19,8 +19,8 @@ swank_process_test: swank_process_test.c swank_process.c real_swank_process.c pr
 swank_session_test: swank_session_test.c swank_session.c swank_process.c real_swank_session.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-lisp_parser_test: lisp_parser_test.c ../64k/lisp-parser.c
-	$(CC) $(CFLAGS) `pkg-config --cflags gtk+-3.0 gtksourceview-4` $^ -o $@ $(LDLIBS) `pkg-config --libs gtk+-3.0 gtksourceview-4`
+lisp_parser_test: lisp_parser_test.c ../64k/lisp_parser.c ../64k/string_text_provider.c ../64k/text_provider.c
+	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 run: all
 	./preferences_test
