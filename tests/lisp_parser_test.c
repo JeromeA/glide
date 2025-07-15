@@ -1,15 +1,13 @@
-#include "lisp-parser.h"
+#include "lisp_parser.h"
+#include "string_text_provider.h"
 #include <glib.h>
-#include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h>
 
 static LispParser *parser_from_text(const gchar *text)
 {
-  GtkSourceBuffer *buffer = gtk_source_buffer_new(NULL);
-  gtk_text_buffer_set_text(GTK_TEXT_BUFFER(buffer), text, -1);
-  LispParser *parser = lisp_parser_new(buffer);
+  TextProvider *provider = string_text_provider_new(text);
+  LispParser *parser = lisp_parser_new(provider);
   lisp_parser_parse(parser);
-  g_object_unref(buffer);
+  g_object_unref(provider);
   return parser;
 }
 
@@ -152,7 +150,6 @@ static void test_comment(void)
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
-  gtk_init_check(&argc, &argv);
   g_test_add_func("/lisp_parser/empty_file", test_empty_file);
   g_test_add_func("/lisp_parser/atom_symbol", test_atom_symbol);
   g_test_add_func("/lisp_parser/atom_string", test_atom_string);

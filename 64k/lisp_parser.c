@@ -1,11 +1,10 @@
 // Ensure all dependency headers are processed before our own header.
 #include <glib.h>
-#include <gtk/gtk.h>
 #include "lisp_parser.h"
 
 // Define the LispParser structure
 struct _LispParser {
-    GtkSourceBuffer *buffer; // Not owned
+    TextProvider *provider; // Not owned
     GArray *tokens;          // Owns LispToken structs
     LispAstNode *ast;        // Owns the AST
 };
@@ -52,12 +51,11 @@ static void lisp_parser_clear_data(LispParser *parser) {
 
 // --- LispParser Implementation ---
 
-LispParser *lisp_parser_new(GtkSourceBuffer *buffer) {
-    g_return_val_if_fail(GTK_SOURCE_IS_BUFFER(buffer), NULL);
+LispParser *lisp_parser_new(TextProvider *provider) {
+    g_return_val_if_fail(GLIDE_IS_TEXT_PROVIDER(provider), NULL);
 
     LispParser *parser = g_new0(LispParser, 1);
-    parser->buffer = buffer;
-    // Other fields are initialized to NULL by g_new0
+    parser->provider = provider;
 
     return parser;
 }
@@ -83,7 +81,7 @@ const LispToken *lisp_parser_get_tokens(LispParser *parser, guint *n_tokens) {
 
 void lisp_parser_parse(LispParser *parser) {
     g_return_if_fail(parser != NULL);
-    g_return_if_fail(GTK_SOURCE_IS_BUFFER(parser->buffer));
+    g_return_if_fail(GLIDE_IS_TEXT_PROVIDER(parser->provider));
 
     // 1. Clear previous results
     lisp_parser_clear_data(parser);
@@ -93,74 +91,73 @@ void lisp_parser_parse(LispParser *parser) {
     g_array_set_clear_func(parser->tokens, lisp_token_free);
 
     // 2. Tokenization Stage
-    GtkTextIter current_iter;
-    gtk_text_buffer_get_start_iter(GTK_TEXT_BUFFER(parser->buffer), &current_iter);
+    gsize len = text_provider_get_length(parser->provider);
+    gsize offset = 0;
 
-    while (!gtk_text_iter_is_end(&current_iter)) {
-        gunichar current_char = gtk_text_iter_get_char(&current_iter);
+    while (offset < len) {
+        gunichar current_char = text_provider_get_char(parser->provider, offset);
         LispToken token = {0};
-        token.start_iter = current_iter;
+        token.start_offset = offset;
 
         if (g_unichar_isspace(current_char)) {
             token.type = LISP_TOKEN_TYPE_WHITESPACE;
-            GtkTextIter end_iter = current_iter;
-            while (!gtk_text_iter_is_end(&end_iter) && g_unichar_isspace(gtk_text_iter_get_char(&end_iter))) {
-                gtk_text_iter_forward_char(&end_iter);
+            gsize end = offset;
+            while (end < len && g_unichar_isspace(text_provider_get_char(parser->provider, end))) {
+                end = text_provider_next_offset(parser->provider, end);
             }
-            token.end_iter = end_iter;
-            current_iter = end_iter;
+            token.end_offset = end;
+            offset = end;
         } else if (current_char == ';') {
             token.type = LISP_TOKEN_TYPE_COMMENT;
-            GtkTextIter end_iter = current_iter;
-            while (!gtk_text_iter_is_end(&end_iter) && gtk_text_iter_get_char(&end_iter) != '\n') {
-                gtk_text_iter_forward_char(&end_iter);
+            gsize end = offset;
+            while (end < len && text_provider_get_char(parser->provider, end) != '\n') {
+                end = text_provider_next_offset(parser->provider, end);
             }
-            token.end_iter = end_iter;
-            current_iter = end_iter;
+            token.end_offset = end;
+            offset = end;
         } else if (current_char == '(') {
             token.type = LISP_TOKEN_TYPE_LIST_START;
-            gtk_text_iter_forward_char(&current_iter);
-            token.end_iter = current_iter;
+            offset = text_provider_next_offset(parser->provider, offset);
+            token.end_offset = offset;
         } else if (current_char == ')') {
             token.type = LISP_TOKEN_TYPE_LIST_END;
-            gtk_text_iter_forward_char(&current_iter);
-            token.end_iter = current_iter;
+            offset = text_provider_next_offset(parser->provider, offset);
+            token.end_offset = offset;
         } else if (current_char == '"') {
-            GtkTextIter end_iter = current_iter;
-            gtk_text_iter_forward_char(&end_iter); // Skip opening quote
+            gsize end = text_provider_next_offset(parser->provider, offset); /* skip opening quote */
             gboolean escaped = FALSE;
             gboolean found_end = FALSE;
-            while (!gtk_text_iter_is_end(&end_iter)) {
-                gunichar c = gtk_text_iter_get_char(&end_iter);
+            while (end < len) {
+                gunichar c = text_provider_get_char(parser->provider, end);
                 if (escaped) {
                     escaped = FALSE;
                 } else if (c == '\\') {
                     escaped = TRUE;
                 } else if (c == '"') {
                     found_end = TRUE;
-                    gtk_text_iter_forward_char(&end_iter);
+                    end = text_provider_next_offset(parser->provider, end);
                     break;
                 }
-                gtk_text_iter_forward_char(&end_iter);
+                end = text_provider_next_offset(parser->provider, end);
             }
             token.type = found_end ? LISP_TOKEN_TYPE_STRING : LISP_TOKEN_TYPE_INCOMPLETE_STRING;
-            token.end_iter = end_iter;
-            current_iter = end_iter;
-        } else { // Atom
+            token.end_offset = end;
+            offset = end;
+        } else { /* Atom */
             token.type = LISP_TOKEN_TYPE_ATOM;
-            GtkTextIter end_iter = current_iter;
-            while (!gtk_text_iter_is_end(&end_iter)) {
-                gunichar c = gtk_text_iter_get_char(&end_iter);
+            gsize end = offset;
+            while (end < len) {
+                gunichar c = text_provider_get_char(parser->provider, end);
                 if (g_unichar_isspace(c) || c == '(' || c == ')' || c == '"' || c == ';') {
                     break;
                 }
-                gtk_text_iter_forward_char(&end_iter);
+                end = text_provider_next_offset(parser->provider, end);
             }
-            token.end_iter = end_iter;
-            current_iter = end_iter;
+            token.end_offset = end;
+            offset = end;
         }
 
-        token.text = gtk_text_iter_get_text(&token.start_iter, &token.end_iter);
+        token.text = text_provider_get_text(parser->provider, token.start_offset, token.end_offset);
         g_array_append_val(parser->tokens, token);
     }
 

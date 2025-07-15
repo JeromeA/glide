@@ -1,9 +1,11 @@
 #include "lisp_parser_view.h"
+#include "gtk_text_provider.h"
 
 struct _LispParserView
 {
   GtkTreeView parent_instance;
   GtkSourceBuffer *buffer;
+  TextProvider *provider;
   LispParser *parser;
   GtkTreeStore *store;
 };
@@ -45,6 +47,8 @@ lisp_parser_view_dispose(GObject *object)
     lisp_parser_free(self->parser);
     self->parser = NULL;
   }
+
+  g_clear_object(&self->provider);
 
   if (self->buffer)
     g_signal_handlers_disconnect_by_data(self->buffer, self);
@@ -132,7 +136,8 @@ lisp_parser_view_new(GtkSourceBuffer *buffer)
 {
   LispParserView *self = g_object_new(LISP_TYPE_PARSER_VIEW, NULL);
   self->buffer = g_object_ref(buffer);
-  self->parser = lisp_parser_new(buffer);
+  self->provider = gtk_text_provider_new(GTK_TEXT_BUFFER(buffer));
+  self->parser = lisp_parser_new(self->provider);
   populate_store(self);
   g_signal_connect(self->buffer, "changed", G_CALLBACK(parser_view_buffer_changed), self);
   return GTK_WIDGET(self);

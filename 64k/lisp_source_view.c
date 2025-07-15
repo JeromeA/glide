@@ -1,10 +1,12 @@
 #include "lisp_source_view.h"
+#include "gtk_text_provider.h"
 
 struct _LispSourceView
 {
   GtkSourceView parent_instance;
 
   GtkSourceBuffer *buffer;
+  TextProvider *provider;
   LispParser *parser; // Add the parser instance
 };
 
@@ -23,7 +25,8 @@ lisp_source_view_init (LispSourceView *self)
   gtk_source_view_set_show_line_numbers (GTK_SOURCE_VIEW (self), TRUE);
 
   // Initialize the LispParser
-  self->parser = lisp_parser_new(self->buffer);
+  self->provider = gtk_text_provider_new(GTK_TEXT_BUFFER(self->buffer));
+  self->parser = lisp_parser_new(self->provider);
   if (self->parser) {
     lisp_parser_parse(self->parser); // Perform an initial parse
   } else {
@@ -58,6 +61,8 @@ lisp_source_view_dispose (GObject *object)
     lisp_parser_free(self->parser);
     self->parser = NULL;
   }
+
+  g_clear_object(&self->provider);
 
   if (self->buffer)
     g_signal_handlers_disconnect_by_data (self->buffer, self);
