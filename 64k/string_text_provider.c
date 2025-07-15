@@ -57,10 +57,27 @@ static gunichar stp_get_char(TextProvider *self, gsize offset) {
   return g_utf8_get_char(p);
 }
 
+static const gchar *utf8_next_char(const gchar *p) {
+  guchar c = (guchar)*p;
+  if ((c & 0x80) == 0)
+    return p + 1;
+  if ((c & 0xe0) == 0xc0)
+    return p + 2;
+  if ((c & 0xf0) == 0xe0)
+    return p + 3;
+  if ((c & 0xf8) == 0xf0)
+    return p + 4;
+  if ((c & 0xfc) == 0xf8)
+    return p + 5;
+  if ((c & 0xfe) == 0xfc)
+    return p + 6;
+  return p + 1;
+}
+
 static gsize stp_next_offset(TextProvider *self, gsize offset) {
   StringTextProvider *tp = GLIDE_STRING_TEXT_PROVIDER(self);
   const gchar *p = tp->text + offset;
-  const gchar *n = g_utf8_next_char(p);
+  const gchar *n = utf8_next_char(p);
   return (gsize)(n - tp->text);
 }
 
