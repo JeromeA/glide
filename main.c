@@ -35,6 +35,7 @@
 #include "real_swank_session.h"
 #include "swank_process.h"
 #include "swank_session.h"
+#include "project.h"
 
 int
 main (int argc, char *argv[])
@@ -48,11 +49,13 @@ main (int argc, char *argv[])
   Process *proc = real_process_new (sdk_path);
   SwankProcess *swank_proc = real_swank_process_new (proc, prefs);
   SwankSession *swank = real_swank_session_new (swank_proc);
-  App *app     = app_new (prefs, swank);
+  Project *project = project_new();
+  App *app     = app_new (prefs, swank, project);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref (app);
   g_object_unref (swank);
+  g_object_unref (project);
   g_object_unref (prefs);
   exit(status);
 }

@@ -7,6 +7,7 @@
 #include "interactions_view.h"
 #include "lisp_source_view.h"
 #include "lisp_parser_view.h"
+#include "project.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -20,16 +21,19 @@ struct _App
   /* UI pointers we want to reuse */
   GtkWidget      *window;
   GtkSourceBuffer*buffer;
+  LispSourceView *source_view;
   gchar          *filename;   /* current file path or NULL */
   Preferences    *preferences;
   SwankSession   *swank;
+  Project        *project;
 };
 
 static void
 on_show_parser(App *self)
 {
   GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  GtkWidget *view = lisp_parser_view_new(self->buffer);
+  ProjectFile *file = lisp_source_view_get_file(self->source_view);
+  GtkWidget *view = lisp_parser_view_new(file);
   gtk_container_add(GTK_CONTAINER(win), view);
   gtk_widget_show_all(win);
 }
@@ -80,8 +84,9 @@ app_activate (GApplication *app)
   GtkWidget *scrolled = gtk_scrolled_window_new (NULL, NULL);
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrolled), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
 
-  GtkWidget *view = lisp_source_view_new ();
-  self->buffer = lisp_source_view_get_buffer (LISP_SOURCE_VIEW (view));
+  GtkWidget *view = lisp_source_view_new (self->project);
+  self->source_view = LISP_SOURCE_VIEW(view);
+  self->buffer = lisp_source_view_get_buffer (self->source_view);
   gtk_container_add (GTK_CONTAINER (scrolled), view);
 
   /* Catch Alt+Enter in the view */
@@ -140,6 +145,7 @@ app_dispose (GObject *object)
   g_debug("App.dispose");
 
   g_clear_pointer (&self->filename, g_free);
+  g_clear_object (&self->project);
   g_clear_object (&self->preferences);
   g_clear_object (&self->swank);
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
@@ -165,10 +171,12 @@ app_init (App *self)
   self->filename = NULL;
   self->preferences = NULL;
   self->swank = NULL;
+  self->project = NULL;
+  self->source_view = NULL;
 }
 
 STATIC App *
-app_new (Preferences *prefs, SwankSession *swank)
+app_new (Preferences *prefs, SwankSession *swank, Project *project)
 {
   g_debug("App.new");
   g_return_val_if_fail (GLIDE_IS_SWANK_SESSION (swank), NULL);
@@ -181,6 +189,7 @@ app_new (Preferences *prefs, SwankSession *swank)
 
   self->preferences = g_object_ref (prefs);
   self->swank       = g_object_ref (swank);
+  self->project     = g_object_ref (project);
   return self;
 }
 
