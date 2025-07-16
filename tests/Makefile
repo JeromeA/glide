@@ -1,5 +1,4 @@
-VPATH = ../common
-INCLUDES = -I../common -I..
+INCLUDES = -I..
 CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0`
 LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0`
 TESTS = preferences_test process_test swank_process_test swank_session_test lisp_parser_test project_test
