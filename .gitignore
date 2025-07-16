@@ -1,0 +1,13 @@
+app-full
+app-cov
+app-reloc
+app-gdb
+app
+app-source.*
+app.asm
+*.list
+*.gcda
+*.gcno
+*.o
+out/
+coverage.info
