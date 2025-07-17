@@ -71,7 +71,7 @@ lisp_source_view_new (Project *project)
 
   LispSourceView *self = g_object_new (LISP_TYPE_SOURCE_VIEW, NULL);
   self->project = g_object_ref(project);
-  self->file = project_get_file(project, 0);
+  self->file = project_get_current_file(project);
 
   TextProvider *existing = project_file_get_provider(self->file);
   if (existing) {

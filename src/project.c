@@ -12,6 +12,7 @@ struct _ProjectFile {
 struct _Project {
   GObject parent_instance;
   GPtrArray *files; /* ProjectFile* */
+  ProjectFile *current_file;
   guint next_scratch_id;
 };
 
@@ -37,12 +38,14 @@ static void project_file_free(ProjectFile *file) {
 static void project_init(Project *self) {
   self->files = g_ptr_array_new_with_free_func((GDestroyNotify)project_file_free);
   self->next_scratch_id = 0;
+  self->current_file = NULL;
 }
 
 static void project_finalize(GObject *obj) {
   Project *self = GLIDE_PROJECT(obj);
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
+  self->current_file = NULL;
   G_OBJECT_CLASS(project_parent_class)->finalize(obj);
 }
 
@@ -79,6 +82,7 @@ ProjectFile *project_create_scratch(Project *self) {
   ProjectFile *file = project_add_file(self, provider, NULL, name,
       PROJECT_FILE_SCRATCH);
   g_object_unref(provider);
+  project_set_current_file(self, file);
   return file;
 }
 
@@ -92,6 +96,17 @@ ProjectFile *project_get_file(Project *self, guint index) {
   if (index >= self->files->len)
     return NULL;
   return g_ptr_array_index(self->files, index);
+}
+
+ProjectFile *project_get_current_file(Project *self) {
+  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  return self->current_file ? self->current_file : project_get_file(self, 0);
+}
+
+void project_set_current_file(Project *self, ProjectFile *file) {
+  g_return_if_fail(GLIDE_IS_PROJECT(self));
+  g_return_if_fail(file != NULL);
+  self->current_file = file;
 }
 
 ProjectFileState project_file_get_state(ProjectFile *file) {

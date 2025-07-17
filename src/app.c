@@ -214,6 +214,14 @@ app_get_swank (App *self)
   return self->swank;
 }
 
+STATIC Project *
+app_get_project(App *self)
+{
+  g_debug("App.get_project");
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
+  return self->project;
+}
+
 STATIC void
 app_quit (App *self)
 {

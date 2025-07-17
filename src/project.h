@@ -12,7 +12,7 @@ G_DECLARE_FINAL_TYPE(Project, project, GLIDE, PROJECT, GObject)
 
 typedef enum {
   PROJECT_FILE_DORMANT,
-  PROJECT_FILE_LIVE,
+  PROJECT_FILE_LOADED,
   PROJECT_FILE_SCRATCH
 } ProjectFileState;
 
@@ -22,6 +22,8 @@ Project *project_new(void);
 ProjectFile *project_create_scratch(Project *self);
 ProjectFile *project_get_file(Project *self, guint index);
 guint project_get_file_count(Project *self);
+ProjectFile *project_get_current_file(Project *self);
+void project_set_current_file(Project *self, ProjectFile *file);
 ProjectFileState project_file_get_state(ProjectFile *file);
 void project_file_set_state(ProjectFile *file, ProjectFileState state);
 void project_file_set_provider(ProjectFile *file, TextProvider *provider,

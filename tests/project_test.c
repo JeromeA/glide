@@ -9,6 +9,7 @@ static void test_default_scratch(void)
   ProjectFile *file = project_get_file(project, 0);
   g_assert_cmpint(project_file_get_state(file), ==, PROJECT_FILE_SCRATCH);
   g_assert_cmpstr(project_file_get_path(file), ==, "scratch00");
+  g_assert_true(project_get_current_file(project) == file);
   g_object_unref(project);
 }
 
@@ -31,10 +32,23 @@ static void test_parse_on_change(void)
   g_object_unref(project);
 }
 
+static void test_set_current(void)
+{
+  Project *project = project_new();
+  TextProvider *provider = string_text_provider_new("(b)");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL,
+      PROJECT_FILE_SCRATCH);
+  g_object_unref(provider);
+  project_set_current_file(project, file);
+  g_assert_true(project_get_current_file(project) == file);
+  g_object_unref(project);
+}
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/project/default_scratch", test_default_scratch);
   g_test_add_func("/project/parse_on_change", test_parse_on_change);
+  g_test_add_func("/project/set_current", test_set_current);
   return g_test_run();
 }

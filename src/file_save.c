@@ -14,7 +14,7 @@ void file_save(GtkWidget *, gpointer data) {
   App *app = (App *) data;
   GtkSourceBuffer *source_buffer =
       lisp_source_view_get_buffer(app_get_source_view(app));
-  ProjectFile *file = lisp_source_view_get_file(app_get_source_view(app));
+  ProjectFile *file = project_get_current_file(app_get_project(app));
   const gchar *filename = project_file_get_path(file);
   gboolean scratch = project_file_get_state(file) == PROJECT_FILE_SCRATCH;
 
@@ -38,7 +38,7 @@ void file_save(GtkWidget *, gpointer data) {
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
       chosen_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
       project_file_set_path(file, chosen_filename);
-      project_file_set_state(file, PROJECT_FILE_LIVE);
+      project_file_set_state(file, PROJECT_FILE_LOADED);
       filename = chosen_filename;
     }
 
