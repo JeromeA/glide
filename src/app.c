@@ -20,7 +20,6 @@ struct _App
 
   /* UI pointers we want to reuse */
   GtkWidget      *window;
-  GtkSourceBuffer*buffer;
   LispSourceView *source_view;
   gchar          *filename;   /* current file path or NULL */
   Preferences    *preferences;
@@ -86,7 +85,6 @@ app_activate (GApplication *app)
 
   GtkWidget *view = lisp_source_view_new (self->project);
   self->source_view = LISP_SOURCE_VIEW(view);
-  self->buffer = lisp_source_view_get_buffer (self->source_view);
   gtk_container_add (GTK_CONTAINER (scrolled), view);
 
   /* Catch Alt+Enter in the view */
@@ -193,12 +191,13 @@ app_new (Preferences *prefs, SwankSession *swank, Project *project)
   return self;
 }
 
-STATIC GtkSourceBuffer *
-app_get_source_buffer (App *self)
+
+STATIC LispSourceView *
+app_get_source_view(App *self)
 {
-  g_debug("App.get_source_buffer");
+  g_debug("App.get_source_view");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  return self->buffer;
+  return self->source_view;
 }
 
 STATIC const gchar *

@@ -8,10 +8,12 @@
 #include "syscalls.h"
 #include "file_save.h"
 #include "app.h"
+#include "lisp_source_view.h"
 
 void file_save(GtkWidget *, gpointer data) {
   App *app = (App *) data;
-  GtkSourceBuffer *source_buffer = app_get_source_buffer (app);
+  GtkSourceBuffer *source_buffer =
+      lisp_source_view_get_buffer(app_get_source_view(app));
   const gchar *filename = app_get_filename (app);
 
   gchar *chosen_filename = NULL;
