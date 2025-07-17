@@ -1,4 +1,5 @@
 #include "project.h"
+#include "string_text_provider.h"
 
 struct _ProjectFile {
   ProjectFileState state;
@@ -11,9 +12,11 @@ struct _ProjectFile {
 struct _Project {
   GObject parent_instance;
   GPtrArray *files; /* ProjectFile* */
+  guint next_scratch_id;
 };
 
 static void project_finalize(GObject *obj);
+ProjectFile *project_create_scratch(Project *self);
 
 G_DEFINE_TYPE(Project, project, G_TYPE_OBJECT)
 
@@ -33,6 +36,7 @@ static void project_file_free(ProjectFile *file) {
 
 static void project_init(Project *self) {
   self->files = g_ptr_array_new_with_free_func((GDestroyNotify)project_file_free);
+  self->next_scratch_id = 0;
 }
 
 static void project_finalize(GObject *obj) {
@@ -43,7 +47,9 @@ static void project_finalize(GObject *obj) {
 }
 
 Project *project_new(void) {
-  return g_object_new(PROJECT_TYPE, NULL);
+  Project *self = g_object_new(PROJECT_TYPE, NULL);
+  project_create_scratch(self);
+  return self;
 }
 
 ProjectFile *project_add_file(Project *self, TextProvider *provider,
@@ -63,6 +69,60 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
   project_file_changed(self, file);
 
   return file;
+}
+
+ProjectFile *project_create_scratch(Project *self) {
+  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  gchar name[12];
+  g_snprintf(name, sizeof(name), "scratch%02u", self->next_scratch_id++);
+  TextProvider *provider = string_text_provider_new("");
+  ProjectFile *file = project_add_file(self, provider, NULL, name,
+      PROJECT_FILE_SCRATCH);
+  g_object_unref(provider);
+  return file;
+}
+
+guint project_get_file_count(Project *self) {
+  g_return_val_if_fail(GLIDE_IS_PROJECT(self), 0);
+  return self->files->len;
+}
+
+ProjectFile *project_get_file(Project *self, guint index) {
+  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  if (index >= self->files->len)
+    return NULL;
+  return g_ptr_array_index(self->files, index);
+}
+
+ProjectFileState project_file_get_state(ProjectFile *file) {
+  g_return_val_if_fail(file != NULL, PROJECT_FILE_DORMANT);
+  return file->state;
+}
+
+void project_file_set_state(ProjectFile *file, ProjectFileState state) {
+  g_return_if_fail(file != NULL);
+  file->state = state;
+}
+
+void project_file_set_provider(ProjectFile *file, TextProvider *provider,
+    GtkTextBuffer *buffer) {
+  g_return_if_fail(file != NULL);
+  g_return_if_fail(GLIDE_IS_TEXT_PROVIDER(provider));
+  if (file->parser)
+    lisp_parser_free(file->parser);
+  if (file->provider)
+    g_object_unref(file->provider);
+  if (file->buffer)
+    g_object_unref(file->buffer);
+  file->provider = g_object_ref(provider);
+  file->buffer = buffer ? g_object_ref(buffer) : NULL;
+  file->parser = lisp_parser_new(file->provider);
+  project_file_changed(NULL, file);
+}
+
+TextProvider *project_file_get_provider(ProjectFile *file) {
+  g_return_val_if_fail(file != NULL, NULL);
+  return file->provider;
 }
 
 void project_file_changed(Project *self /*unused*/, ProjectFile *file) {

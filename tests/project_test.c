@@ -2,6 +2,16 @@
 #include "string_text_provider.h"
 #include <glib.h>
 
+static void test_default_scratch(void)
+{
+  Project *project = project_new();
+  g_assert_cmpuint(project_get_file_count(project), ==, 1);
+  ProjectFile *file = project_get_file(project, 0);
+  g_assert_cmpint(project_file_get_state(file), ==, PROJECT_FILE_SCRATCH);
+  g_assert_cmpstr(project_file_get_path(file), ==, "scratch00");
+  g_object_unref(project);
+}
+
 static void test_parse_on_change(void)
 {
   Project *project = project_new();
@@ -24,6 +34,7 @@ static void test_parse_on_change(void)
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
+  g_test_add_func("/project/default_scratch", test_default_scratch);
   g_test_add_func("/project/parse_on_change", test_parse_on_change);
   return g_test_run();
 }
