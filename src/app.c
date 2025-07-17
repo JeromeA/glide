@@ -198,6 +198,28 @@ app_get_source_view(App *self)
   return lisp_source_notebook_get_current_view(self->notebook);
 }
 
+STATIC LispSourceNotebook *
+app_get_notebook(App *self)
+{
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
+  return self->notebook;
+}
+
+STATIC Project *
+app_get_project(App *self)
+{
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
+  return self->project;
+}
+
+STATIC void
+app_connect_view(App *self, LispSourceView *view)
+{
+  g_return_if_fail(GLIDE_IS_APP(self));
+  g_return_if_fail(LISP_IS_SOURCE_VIEW(view));
+  g_signal_connect(view, "key-press-event", G_CALLBACK(on_key_press), self);
+}
+
 
 STATIC Preferences *
 app_get_preferences (App *self)

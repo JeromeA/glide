@@ -8,6 +8,8 @@ struct _LispSourceNotebook
 
 G_DEFINE_TYPE(LispSourceNotebook, lisp_source_notebook, GTK_TYPE_NOTEBOOK)
 
+static void on_file_loaded(Project * /*project*/, ProjectFile *file, gpointer user_data);
+
 static void
 lisp_source_notebook_init(LispSourceNotebook *self)
 {
@@ -37,6 +39,9 @@ lisp_source_notebook_new(Project *project)
   LispSourceNotebook *self = g_object_new(LISP_TYPE_SOURCE_NOTEBOOK, NULL);
   self->project = g_object_ref(project);
 
+  g_signal_connect(project, "file-loaded",
+      G_CALLBACK(on_file_loaded), self);
+
   guint count = project_get_file_count(project);
   for (guint i = 0; i < count; i++) {
     ProjectFile *file = project_get_file(project, i);
@@ -57,17 +62,26 @@ create_scrolled_view(LispSourceNotebook *self, ProjectFile *file)
   return scrolled;
 }
 
-void
+static void
+on_file_loaded(Project * /*project*/, ProjectFile *file, gpointer user_data)
+{
+  LispSourceNotebook *self = LISP_SOURCE_NOTEBOOK(user_data);
+  gint page = lisp_source_notebook_add_file(self, file);
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(self), page);
+}
+
+gint
 lisp_source_notebook_add_file(LispSourceNotebook *self, ProjectFile *file)
 {
-  g_return_if_fail(LISP_IS_SOURCE_NOTEBOOK(self));
-  g_return_if_fail(file != NULL);
+  g_return_val_if_fail(LISP_IS_SOURCE_NOTEBOOK(self), -1);
+  g_return_val_if_fail(file != NULL, -1);
 
   GtkWidget *scrolled = create_scrolled_view(self, file);
   const gchar *path = project_file_get_path(file);
   GtkWidget *label = gtk_label_new(path ? path : "untitled");
   gint page = gtk_notebook_append_page(GTK_NOTEBOOK(self), scrolled, label);
   gtk_widget_show_all(gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page));
+  return page;
 }
 
 LispSourceView *

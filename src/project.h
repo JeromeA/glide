@@ -34,5 +34,6 @@ LispParser *project_file_get_parser(ProjectFile *file);
 GtkTextBuffer *project_file_get_buffer(ProjectFile *file);
 const gchar *project_file_get_path(ProjectFile *file); // borrowed, do not free
 void project_file_set_path(ProjectFile *file, const gchar *path);
+gboolean project_file_load(Project *self, ProjectFile *file);
 
 G_END_DECLS
