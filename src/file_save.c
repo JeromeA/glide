@@ -14,7 +14,8 @@ void file_save(GtkWidget *, gpointer data) {
   App *app = (App *) data;
   GtkSourceBuffer *source_buffer =
       lisp_source_view_get_buffer(app_get_source_view(app));
-  const gchar *filename = app_get_filename (app);
+  ProjectFile *file = lisp_source_view_get_file(app_get_source_view(app));
+  const gchar *filename = project_file_get_path(file);
 
   gchar *chosen_filename = NULL;
 
@@ -35,7 +36,7 @@ void file_save(GtkWidget *, gpointer data) {
 
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
       chosen_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-      app_set_filename(app, chosen_filename);
+      project_file_set_path(file, chosen_filename);
       filename = chosen_filename;
     }
 
@@ -89,14 +90,15 @@ void file_save(GtkWidget *, gpointer data) {
 
 void file_saveas(GtkWidget *widget, gpointer data) {
   App *app = (App *) data;
-  gchar *old_filename = g_strdup(app_get_filename (app));
-  app_set_filename (app, NULL);
+  ProjectFile *file = lisp_source_view_get_file(app_get_source_view(app));
+  gchar *old_filename = g_strdup(project_file_get_path(file));
+  project_file_set_path(file, NULL);
 
   file_save(widget, app);
 
-  const char *new_filename = app_get_filename (app);
+  const char *new_filename = project_file_get_path(file);
   if (!new_filename) {
-    app_set_filename (app, old_filename);
+    project_file_set_path(file, old_filename);
   }
   g_free(old_filename);
 }

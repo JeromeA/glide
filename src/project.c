@@ -81,3 +81,14 @@ GtkTextBuffer *project_file_get_buffer(ProjectFile *file) {
   return file->buffer;
 }
 
+const gchar *project_file_get_path(ProjectFile *file) {
+  g_return_val_if_fail(file != NULL, NULL);
+  return file->path;
+}
+
+void project_file_set_path(ProjectFile *file, const gchar *path) {
+  g_return_if_fail(file != NULL);
+  g_free(file->path);
+  file->path = path ? g_strdup(path) : NULL;
+}
+
