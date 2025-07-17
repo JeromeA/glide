@@ -56,6 +56,8 @@ main (int argc, char *argv[])
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref (app);
   g_object_unref (swank);
+  g_object_unref (swank_proc);
+  g_object_unref (proc);
   g_object_unref (project);
   g_object_unref (prefs);
   exit(status);
