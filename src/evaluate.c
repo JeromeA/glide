@@ -8,6 +8,7 @@
 #include "swank_session.h"
 #include "interaction.h"
 #include "evaluate.h"
+#include "lisp_source_view.h"
 
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
@@ -19,7 +20,8 @@ void
 on_evaluate(App *self)
 {
   g_debug("Evaluate.on_evaluate");
-  GtkSourceBuffer *source_buffer = app_get_source_buffer(self);
+  GtkSourceBuffer *source_buffer =
+      lisp_source_view_get_buffer(app_get_source_view(self));
 
   /* 1. Locate the iterator at the caret (insert mark). */
   GtkTextMark *insert_mark = gtk_text_buffer_get_insert(GTK_TEXT_BUFFER(source_buffer));
