@@ -24,5 +24,7 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
 void project_file_changed(Project *self, ProjectFile *file);
 LispParser *project_file_get_parser(ProjectFile *file);
 GtkTextBuffer *project_file_get_buffer(ProjectFile *file);
+const gchar *project_file_get_path(ProjectFile *file); // borrowed, do not free
+void project_file_set_path(ProjectFile *file, const gchar *path);
 
 G_END_DECLS

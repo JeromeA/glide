@@ -21,7 +21,6 @@ struct _App
   /* UI pointers we want to reuse */
   GtkWidget      *window;
   LispSourceView *source_view;
-  gchar          *filename;   /* current file path or NULL */
   Preferences    *preferences;
   SwankSession   *swank;
   Project        *project;
@@ -142,7 +141,6 @@ app_dispose (GObject *object)
 
   g_debug("App.dispose");
 
-  g_clear_pointer (&self->filename, g_free);
   g_clear_object (&self->project);
   g_clear_object (&self->preferences);
   g_clear_object (&self->swank);
@@ -166,7 +164,6 @@ app_init (App *self)
 {
   g_debug("App.init");
   /* Everything that needs only the *instance* goes here */
-  self->filename = NULL;
   self->preferences = NULL;
   self->swank = NULL;
   self->project = NULL;
@@ -200,26 +197,6 @@ app_get_source_view(App *self)
   return self->source_view;
 }
 
-STATIC const gchar *
-app_get_filename (App *self)
-{
-  g_debug("App.get_filename");
-  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  return self->filename;
-}
-
-STATIC void
-app_set_filename (App *self, const gchar *new_filename)
-{
-  g_debug("App.set_filename %s", new_filename ? new_filename : "(null)");
-  g_return_if_fail (GLIDE_IS_APP (self));
-  gchar *dup = new_filename ? g_strdup (new_filename) : NULL;
-  g_free (self->filename);
-  self->filename = dup;
-
-  /* If you later register a “filename” property, notify here:
-     g_object_notify_by_pspec (G_OBJECT (self), obj_props[PROP_FILENAME]); */
-}
 
 STATIC Preferences *
 app_get_preferences (App *self)

@@ -26,7 +26,8 @@ void file_open(GtkWidget *, gpointer data) {
 
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     gchar* filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-    app_set_filename (app, filename);
+    ProjectFile *file = lisp_source_view_get_file(app_get_source_view(app));
+    project_file_set_path(file, filename);
 
     // Open the file using syscalls
     int fd = sys_open(filename, O_RDONLY, 0);

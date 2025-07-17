@@ -19,8 +19,6 @@ G_DECLARE_FINAL_TYPE(App, app, GLIDE, APP, GtkApplication)
 
 STATIC App *app_new (Preferences *prefs, SwankSession *swank, Project *project);
 STATIC LispSourceView *app_get_source_view(App *self);
-STATIC const gchar *app_get_filename  (App *self); // Returns the current filename or NULL (borrowed – do not free)
-STATIC void app_set_filename  (App *self, const gchar *new_filename);
 STATIC Preferences *app_get_preferences(App *self);
 STATIC SwankSession *app_get_swank(App *self);
 STATIC void app_on_quit(App *self);
