@@ -6,29 +6,44 @@ App *-- SwankSession
 App *-- Window
 App *-- LispSourceView
 App *-- Preferences
-ProjectFile : path
 
 GtkSourceView <|-- LispSourceView
 LispSourceView *-- GtkSourceBuffer
 LispSourceView --> Project
 LispSourceView --> ProjectFile
 
-Project o-- ProjectFile
+Project "1" o-- "*" ProjectFile
 
 ProjectFile *-- LispParser
 ProjectFile *-- TextProvider
+ProjectFile : path
 
-interface SwankSession
-SwankSession <|.. RealSwankSession
-RealSwankSession *-- SwankProcess
+GtkBox <|-- InteractionsView
+InteractionsView "1" o-- "*" Interaction
+InteractionsView *-- SwankSession
+Interaction : expression
+Interaction : result
+Interaction : output
+Interaction : error
+SwankSession : eval(Interaction)
+SwankSession : interactions
+SwankSession "1" --> "*" Interaction
+SwankSession *-- SwankProcess
+SwankProcess *-- Process
+SwankProcess : swank_fd
 
-interface SwankProcess
-SwankProcess <|.. RealSwankProcess
-RealSwankProcess *-- Process
+Process : pid
+Process : in_fd
+Process : out_fd
+Process : err_fd
 
+LispParser : tokens
+LispParser : ast
 LispParser --> TextProvider
 interface TextProvider
 TextProvider <|.. GtkTextProvider
 TextProvider <|.. StringTextProvider
+TextProvider : getChar(offset)
+TextProvider : getNextOffset(offset)
 
 @enduml
