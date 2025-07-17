@@ -65,13 +65,14 @@ lisp_source_view_class_init (LispSourceViewClass *klass)
 }
 
 GtkWidget *
-lisp_source_view_new (Project *project)
+lisp_source_view_new_for_file (Project *project, ProjectFile *file)
 {
   g_return_val_if_fail(GLIDE_IS_PROJECT(project), NULL);
+  g_return_val_if_fail(file != NULL, NULL);
 
   LispSourceView *self = g_object_new (LISP_TYPE_SOURCE_VIEW, NULL);
   self->project = g_object_ref(project);
-  self->file = project_get_file(project, 0);
+  self->file = file;
 
   TextProvider *existing = project_file_get_provider(self->file);
   if (existing) {
@@ -87,6 +88,7 @@ lisp_source_view_new (Project *project)
   g_signal_connect(self->buffer, "changed", G_CALLBACK(on_buffer_changed), self);
   return GTK_WIDGET(self);
 }
+
 
 GtkSourceBuffer *
 lisp_source_view_get_buffer (LispSourceView *self)

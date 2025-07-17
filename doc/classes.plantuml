@@ -4,13 +4,15 @@ GtkApplication <|-- App
 App *-- Project
 App *-- SwankSession
 App *-- Window
-App *-- LispSourceView
+App *-- LispSourceNotebook
 App *-- Preferences
 
 GtkSourceView <|-- LispSourceView
 LispSourceView *-- GtkSourceBuffer
 LispSourceView --> Project
 LispSourceView --> ProjectFile
+GtkNotebook <|-- LispSourceNotebook
+LispSourceNotebook "1" o-- "*" LispSourceView
 
 Project "1" o-- "*" ProjectFile
 

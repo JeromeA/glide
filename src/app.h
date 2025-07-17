@@ -7,6 +7,7 @@
 #include "swank_session.h"
 #include "project.h"
 #include "lisp_source_view.h"
+#include "lisp_source_notebook.h"
 
 #ifndef STATIC
 #define STATIC
