@@ -6,6 +6,7 @@
 #include "evaluate.h"
 #include "interactions_view.h"
 #include "lisp_source_view.h"
+#include "lisp_source_notebook.h"
 #include "lisp_parser_view.h"
 #include "project.h"
 
@@ -20,7 +21,7 @@ struct _App
 
   /* UI pointers we want to reuse */
   GtkWidget      *window;
-  LispSourceView *source_view;
+  LispSourceNotebook *notebook;
   Preferences    *preferences;
   SwankSession   *swank;
   Project        *project;
@@ -30,7 +31,8 @@ static void
 on_show_parser(App *self)
 {
   GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  ProjectFile *file = lisp_source_view_get_file(self->source_view);
+  LispSourceView *current = lisp_source_notebook_get_current_view(self->notebook);
+  ProjectFile *file = lisp_source_view_get_file(current);
   GtkWidget *view = lisp_parser_view_new(file);
   gtk_container_add(GTK_CONTAINER(win), view);
   gtk_widget_show_all(win);
@@ -78,15 +80,11 @@ app_activate (GApplication *app)
   g_signal_connect (self->window, "delete-event",
                     G_CALLBACK (quit_delete_event), self);
 
-  /* Scrolled source-view */
-  GtkWidget *scrolled = gtk_scrolled_window_new (NULL, NULL);
-  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (scrolled), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  /* Source views notebook */
+  GtkWidget *notebook = lisp_source_notebook_new (self->project);
+  self->notebook = LISP_SOURCE_NOTEBOOK(notebook);
 
-  GtkWidget *view = lisp_source_view_new (self->project);
-  self->source_view = LISP_SOURCE_VIEW(view);
-  gtk_container_add (GTK_CONTAINER (scrolled), view);
-
-  /* Catch Alt+Enter in the view */
+  LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
   g_signal_connect (view, "key-press-event", G_CALLBACK (on_key_press), self);
 
   /* Menu bar ------------------------------------------------------ */
@@ -115,7 +113,7 @@ app_activate (GApplication *app)
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
-  gtk_paned_pack1(GTK_PANED(paned), scrolled, TRUE, TRUE);
+  gtk_paned_pack1(GTK_PANED(paned), notebook, TRUE, TRUE);
   gtk_paned_pack2(GTK_PANED(paned), interactions, FALSE, TRUE);
 
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -142,6 +140,7 @@ app_dispose (GObject *object)
   g_debug("App.dispose");
 
   g_clear_object (&self->project);
+  g_clear_object (&self->notebook);
   g_clear_object (&self->preferences);
   g_clear_object (&self->swank);
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
@@ -167,7 +166,7 @@ app_init (App *self)
   self->preferences = NULL;
   self->swank = NULL;
   self->project = NULL;
-  self->source_view = NULL;
+  self->notebook = NULL;
 }
 
 STATIC App *
@@ -194,7 +193,9 @@ app_get_source_view(App *self)
 {
   g_debug("App.get_source_view");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  return self->source_view;
+  if (!self->notebook)
+    return NULL;
+  return lisp_source_notebook_get_current_view(self->notebook);
 }
 
 
