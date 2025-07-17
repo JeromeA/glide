@@ -1,4 +1,9 @@
 
+## Documentation
+
+- README.md describes the project and how to build it.
+- doc/classes.plantuml contains the class diagram, which is a great way to understand the architecture.
+
 ## Coding Conventions
 
 - Use glib idioms and patterns whenever possible
@@ -14,5 +19,5 @@
 
 ## Testing
 
-- Tests should be unit tests, in tests/. using mock objects for all dependencies.
+- Tests should be unit tests, in tests/, using mock objects for all dependencies.
 

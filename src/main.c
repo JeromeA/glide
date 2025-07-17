@@ -14,6 +14,7 @@
 #include "preferences.c"
 #include "preferences_dialog.c"
 #include "process.c"
+#include "project.c"
 #include "real_process.c"
 #include "real_swank_process.c"
 #include "real_swank_session.c"

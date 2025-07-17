@@ -1,0 +1,34 @@
+@startuml
+
+GtkApplication <|-- App
+App *-- Project
+App *-- SwankSession
+App *-- Window
+App *-- LispSourceView
+App *-- Preferences
+App : filename
+
+GtkSourceView <|-- LispSourceView
+LispSourceView *-- GtkSourceBuffer
+LispSourceView --> Project
+LispSourceView --> ProjectFile
+
+Project o-- ProjectFile
+
+ProjectFile *-- LispParser
+ProjectFile *-- TextProvider
+
+interface SwankSession
+SwankSession <|.. RealSwankSession
+RealSwankSession *-- SwankProcess
+
+interface SwankProcess
+SwankProcess <|.. RealSwankProcess
+RealSwankProcess *-- Process
+
+LispParser --> TextProvider
+interface TextProvider
+TextProvider <|.. GtkTextProvider
+TextProvider <|.. StringTextProvider
+
+@enduml
