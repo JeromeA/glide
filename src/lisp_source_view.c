@@ -71,9 +71,18 @@ lisp_source_view_new (Project *project)
 
   LispSourceView *self = g_object_new (LISP_TYPE_SOURCE_VIEW, NULL);
   self->project = g_object_ref(project);
+  self->file = project_get_file(project, 0);
+
+  TextProvider *existing = project_file_get_provider(self->file);
+  if (existing) {
+    gsize len = text_provider_get_length(existing);
+    gchar *text = text_provider_get_text(existing, 0, len);
+    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(self->buffer), text, -1);
+    g_free(text);
+  }
+
   TextProvider *provider = gtk_text_provider_new(GTK_TEXT_BUFFER(self->buffer));
-  self->file = project_add_file(project, provider, GTK_TEXT_BUFFER(self->buffer), NULL,
-      PROJECT_FILE_SCRATCH);
+  project_file_set_provider(self->file, provider, GTK_TEXT_BUFFER(self->buffer));
   g_object_unref(provider);
   g_signal_connect(self->buffer, "changed", G_CALLBACK(on_buffer_changed), self);
   return GTK_WIDGET(self);

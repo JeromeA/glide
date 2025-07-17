@@ -16,11 +16,12 @@ void file_save(GtkWidget *, gpointer data) {
       lisp_source_view_get_buffer(app_get_source_view(app));
   ProjectFile *file = lisp_source_view_get_file(app_get_source_view(app));
   const gchar *filename = project_file_get_path(file);
+  gboolean scratch = project_file_get_state(file) == PROJECT_FILE_SCRATCH;
 
   gchar *chosen_filename = NULL;
 
   // Check if we already have a filename
-  if (!filename) {
+  if (!filename || scratch) {
     // We do not have a known filename -> use a "Save As" dialog
     GtkWidget *dialog = gtk_file_chooser_dialog_new(
         "Save File",
@@ -37,6 +38,7 @@ void file_save(GtkWidget *, gpointer data) {
     if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
       chosen_filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
       project_file_set_path(file, chosen_filename);
+      project_file_set_state(file, PROJECT_FILE_LIVE);
       filename = chosen_filename;
     }
 
