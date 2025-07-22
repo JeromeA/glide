@@ -22,7 +22,8 @@ SOURCES += \
   project.c \
   gtk_text_provider.c \
   string_text_provider.c \
-  text_provider.c
+  text_provider.c \
+  asdf.c
 
 include Makefile_common
 
