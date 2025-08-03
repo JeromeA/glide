@@ -25,20 +25,38 @@ static void test_empty_file(void)
   lisp_parser_free(parser);
 }
 
-static void test_atom_symbol(void)
+static void test_symbol(void)
 {
   LispParser *parser = parser_from_text("foo");
 
   guint n_tokens = 0;
   const LispToken *tokens = lisp_parser_get_tokens(parser, &n_tokens);
   g_assert_cmpint(n_tokens, ==, 1);
-  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_ATOM);
+  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_SYMBOL);
 
   const LispAstNode *ast = lisp_parser_get_ast(parser);
   g_assert_cmpint(ast->children->len, ==, 1);
   const LispAstNode *child = g_array_index(ast->children, LispAstNode*, 0);
-  g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_ATOM);
+  g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpstr(child->start_token->text, ==, "foo");
+
+  lisp_parser_free(parser);
+}
+
+static void test_number(void)
+{
+  LispParser *parser = parser_from_text("42");
+
+  guint n_tokens = 0;
+  const LispToken *tokens = lisp_parser_get_tokens(parser, &n_tokens);
+  g_assert_cmpint(n_tokens, ==, 1);
+  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_NUMBER);
+
+  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  g_assert_cmpint(ast->children->len, ==, 1);
+  const LispAstNode *child = g_array_index(ast->children, LispAstNode*, 0);
+  g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_NUMBER);
+  g_assert_cmpstr(child->start_token->text, ==, "42");
 
   lisp_parser_free(parser);
 }
@@ -88,9 +106,9 @@ static void test_list_with_elements(void)
 
   const LispAstNode *a = g_array_index(list->children, LispAstNode*, 0);
   const LispAstNode *b = g_array_index(list->children, LispAstNode*, 1);
-  g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_ATOM);
+  g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpstr(a->start_token->text, ==, "a");
-  g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_ATOM);
+  g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpstr(b->start_token->text, ==, "b");
 
   lisp_parser_free(parser);
@@ -109,9 +127,9 @@ static void test_missing_closing_paren(void)
 
   const LispAstNode *a = g_array_index(list->children, LispAstNode*, 0);
   const LispAstNode *b = g_array_index(list->children, LispAstNode*, 1);
-  g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_ATOM);
+  g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpstr(a->start_token->text, ==, "a");
-  g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_ATOM);
+  g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpstr(b->start_token->text, ==, "b");
 
   lisp_parser_free(parser);
@@ -151,7 +169,8 @@ int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/lisp_parser/empty_file", test_empty_file);
-  g_test_add_func("/lisp_parser/atom_symbol", test_atom_symbol);
+  g_test_add_func("/lisp_parser/symbol", test_symbol);
+  g_test_add_func("/lisp_parser/number", test_number);
   g_test_add_func("/lisp_parser/atom_string", test_atom_string);
   g_test_add_func("/lisp_parser/empty_list", test_empty_list);
   g_test_add_func("/lisp_parser/list_with_elements", test_list_with_elements);

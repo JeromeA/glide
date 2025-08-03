@@ -139,7 +139,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
     if (child->type != LISP_AST_NODE_TYPE_LIST || child->children->len < 2)
       continue;
     const LispAstNode *head = g_array_index(child->children, LispAstNode*, 0);
-    if (head->type == LISP_AST_NODE_TYPE_ATOM &&
+    if (head->type == LISP_AST_NODE_TYPE_SYMBOL &&
         g_strcmp0(head->start_token->text, "defsystem") == 0) {
       defsystem = child;
       break;
@@ -152,7 +152,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
   for (guint i = 2; i + 1 < defsystem->children->len; i += 2) {
     const LispAstNode *key = g_array_index(defsystem->children, LispAstNode*, i);
     const LispAstNode *val = g_array_index(defsystem->children, LispAstNode*, i + 1);
-    if (key->type != LISP_AST_NODE_TYPE_ATOM)
+    if (key->type != LISP_AST_NODE_TYPE_SYMBOL)
       continue;
     const gchar *kw = key->start_token->text;
 
@@ -161,7 +161,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
       asdf_set_pathname(self, p);
       g_free(p);
     } else if (g_strcmp0(kw, ":serial") == 0) {
-      if (val->type == LISP_AST_NODE_TYPE_ATOM)
+      if (val->type == LISP_AST_NODE_TYPE_SYMBOL || val->type == LISP_AST_NODE_TYPE_NUMBER)
         self->serial = g_strcmp0(val->start_token->text, "t") == 0 ||
           g_strcmp0(val->start_token->text, "1") == 0;
     } else if (g_strcmp0(kw, ":components") == 0) {
@@ -172,7 +172,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
             continue;
           const LispAstNode *sym = g_array_index(comp->children, LispAstNode*, 0);
           const LispAstNode *fname = g_array_index(comp->children, LispAstNode*, 1);
-          if (sym->type == LISP_AST_NODE_TYPE_ATOM &&
+          if (sym->type == LISP_AST_NODE_TYPE_SYMBOL &&
               g_strcmp0(sym->start_token->text, "file") == 0) {
             gchar *f = unquote(fname->start_token->text);
             asdf_add_component(self, f);

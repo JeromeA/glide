@@ -143,8 +143,8 @@ void lisp_parser_parse(LispParser *parser) {
             token.type = found_end ? LISP_TOKEN_TYPE_STRING : LISP_TOKEN_TYPE_INCOMPLETE_STRING;
             token.end_offset = end;
             offset = end;
-        } else { /* Atom */
-            token.type = LISP_TOKEN_TYPE_ATOM;
+        } else { /* Symbol or number */
+            token.type = LISP_TOKEN_TYPE_SYMBOL;
             gsize end = offset;
             while (end < len) {
                 gunichar c = text_provider_get_char(parser->provider, end);
@@ -158,6 +158,12 @@ void lisp_parser_parse(LispParser *parser) {
         }
 
         token.text = text_provider_get_text(parser->provider, token.start_offset, token.end_offset);
+        if (token.type == LISP_TOKEN_TYPE_SYMBOL) {
+            gchar *endptr = NULL;
+            g_ascii_strtod(token.text, &endptr);
+            if (endptr && *endptr == '\0')
+                token.type = LISP_TOKEN_TYPE_NUMBER;
+        }
         g_array_append_val(parser->tokens, token);
     }
 
@@ -242,10 +248,15 @@ static LispAstNode* parse_expression(const GArray *tokens, guint *position) {
         list_node->end_token = NULL;
         return list_node;
 
-    } else if (token->type == LISP_TOKEN_TYPE_ATOM || token->type == LISP_TOKEN_TYPE_STRING) {
-        // --- Parse an atom or string ---
+    } else if (token->type == LISP_TOKEN_TYPE_NUMBER || token->type == LISP_TOKEN_TYPE_SYMBOL || token->type == LISP_TOKEN_TYPE_STRING) {
+        // --- Parse a number, symbol, or string ---
         LispAstNode *atom_node = g_new0(LispAstNode, 1);
-        atom_node->type = (token->type == LISP_TOKEN_TYPE_STRING) ? LISP_AST_NODE_TYPE_STRING : LISP_AST_NODE_TYPE_ATOM;
+        if (token->type == LISP_TOKEN_TYPE_STRING)
+            atom_node->type = LISP_AST_NODE_TYPE_STRING;
+        else if (token->type == LISP_TOKEN_TYPE_NUMBER)
+            atom_node->type = LISP_AST_NODE_TYPE_NUMBER;
+        else
+            atom_node->type = LISP_AST_NODE_TYPE_SYMBOL;
         atom_node->start_token = token;
         atom_node->end_token = token; // For atoms/strings, start and end are the same.
         atom_node->children = NULL;
