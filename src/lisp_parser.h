@@ -10,7 +10,8 @@ typedef struct _LispParser LispParser;
 
 // Enum for different types of tokens
 typedef enum {
-    LISP_TOKEN_TYPE_ATOM,
+    LISP_TOKEN_TYPE_NUMBER,
+    LISP_TOKEN_TYPE_SYMBOL,
     LISP_TOKEN_TYPE_LIST_START,     // (
     LISP_TOKEN_TYPE_LIST_END,       // )
     LISP_TOKEN_TYPE_STRING,
@@ -30,7 +31,8 @@ typedef struct {
 
 // Enum for AST node types
 typedef enum {
-    LISP_AST_NODE_TYPE_ATOM,
+    LISP_AST_NODE_TYPE_NUMBER,
+    LISP_AST_NODE_TYPE_SYMBOL,
     LISP_AST_NODE_TYPE_LIST,
     LISP_AST_NODE_TYPE_STRING,
     // Comments and whitespace are not typically included in the AST

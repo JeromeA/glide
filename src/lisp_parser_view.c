@@ -63,7 +63,8 @@ node_type_to_string(LispAstNodeType type)
 {
   switch(type)
   {
-    case LISP_AST_NODE_TYPE_ATOM: return "Atom";
+    case LISP_AST_NODE_TYPE_NUMBER: return "Number";
+    case LISP_AST_NODE_TYPE_SYMBOL: return "Symbol";
     case LISP_AST_NODE_TYPE_LIST: return "List";
     case LISP_AST_NODE_TYPE_STRING: return "String";
     default: return "Unknown";
