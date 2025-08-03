@@ -148,7 +148,7 @@ TextProvider *project_file_get_provider(ProjectFile *file) {
   return file->provider;
 }
 
-void project_file_changed(Project *self /*unused*/, ProjectFile *file) {
+void project_file_changed(Project * /* self */, ProjectFile *file) {
   g_return_if_fail(file != NULL);
   if (file->parser)
     lisp_parser_parse(file->parser);

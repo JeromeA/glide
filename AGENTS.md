@@ -3,6 +3,7 @@
 
 - README.md describes the project and how to build it.
 - doc/classes.plantuml contains the class diagram, which is a great way to understand the architecture.
+- Don't forget to add any new file to the INLINE version in main.c.
 
 ## Coding Conventions
 
