@@ -17,6 +17,7 @@ SOURCES += \
   app.c \
   lisp_source_notebook.c \
   lisp_source_view.c \
+  lisp_lexer.c \
   lisp_parser.c \
   lisp_parser_view.c \
   project.c \

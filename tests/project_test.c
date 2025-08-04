@@ -22,8 +22,9 @@ static void test_parse_on_change(void)
   g_object_unref(provider);
   /* file already parsed by project_add_file */
   LispParser *parser = project_file_get_parser(file);
+  LispLexer *lexer = project_file_get_lexer(file);
   guint n_tokens = 0;
-  const LispToken *tokens = lisp_parser_get_tokens(parser, &n_tokens);
+  const LispToken *tokens = lisp_lexer_get_tokens(lexer, &n_tokens);
   g_assert_cmpint(n_tokens, ==, 3); /* (, a, ) */
   g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_LIST_START);
   project_file_changed(project, file); /* should still parse without error */

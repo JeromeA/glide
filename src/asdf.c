@@ -1,4 +1,5 @@
 #include "asdf.h"
+#include "lisp_lexer.h"
 #include "lisp_parser.h"
 #include "string_text_provider.h"
 #include <glib/gstdio.h>
@@ -126,8 +127,12 @@ static gchar *unquote(const gchar *text) {
 
 static void parse_file_contents(Asdf *self, const gchar *contents) {
   TextProvider *provider = string_text_provider_new(contents);
-  LispParser *parser = lisp_parser_new(provider);
-  lisp_parser_parse(parser);
+  LispLexer *lexer = lisp_lexer_new(provider);
+  lisp_lexer_lex(lexer);
+  LispParser *parser = lisp_parser_new();
+  guint n_tokens = 0;
+  const LispToken *tokens = lisp_lexer_get_tokens(lexer, &n_tokens);
+  lisp_parser_parse(parser, tokens, n_tokens);
 
   const LispAstNode *ast = lisp_parser_get_ast(parser);
   if (!ast)
@@ -194,6 +199,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
 
 cleanup:
   lisp_parser_free(parser);
+  lisp_lexer_free(lexer);
   g_object_unref(provider);
 }
 
