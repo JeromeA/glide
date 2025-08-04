@@ -3,6 +3,7 @@
 #include <glib-object.h>
 typedef struct _GtkTextBuffer GtkTextBuffer;
 #include "text_provider.h"
+#include "lisp_lexer.h"
 #include "lisp_parser.h"
 
 G_BEGIN_DECLS
@@ -31,6 +32,7 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
 void project_file_changed(Project *self, ProjectFile *file);
 LispParser *project_file_get_parser(ProjectFile *file);
+LispLexer *project_file_get_lexer(ProjectFile *file);
 GtkTextBuffer *project_file_get_buffer(ProjectFile *file);
 const gchar *project_file_get_path(ProjectFile *file); // borrowed, do not free
 void project_file_set_path(ProjectFile *file, const gchar *path);

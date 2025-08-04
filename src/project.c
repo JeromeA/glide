@@ -11,6 +11,7 @@ struct _ProjectFile {
   gchar *path;
   GtkTextBuffer *buffer; /* nullable */
   TextProvider *provider; /* owned */
+  LispLexer *lexer; /* owned */
   LispParser *parser; /* owned */
 };
 
@@ -51,6 +52,7 @@ static void project_class_init(ProjectClass *klass) {
 static void project_file_free(ProjectFile *file) {
   if (!file) return;
   if (file->parser) lisp_parser_free(file->parser);
+  if (file->lexer) lisp_lexer_free(file->lexer);
   if (file->provider) g_object_unref(file->provider);
   if (file->buffer) g_object_unref(file->buffer);
   g_free(file->path);
@@ -84,7 +86,8 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
   file->state = state;
   file->provider = g_object_ref(provider);
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
-  file->parser = lisp_parser_new(file->provider);
+  file->lexer = lisp_lexer_new(file->provider);
+  file->parser = lisp_parser_new();
   file->path = path ? g_strdup(path) : NULL;
 
   g_ptr_array_add(self->files, file);
@@ -133,13 +136,16 @@ void project_file_set_provider(ProjectFile *file, TextProvider *provider,
   g_return_if_fail(GLIDE_IS_TEXT_PROVIDER(provider));
   if (file->parser)
     lisp_parser_free(file->parser);
+  if (file->lexer)
+    lisp_lexer_free(file->lexer);
   if (file->provider)
     g_object_unref(file->provider);
   if (file->buffer)
     g_object_unref(file->buffer);
   file->provider = g_object_ref(provider);
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
-  file->parser = lisp_parser_new(file->provider);
+  file->lexer = lisp_lexer_new(file->provider);
+  file->parser = lisp_parser_new();
   project_file_changed(NULL, file);
 }
 
@@ -148,15 +154,24 @@ TextProvider *project_file_get_provider(ProjectFile *file) {
   return file->provider;
 }
 
-void project_file_changed(Project * /* self */, ProjectFile *file) {
+void project_file_changed(Project * /*self*/, ProjectFile *file) {
   g_return_if_fail(file != NULL);
-  if (file->parser)
-    lisp_parser_parse(file->parser);
+  if (!file->lexer || !file->parser)
+    return;
+  lisp_lexer_lex(file->lexer);
+  guint n_tokens = 0;
+  const LispToken *tokens = lisp_lexer_get_tokens(file->lexer, &n_tokens);
+  lisp_parser_parse(file->parser, tokens, n_tokens);
 }
 
 LispParser *project_file_get_parser(ProjectFile *file) {
   g_return_val_if_fail(file != NULL, NULL);
   return file->parser;
+}
+
+LispLexer *project_file_get_lexer(ProjectFile *file) {
+  g_return_val_if_fail(file != NULL, NULL);
+  return file->lexer;
 }
 
 GtkTextBuffer *project_file_get_buffer(ProjectFile *file) {
