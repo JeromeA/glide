@@ -2,6 +2,9 @@
 #include <string.h>
 #include "util.h"
 #include "interaction.h"
+#include "lisp_lexer.h"
+#include "lisp_parser.h"
+#include "string_text_provider.h"
 
 struct _RealSwankSession {
   GObject parent_instance;
@@ -168,131 +171,6 @@ real_swank_session_eval(SwankSession *session, Interaction *interaction)
   g_string_free(payload, TRUE);
 }
 
-static inline gboolean ascii_isspace(char c)
-{
-  switch ((unsigned char)c) {
-    case ' ': case '\t': case '\n': case '\r': case '\f': case '\v':
-      return TRUE;
-    default:
-      return FALSE;
-  }
-}
-
-static gchar *
-next_token(const char **p)
-{
-  const char *s = *p;
-  while (ascii_isspace(*s)) s++;
-  const char *start = s;
-  if (*s == '(') {
-    int depth = 1;
-    gboolean in_str = FALSE;
-    gboolean esc = FALSE;
-    s++;
-    for (; *s && depth > 0; s++) {
-      char c = *s;
-      if (esc) {
-        esc = FALSE;
-      } else if (c == '\\') {
-        esc = TRUE;
-      } else if (c == '"') {
-        in_str = !in_str;
-      } else if (!in_str) {
-        if (c == '(')
-          depth++;
-        else if (c == ')')
-          depth--;
-      }
-    }
-    *p = s;
-    while (ascii_isspace(**p)) (*p)++;
-    return g_strndup(start, s - start);
-  } else if (*s == '"') {
-    gboolean esc = FALSE;
-    s++;
-    for (; *s; s++) {
-      char c = *s;
-      if (esc)
-        esc = FALSE;
-      else if (c == '\\')
-        esc = TRUE;
-      else if (c == '"') {
-        s++;
-        break;
-      }
-    }
-    *p = s;
-    while (ascii_isspace(**p)) (*p)++;
-    return g_strndup(start, s - start);
-  } else {
-    for (; *s && !ascii_isspace(*s) && *s != ')'; s++)
-      ;
-    *p = s;
-    while (ascii_isspace(**p)) (*p)++;
-    return g_strndup(start, s - start);
-  }
-}
-
-static gboolean
-parse_return_ok(const gchar *token, gchar **output, gchar **result)
-{
-  if (!g_str_has_prefix(token, "(:ok ")) {
-    g_debug("RealSwankSession.parse_return_ok unexpected token:%s", token);
-    return FALSE;
-  }
-
-  const char *p = token + strlen("(:ok ");
-  gchar *list = next_token(&p);
-  if (!list) {
-    g_debug("RealSwankSession.parse_return_ok missing list in:%s", token);
-    return FALSE;
-  }
-
-  const char *q = list;
-  if (*q == '(')
-    q++;
-  gchar *out_tok = next_token(&q);
-  gchar *res_tok = next_token(&q);
-  if (*q == ')')
-    q++;
-
-  if (!out_tok || !res_tok) {
-    g_debug("RealSwankSession.parse_return_ok missing tokens in:%s", list);
-    g_free(list);
-    g_free(out_tok);
-    g_free(res_tok);
-    return FALSE;
-  }
-
-  *output = unescape_string(out_tok);
-  *result = unescape_string(res_tok);
-
-  g_free(out_tok);
-  g_free(res_tok);
-  g_free(list);
-  return TRUE;
-}
-
-static gboolean
-parse_return_abort(const gchar *token, gchar **reason)
-{
-  if (!g_str_has_prefix(token, "(:abort ")) {
-    g_debug("RealSwankSession.parse_return_abort unexpected token:%s", token);
-    return FALSE;
-  }
-
-  const char *p = token + strlen("(:abort ");
-  gchar *reason_tok = next_token(&p);
-  if (!reason_tok) {
-    g_debug("RealSwankSession.parse_return_abort missing reason in:%s", token);
-    return FALSE;
-  }
-
-  *reason = unescape_string(reason_tok);
-  g_free(reason_tok);
-  return TRUE;
-}
-
 static void
 on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result,
     guint32 tag)
@@ -349,6 +227,48 @@ typedef struct {
   GString *msg;
 } MessageData;
 
+static void handle_return_message(RealSwankSession *self, const LispAstNode *ast)
+{
+  if (!ast || ast->children->len < 3)
+    return;
+  LispAstNode *result_node = g_array_index(ast->children, LispAstNode*, 1);
+  LispAstNode *tag_node = g_array_index(ast->children, LispAstNode*, 2);
+  if (!result_node || !tag_node || !tag_node->start_token)
+    return;
+  gchar *end = NULL;
+  guint64 tag64 = g_ascii_strtoull(tag_node->start_token->text, &end, 10);
+  if (end == tag_node->start_token->text || *end != '\0' || tag64 > G_MAXUINT32)
+    return;
+  guint32 tag = (guint32)tag64;
+  if (result_node->type != LISP_AST_NODE_TYPE_LIST || result_node->children->len < 1)
+    return;
+  LispAstNode *status_node = g_array_index(result_node->children, LispAstNode*, 0);
+  if (!status_node || status_node->type != LISP_AST_NODE_TYPE_SYMBOL)
+    return;
+  const gchar *status = status_node->start_token->text;
+  if (g_strcmp0(status, ":ok") == 0) {
+    if (result_node->children->len < 2)
+      return;
+    LispAstNode *values = g_array_index(result_node->children, LispAstNode*, 1);
+    if (values->type != LISP_AST_NODE_TYPE_LIST || values->children->len < 2)
+      return;
+    LispAstNode *out_node = g_array_index(values->children, LispAstNode*, 0);
+    LispAstNode *res_node = g_array_index(values->children, LispAstNode*, 1);
+    gchar *output = unescape_string(out_node->start_token->text);
+    gchar *result = unescape_string(res_node->start_token->text);
+    on_return_ok(self, output, result, tag);
+    g_free(output);
+    g_free(result);
+  } else if (g_strcmp0(status, ":abort") == 0) {
+    if (result_node->children->len < 2)
+      return;
+    LispAstNode *reason_node = g_array_index(result_node->children, LispAstNode*, 1);
+    gchar *reason = unescape_string(reason_node->start_token->text);
+    on_return_abort(self, reason, tag);
+    g_free(reason);
+  }
+}
+
 static gboolean
 real_swank_session_handle_message(gpointer data)
 {
@@ -358,53 +278,49 @@ real_swank_session_handle_message(gpointer data)
   RealSwankSession *self = m->self;
   GString *msg = m->msg;
 
-  const char *p = msg->str;
-  if (g_str_has_prefix(p, "(:return ")) {
-    p += strlen("(:return ");
-    gchar *arg1 = next_token(&p);
-    gchar *arg2 = next_token(&p);
-    gchar *output = NULL;
-    gchar *result = NULL;
-    gchar *reason = NULL;
-    gboolean handled = FALSE;
-    if (parse_return_ok(arg1, &output, &result)) {
-      gchar *end = NULL;
-      guint64 tag64 = g_ascii_strtoull(arg2, &end, 10);
-      if (end == arg2 || *end != '\0' || tag64 > G_MAXUINT32) {
-        g_debug("RealSwankSession.on_message invalid tag:%s", arg2);
-      } else {
-        on_return_ok(self, output, result, (guint32)tag64);
-        handled = TRUE;
+  TextProvider *provider = string_text_provider_new(msg->str);
+  LispLexer *lexer = lisp_lexer_new(provider);
+  lisp_lexer_lex(lexer);
+  guint n_tokens = 0;
+  const LispToken *tokens = lisp_lexer_get_tokens(lexer, &n_tokens);
+  LispParser *parser = lisp_parser_new();
+  lisp_parser_parse(parser, tokens, n_tokens);
+  const LispAstNode *ast = lisp_parser_get_ast(parser);
+
+  if (ast && ast->children && ast->children->len > 0) {
+    LispAstNode *expr = g_array_index(ast->children, LispAstNode*, 0);
+    if (expr->type == LISP_AST_NODE_TYPE_LIST && expr->children && expr->children->len > 0) {
+      LispAstNode *head = g_array_index(expr->children, LispAstNode*, 0);
+      if (head->type == LISP_AST_NODE_TYPE_SYMBOL) {
+        const gchar *sym = head->start_token->text;
+        if (g_strcmp0(sym, ":return") == 0) {
+          handle_return_message(self, expr);
+        } else if (g_strcmp0(sym, ":new-features") == 0) {
+          if (expr->children->len >= 2) {
+            LispAstNode *arg_node = g_array_index(expr->children, LispAstNode*, 1);
+            const LispToken *start = arg_node->start_token;
+            const LispToken *end = arg_node->end_token ? arg_node->end_token : start;
+            gchar *text = g_strndup(msg->str + start->start_offset, end->end_offset - start->start_offset);
+            on_new_features(text);
+            g_free(text);
+          }
+        } else if (g_strcmp0(sym, ":indentation-update") == 0) {
+          if (expr->children->len >= 2) {
+            LispAstNode *arg_node = g_array_index(expr->children, LispAstNode*, 1);
+            const LispToken *start = arg_node->start_token;
+            const LispToken *end = arg_node->end_token ? arg_node->end_token : start;
+            gchar *text = g_strndup(msg->str + start->start_offset, end->end_offset - start->start_offset);
+            on_indentation_update(text);
+            g_free(text);
+          }
+        }
       }
-      g_free(output);
-      g_free(result);
-    } else if (parse_return_abort(arg1, &reason)) {
-      gchar *end = NULL;
-      guint64 tag64 = g_ascii_strtoull(arg2, &end, 10);
-      if (end == arg2 || *end != '\0' || tag64 > G_MAXUINT32) {
-        g_debug("RealSwankSession.on_message invalid tag:%s", arg2);
-      } else {
-        on_return_abort(self, reason, (guint32)tag64);
-        handled = TRUE;
-      }
-      g_free(reason);
     }
-    if (!handled) {
-      g_debug("RealSwankSession.on_message failed to parse return list:%s", arg1);
-    }
-    g_free(arg1);
-    g_free(arg2);
-  } else if (g_str_has_prefix(p, "(:new-features ")) {
-    p += strlen("(:new-features ");
-    gchar *arg = next_token(&p);
-    on_new_features(arg);
-    g_free(arg);
-  } else if (g_str_has_prefix(p, "(:indentation-update ")) {
-    p += strlen("(:indentation-update ");
-    gchar *arg = next_token(&p);
-    on_indentation_update(arg);
-    g_free(arg);
   }
+
+  lisp_parser_free(parser);
+  lisp_lexer_free(lexer);
+  g_object_unref(provider);
 
   g_string_free(msg, TRUE);
   if (self)
