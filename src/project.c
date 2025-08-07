@@ -159,9 +159,8 @@ void project_file_changed(Project * /*self*/, ProjectFile *file) {
   if (!file->lexer || !file->parser)
     return;
   lisp_lexer_lex(file->lexer);
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(file->lexer, &n_tokens);
-  lisp_parser_parse(file->parser, tokens, n_tokens);
+  GArray *tokens = lisp_lexer_get_tokens(file->lexer);
+  lisp_parser_parse(file->parser, tokens);
 }
 
 LispParser *project_file_get_parser(ProjectFile *file) {

@@ -14,9 +14,8 @@ static ParserFixture parser_fixture_from_text(const gchar *text) {
   fixture.lexer = lisp_lexer_new(provider);
   lisp_lexer_lex(fixture.lexer);
   fixture.parser = lisp_parser_new();
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(fixture.lexer, &n_tokens);
-  lisp_parser_parse(fixture.parser, tokens, n_tokens);
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  lisp_parser_parse(fixture.parser, tokens);
   g_object_unref(provider);
   return fixture;
 }
@@ -29,9 +28,8 @@ static void parser_fixture_free(ParserFixture *fixture) {
 static void test_empty_file(void) {
   ParserFixture fixture = parser_fixture_from_text("");
 
-  guint n_tokens = 0;
-  lisp_lexer_get_tokens(fixture.lexer, &n_tokens);
-  g_assert_cmpint(n_tokens, ==, 0);
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  g_assert_cmpint(tokens->len, ==, 0);
 
   const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 0);
@@ -42,10 +40,10 @@ static void test_empty_file(void) {
 static void test_symbol(void) {
   ParserFixture fixture = parser_fixture_from_text("foo");
 
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(fixture.lexer, &n_tokens);
-  g_assert_cmpint(n_tokens, ==, 1);
-  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_SYMBOL);
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  g_assert_cmpint(tokens->len, ==, 1);
+  const LispToken *token = &g_array_index(tokens, LispToken, 0);
+  g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_SYMBOL);
 
   const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
@@ -59,10 +57,10 @@ static void test_symbol(void) {
 static void test_number(void) {
   ParserFixture fixture = parser_fixture_from_text("42");
 
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(fixture.lexer, &n_tokens);
-  g_assert_cmpint(n_tokens, ==, 1);
-  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_NUMBER);
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  g_assert_cmpint(tokens->len, ==, 1);
+  const LispToken *token = &g_array_index(tokens, LispToken, 0);
+  g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_NUMBER);
 
   const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
@@ -76,10 +74,10 @@ static void test_number(void) {
 static void test_atom_string(void) {
   ParserFixture fixture = parser_fixture_from_text("\"bar\"");
 
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(fixture.lexer, &n_tokens);
-  g_assert_cmpint(n_tokens, ==, 1);
-  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_STRING);
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  g_assert_cmpint(tokens->len, ==, 1);
+  const LispToken *token = &g_array_index(tokens, LispToken, 0);
+  g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_STRING);
 
   const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
@@ -146,10 +144,10 @@ static void test_missing_closing_paren(void) {
 static void test_extra_closing_paren(void) {
   ParserFixture fixture = parser_fixture_from_text(")");
 
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(fixture.lexer, &n_tokens);
-  g_assert_cmpint(n_tokens, ==, 1);
-  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_LIST_END);
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  g_assert_cmpint(tokens->len, ==, 1);
+  const LispToken *token = &g_array_index(tokens, LispToken, 0);
+  g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_END);
 
   const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 0);
@@ -160,10 +158,10 @@ static void test_extra_closing_paren(void) {
 static void test_comment(void) {
   ParserFixture fixture = parser_fixture_from_text("; a comment\n");
 
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(fixture.lexer, &n_tokens);
-  g_assert_cmpint(n_tokens, ==, 2);
-  g_assert_cmpint(tokens[0].type, ==, LISP_TOKEN_TYPE_COMMENT);
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  g_assert_cmpint(tokens->len, ==, 2);
+  const LispToken *token = &g_array_index(tokens, LispToken, 0);
+  g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_COMMENT);
 
   const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 0);
