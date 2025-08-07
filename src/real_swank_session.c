@@ -281,10 +281,9 @@ real_swank_session_handle_message(gpointer data)
   TextProvider *provider = string_text_provider_new(msg->str);
   LispLexer *lexer = lisp_lexer_new(provider);
   lisp_lexer_lex(lexer);
-  guint n_tokens = 0;
-  const LispToken *tokens = lisp_lexer_get_tokens(lexer, &n_tokens);
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
   LispParser *parser = lisp_parser_new();
-  lisp_parser_parse(parser, tokens, n_tokens);
+  lisp_parser_parse(parser, tokens);
   const LispAstNode *ast = lisp_parser_get_ast(parser);
 
   if (ast && ast->children && ast->children->len > 0) {

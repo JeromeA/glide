@@ -118,9 +118,7 @@ void lisp_lexer_lex(LispLexer *lexer) {
   }
 }
 
-const LispToken *lisp_lexer_get_tokens(LispLexer *lexer, guint *n_tokens) {
+GArray *lisp_lexer_get_tokens(LispLexer *lexer) {
   g_return_val_if_fail(lexer != NULL, NULL);
-  if (n_tokens)
-    *n_tokens = lexer->tokens ? lexer->tokens->len : 0;
-  return lexer->tokens ? (const LispToken*)lexer->tokens->data : NULL;
+  return lexer->tokens;
 }

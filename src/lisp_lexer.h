@@ -28,6 +28,6 @@ typedef struct {
 LispLexer *lisp_lexer_new(TextProvider *provider);
 void lisp_lexer_free(LispLexer *lexer);
 void lisp_lexer_lex(LispLexer *lexer);
-const LispToken *lisp_lexer_get_tokens(LispLexer *lexer, guint *n_tokens);
+GArray *lisp_lexer_get_tokens(LispLexer *lexer);
 
 G_END_DECLS

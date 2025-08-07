@@ -48,12 +48,11 @@ void lisp_parser_free(LispParser *parser);
 /**
  * lisp_parser_parse:
  * @parser: The LispParser instance.
- * @tokens: (array length=n_tokens): The tokens to parse.
- * @n_tokens: The number of tokens.
+ * @tokens: (nullable): The tokens to parse.
  *
  * Parses the provided tokens and builds a new AST. Any existing AST is destroyed.
  */
-void lisp_parser_parse(LispParser *parser, const LispToken *tokens, guint n_tokens);
+void lisp_parser_parse(LispParser *parser, GArray *tokens);
 
 /**
  * lisp_parser_get_ast:

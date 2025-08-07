@@ -8,7 +8,7 @@ struct _LispParser {
 
 static void lisp_ast_node_free(LispAstNode *node);
 static void lisp_parser_clear_ast(LispParser *parser);
-static LispAstNode *parse_expression(const LispToken *tokens, guint n_tokens, guint *position);
+static LispAstNode *parse_expression(GArray *tokens, guint *position);
 
 static void lisp_ast_node_free(LispAstNode *node) {
   if (!node) return;
@@ -42,10 +42,9 @@ const LispAstNode *lisp_parser_get_ast(LispParser *parser) {
   return parser->ast;
 }
 
-void lisp_parser_parse(LispParser *parser, const LispToken *tokens, guint n_tokens) {
+void lisp_parser_parse(LispParser *parser, GArray *tokens) {
   g_return_if_fail(parser != NULL);
-  if (!tokens && n_tokens > 0)
-    return;
+  guint n_tokens = tokens ? tokens->len : 0;
 
   lisp_parser_clear_ast(parser);
 
@@ -55,20 +54,21 @@ void lisp_parser_parse(LispParser *parser, const LispToken *tokens, guint n_toke
 
   guint position = 0;
   while (position < n_tokens) {
-    const LispToken *token = &tokens[position];
+    const LispToken *token = &g_array_index(tokens, LispToken, position);
     if (token->type == LISP_TOKEN_TYPE_WHITESPACE || token->type == LISP_TOKEN_TYPE_COMMENT) {
       position++;
       continue;
     }
-    LispAstNode *expr = parse_expression(tokens, n_tokens, &position);
+    LispAstNode *expr = parse_expression(tokens, &position);
     if (expr)
       g_array_append_val(parser->ast->children, expr);
   }
 }
 
-static LispAstNode *parse_expression(const LispToken *tokens, guint n_tokens, guint *position) {
+static LispAstNode *parse_expression(GArray *tokens, guint *position) {
+  guint n_tokens = tokens ? tokens->len : 0;
   while (*position < n_tokens) {
-    const LispToken *token = &tokens[*position];
+    const LispToken *token = &g_array_index(tokens, LispToken, *position);
     if (token->type != LISP_TOKEN_TYPE_WHITESPACE && token->type != LISP_TOKEN_TYPE_COMMENT)
       break;
     (*position)++;
@@ -77,7 +77,7 @@ static LispAstNode *parse_expression(const LispToken *tokens, guint n_tokens, gu
   if (*position >= n_tokens)
     return NULL;
 
-  const LispToken *token = &tokens[*position];
+  const LispToken *token = &g_array_index(tokens, LispToken, *position);
 
   if (token->type == LISP_TOKEN_TYPE_LIST_START) {
     LispAstNode *list_node = g_new0(LispAstNode, 1);
@@ -87,7 +87,7 @@ static LispAstNode *parse_expression(const LispToken *tokens, guint n_tokens, gu
 
     (*position)++;
     while (*position < n_tokens) {
-      const LispToken *current_token = &tokens[*position];
+      const LispToken *current_token = &g_array_index(tokens, LispToken, *position);
       if (current_token->type == LISP_TOKEN_TYPE_LIST_END) {
         list_node->end_token = current_token;
         (*position)++;
@@ -97,7 +97,7 @@ static LispAstNode *parse_expression(const LispToken *tokens, guint n_tokens, gu
         (*position)++;
         continue;
       }
-      LispAstNode *child_expr = parse_expression(tokens, n_tokens, position);
+      LispAstNode *child_expr = parse_expression(tokens, position);
       if (child_expr)
         g_array_append_val(list_node->children, child_expr);
     }
