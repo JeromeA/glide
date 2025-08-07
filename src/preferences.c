@@ -52,20 +52,17 @@ static void preferences_class_init(PreferencesClass *klass) {
 
 static void preferences_load(Preferences *self) {
   GKeyFile *key_file = g_key_file_new();
-  GError *error = NULL;
-  if (g_key_file_load_from_file(key_file, self->filename, G_KEY_FILE_NONE, &error)) {
-    char *sdk = g_key_file_get_string(key_file, "General", "sdk", &error);
+  if (g_key_file_load_from_file(key_file, self->filename, G_KEY_FILE_NONE, NULL)) {
+    char *sdk = g_key_file_get_string(key_file, "General", "sdk", NULL);
     if (sdk) {
       preferences_set_sdk(self, sdk);
       g_free(sdk);
     }
 
     /* load swank port if present */
-    gint port = g_key_file_get_integer(key_file, "General", "swank_port", &error);
-    if (error == NULL) {
+    gint port = g_key_file_get_integer(key_file, "General", "swank_port", NULL);
+    if (port) {
       self->swank_port = (guint16)port;
-    } else {
-      g_clear_error(&error);
     }
   }
 
