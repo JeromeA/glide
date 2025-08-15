@@ -125,6 +125,14 @@ static gchar *unquote(const gchar *text) {
   return g_strdup(text);
 }
 
+static gchar *node_text(const gchar *src, const LispAstNode *node) {
+  if (!node || !node->start_token)
+    return NULL;
+  const LispToken *start = node->start_token;
+  const LispToken *end = node->end_token ? node->end_token : start;
+  return g_strndup(src + start->start_offset, end->end_offset - start->start_offset);
+}
+
 static void parse_file_contents(Asdf *self, const gchar *contents) {
   TextProvider *provider = string_text_provider_new(contents);
   LispLexer *lexer = lisp_lexer_new(provider);
@@ -158,7 +166,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
     const LispAstNode *val = g_array_index(defsystem->children, LispAstNode*, i + 1);
     if (key->type != LISP_AST_NODE_TYPE_SYMBOL)
       continue;
-    const gchar *kw = key->start_token->text;
+    gchar *kw = node_text(contents, key);
 
     if (g_strcmp0(kw, ":pathname") == 0) {
       gchar *p = unquote(val->start_token->text);
@@ -194,6 +202,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
         }
       }
     }
+    g_free(kw);
   }
 
 cleanup:

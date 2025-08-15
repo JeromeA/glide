@@ -226,8 +226,16 @@ typedef struct {
   RealSwankSession *self;
   GString *msg;
 } MessageData;
+static gchar *node_text(const gchar *src, const LispAstNode *node)
+{
+  if (!node || !node->start_token)
+    return NULL;
+  const LispToken *start = node->start_token;
+  const LispToken *end = node->end_token ? node->end_token : start;
+  return g_strndup(src + start->start_offset, end->end_offset - start->start_offset);
+}
 
-static void handle_return_message(RealSwankSession *self, const LispAstNode *ast)
+static void handle_return_message(RealSwankSession *self, const gchar *src, const LispAstNode *ast)
 {
   if (!ast || ast->children->len < 3)
     return;
@@ -245,7 +253,7 @@ static void handle_return_message(RealSwankSession *self, const LispAstNode *ast
   LispAstNode *status_node = g_array_index(result_node->children, LispAstNode*, 0);
   if (!status_node || status_node->type != LISP_AST_NODE_TYPE_SYMBOL)
     return;
-  const gchar *status = status_node->start_token->text;
+  gchar *status = node_text(src, status_node);
   if (g_strcmp0(status, ":ok") == 0) {
     if (result_node->children->len < 2)
       return;
@@ -267,6 +275,7 @@ static void handle_return_message(RealSwankSession *self, const LispAstNode *ast
     on_return_abort(self, reason, tag);
     g_free(reason);
   }
+  g_free(status);
 }
 
 static gboolean
@@ -291,9 +300,9 @@ real_swank_session_handle_message(gpointer data)
     if (expr->type == LISP_AST_NODE_TYPE_LIST && expr->children && expr->children->len > 0) {
       LispAstNode *head = g_array_index(expr->children, LispAstNode*, 0);
       if (head->type == LISP_AST_NODE_TYPE_SYMBOL) {
-        const gchar *sym = head->start_token->text;
+        gchar *sym = node_text(msg->str, head);
         if (g_strcmp0(sym, ":return") == 0) {
-          handle_return_message(self, expr);
+          handle_return_message(self, msg->str, expr);
         } else if (g_strcmp0(sym, ":new-features") == 0) {
           if (expr->children->len >= 2) {
             LispAstNode *arg_node = g_array_index(expr->children, LispAstNode*, 1);
@@ -313,6 +322,7 @@ real_swank_session_handle_message(gpointer data)
             g_free(text);
           }
         }
+        g_free(sym);
       }
     }
   }
