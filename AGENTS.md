@@ -3,7 +3,6 @@
 
 - README.md describes the project and how to build it.
 - doc/classes.plantuml contains the class diagram, which is a great way to understand the architecture.
-- Don't forget to add any new file to the INLINE version in main.c.
 
 ## Coding Conventions
 
@@ -21,4 +20,9 @@
 ## Testing
 
 - Tests should be unit tests, in tests/, using mock objects for all dependencies.
+
+## Common Agent mistakes
+
+- Don't forget to add any new file to the INLINE version in main.c.
+- Don't forget to run "make app-full" as part of your testing.
 
