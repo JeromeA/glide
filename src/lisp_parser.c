@@ -18,6 +18,8 @@ static void lisp_ast_node_free(LispAstNode *node) {
       lisp_ast_node_free(g_array_index(node->children, LispAstNode*, i));
     g_array_free(node->children, TRUE);
   }
+  if (node->node_info)
+    node_info_unref(node->node_info);
   g_free(node);
 }
 

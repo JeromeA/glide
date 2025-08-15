@@ -1,5 +1,6 @@
 #include "project.h"
 #include "string_text_provider.h"
+#include "analyser.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -161,6 +162,9 @@ void project_file_changed(Project * /*self*/, ProjectFile *file) {
   lisp_lexer_lex(file->lexer);
   GArray *tokens = lisp_lexer_get_tokens(file->lexer);
   lisp_parser_parse(file->parser, tokens);
+  const LispAstNode *ast = lisp_parser_get_ast(file->parser);
+  if (ast)
+    analyse_ast((LispAstNode*)ast);
 }
 
 LispParser *project_file_get_parser(ProjectFile *file) {

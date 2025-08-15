@@ -1,5 +1,6 @@
 #include "project.h"
 #include "string_text_provider.h"
+#include "node_info.h"
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <string.h>
@@ -74,11 +75,31 @@ static void test_file_load(void)
   g_free(tmpdir);
 }
 
+static void test_function_analysis(void)
+{
+  Project *project = project_new();
+  TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_SCRATCH);
+  g_object_unref(provider);
+  LispParser *parser = project_file_get_parser(file);
+  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  const LispAstNode *form = g_array_index(ast->children, LispAstNode*, 0);
+  LispAstNode *defsym = g_array_index(form->children, LispAstNode*, 0);
+  LispAstNode *name = g_array_index(form->children, LispAstNode*, 1);
+  LispAstNode *call = g_array_index(form->children, LispAstNode*, 3);
+  LispAstNode *callee = g_array_index(call->children, LispAstNode*, 0);
+  g_assert_true(node_info_is(defsym->node_info, NODE_INFO_FUNCTION_USE));
+  g_assert_true(node_info_is(name->node_info, NODE_INFO_FUNCTION_DEF));
+  g_assert_true(node_info_is(callee->node_info, NODE_INFO_FUNCTION_USE));
+  g_object_unref(project);
+}
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/project/default_scratch", test_default_scratch);
   g_test_add_func("/project/parse_on_change", test_parse_on_change);
   g_test_add_func("/project/file_load", test_file_load);
+  g_test_add_func("/project/function_analysis", test_function_analysis);
   return g_test_run();
 }
