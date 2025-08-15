@@ -11,7 +11,7 @@ struct _LispParserView
 
 G_DEFINE_TYPE(LispParserView, lisp_parser_view, GTK_TYPE_TREE_VIEW)
 
-enum { COL_TYPE, COL_TEXT, N_COLS };
+enum { COL_TYPE, COL_TEXT, COL_INFO, N_COLS };
 
 static void populate_store(LispParserView *self);
 static void parser_view_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer data);
@@ -22,7 +22,7 @@ lisp_parser_view_init(LispParserView *self)
   GtkCellRenderer *renderer;
 
   self->file = NULL;
-  self->store = gtk_tree_store_new(N_COLS, G_TYPE_STRING, G_TYPE_STRING);
+  self->store = gtk_tree_store_new(N_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
 
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
 
@@ -33,6 +33,10 @@ lisp_parser_view_init(LispParserView *self)
   renderer = gtk_cell_renderer_text_new();
   gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(self), -1, "Text",
       renderer, "text", COL_TEXT, NULL);
+
+  renderer = gtk_cell_renderer_text_new();
+  gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(self), -1, "Info",
+      renderer, "text", COL_INFO, NULL);
 }
 
 static void
@@ -81,18 +85,24 @@ add_ast_node(LispParserView *self, const LispAstNode *node, GtkTreeIter *parent)
   const gchar *type = node_type_to_string(node->type);
   const gchar *start_text = node->start_token ? node->start_token->text : "";
   gchar *text;
+  gchar *info = NULL;
 
   if (node->end_token && node->end_token != node->start_token)
     text = g_strdup_printf("%s ... %s", start_text, node->end_token->text);
   else
     text = g_strdup(start_text);
 
+  if (node->node_info)
+    info = node_info_to_string(node->node_info);
+
   gtk_tree_store_append(self->store, &iter, parent);
   gtk_tree_store_set(self->store, &iter,
       COL_TYPE, type,
       COL_TEXT, text,
+      COL_INFO, info,
       -1);
   g_free(text);
+  g_free(info);
 
   if (node->children)
   {

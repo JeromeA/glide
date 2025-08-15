@@ -72,4 +72,7 @@ VarUseInfo *var_use_info_new(VariableInfo *var);
 VarDefInfo *var_def_info_new(VariableInfo *var_new);
 StructFieldInfo *struct_field_info_new(const gchar *field_name);
 
+const gchar *node_info_kind_to_string(NodeInfoKind kind);
+gchar *node_info_to_string(const NodeInfo *ni);
+
 #endif // NODE_INFO_H
