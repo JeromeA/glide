@@ -2,6 +2,7 @@
 
 #include <glib.h>
 #include "lisp_lexer.h"
+#include "node_info.h"
 
 G_BEGIN_DECLS
 
@@ -28,6 +29,7 @@ struct _LispAstNode {
     const LispToken *start_token; // For a list, the '('. For an atom, the token itself.
     const LispToken *end_token;   // For a list, the ')'. For an atom, same as start_token.
     GArray *children;             // Array of LispAstNode* pointers, for lists and symbols.
+    NodeInfo *node_info;          // Annotation info.
 };
 
 // Public API for the LispParser
