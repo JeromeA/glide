@@ -37,23 +37,31 @@ static inline void node_info_unref(NodeInfo *ni) {
   }
 }
 
-typedef struct VariableInfo VariableInfo;
-typedef struct FunctionInfo  FunctionInfo;
+typedef struct VarUseInfo VarUseInfo;
+typedef struct VarDefInfo VarDefInfo;
+typedef struct VariableInfo {
+  gint ref;
+  VarDefInfo *definition;
+  GPtrArray *usages; /* VarUseInfo* */
+} VariableInfo;
+typedef struct FunctionInfo FunctionInfo;
 typedef struct StructFieldInfo StructFieldInfo;
 
+VariableInfo *variable_info_new(void);
 VariableInfo *variable_info_ref(VariableInfo *var);
 void variable_info_unref(VariableInfo *var);
+FunctionInfo *function_info_ref(FunctionInfo *fn);
 void function_info_unref(FunctionInfo *fn);
 
-typedef struct {
+struct VarUseInfo {
   NodeInfo base;
   VariableInfo *var;
-} VarUseInfo;
+};
 
-typedef struct {
+struct VarDefInfo {
   NodeInfo base;
   VariableInfo *var;
-} VarDefInfo;
+};
 
 struct StructFieldInfo {
   NodeInfo base;
@@ -64,9 +72,12 @@ struct StructFieldInfo {
 static inline gboolean node_info_is(const NodeInfo *ni, NodeInfoKind k) {
   return ni && ni->kind == k;
 }
-#define VAR_USE_INFO(ni)    ((VarUseInfo*)(ni))
-#define VAR_DEF_INFO(ni)    ((VarDefInfo*)(ni))
-#define STRUCT_FIELD_INFO(ni) ((StructFieldInfo*)(ni))
+#define VAR_USE_INFO(ni) \
+  (node_info_is((NodeInfo*)(ni), NODE_INFO_VAR_USE) ? (VarUseInfo*)(ni) : NULL)
+#define VAR_DEF_INFO(ni) \
+  (node_info_is((NodeInfo*)(ni), NODE_INFO_VAR_DEF) ? (VarDefInfo*)(ni) : NULL)
+#define STRUCT_FIELD_INFO(ni) \
+  (node_info_is((NodeInfo*)(ni), NODE_INFO_STRUCT_FIELD) ? (StructFieldInfo*)(ni) : NULL)
 
 VarUseInfo *var_use_info_new(VariableInfo *var);
 VarDefInfo *var_def_info_new(VariableInfo *var_new);
