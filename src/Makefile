@@ -19,6 +19,7 @@ SOURCES += \
   lisp_source_view.c \
   lisp_lexer.c \
   lisp_parser.c \
+  node_info.c \
   lisp_parser_view.c \
   project.c \
   gtk_text_provider.c \

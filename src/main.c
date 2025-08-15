@@ -9,6 +9,7 @@
 #include "gtk_text_provider.c"
 #include "interactions_view.c"
 #include "lisp_lexer.c"
+#include "node_info.c"
 #include "lisp_parser.c"
 #include "lisp_source_notebook.c"
 #include "lisp_source_view.c"
