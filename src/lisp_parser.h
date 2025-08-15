@@ -11,6 +11,9 @@ typedef struct _LispParser LispParser;
 typedef enum {
     LISP_AST_NODE_TYPE_NUMBER,
     LISP_AST_NODE_TYPE_SYMBOL,
+    LISP_AST_NODE_TYPE_SYMBOL_PACKAGE,
+    LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR,
+    LISP_AST_NODE_TYPE_SYMBOL_NAME,
     LISP_AST_NODE_TYPE_LIST,
     LISP_AST_NODE_TYPE_STRING,
     // Comments and whitespace are not typically included in the AST
@@ -24,7 +27,7 @@ struct _LispAstNode {
     LispAstNodeType type;
     const LispToken *start_token; // For a list, the '('. For an atom, the token itself.
     const LispToken *end_token;   // For a list, the ')'. For an atom, same as start_token.
-    GArray *children;             // Array of LispAstNode* pointers, for lists only.
+    GArray *children;             // Array of LispAstNode* pointers, for lists and symbols.
 };
 
 // Public API for the LispParser

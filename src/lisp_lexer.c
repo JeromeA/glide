@@ -74,6 +74,13 @@ void lisp_lexer_lex(LispLexer *lexer) {
       token.type = LISP_TOKEN_TYPE_LIST_END;
       offset = text_provider_next_offset(lexer->provider, offset);
       token.end_offset = offset;
+    } else if (current_char == ':') {
+      token.type = LISP_TOKEN_TYPE_SYMBOL_SEPARATOR;
+      gsize end = text_provider_next_offset(lexer->provider, offset);
+      if (end < len && text_provider_get_char(lexer->provider, end) == ':')
+        end = text_provider_next_offset(lexer->provider, end);
+      token.end_offset = end;
+      offset = end;
     } else if (current_char == '"') {
       gsize end = text_provider_next_offset(lexer->provider, offset);
       gboolean escaped = FALSE;
@@ -99,7 +106,7 @@ void lisp_lexer_lex(LispLexer *lexer) {
       gsize end = offset;
       while (end < len) {
         gunichar c = text_provider_get_char(lexer->provider, end);
-        if (g_unichar_isspace(c) || c == '(' || c == ')' || c == '"' || c == ';')
+        if (g_unichar_isspace(c) || c == '(' || c == ')' || c == '"' || c == ';' || c == ':')
           break;
         end = text_provider_next_offset(lexer->provider, end);
       }

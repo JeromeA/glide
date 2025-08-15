@@ -65,6 +65,9 @@ node_type_to_string(LispAstNodeType type)
   {
     case LISP_AST_NODE_TYPE_NUMBER: return "Number";
     case LISP_AST_NODE_TYPE_SYMBOL: return "Symbol";
+    case LISP_AST_NODE_TYPE_SYMBOL_PACKAGE: return "SymbolPackage";
+    case LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR: return "SymbolSeparator";
+    case LISP_AST_NODE_TYPE_SYMBOL_NAME: return "SymbolName";
     case LISP_AST_NODE_TYPE_LIST: return "List";
     case LISP_AST_NODE_TYPE_STRING: return "String";
     default: return "Unknown";

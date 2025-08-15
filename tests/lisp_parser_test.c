@@ -49,7 +49,10 @@ static void test_symbol(void) {
   g_assert_cmpint(ast->children->len, ==, 1);
   const LispAstNode *child = g_array_index(ast->children, LispAstNode*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
-  g_assert_cmpstr(child->start_token->text, ==, "foo");
+  g_assert_cmpint(child->children->len, ==, 1);
+  const LispAstNode *name = g_array_index(child->children, LispAstNode*, 0);
+  g_assert_cmpint(name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
+  g_assert_cmpstr(name->start_token->text, ==, "foo");
 
   parser_fixture_free(&fixture);
 }
@@ -114,9 +117,15 @@ static void test_list_with_elements(void) {
   const LispAstNode *a = g_array_index(list->children, LispAstNode*, 0);
   const LispAstNode *b = g_array_index(list->children, LispAstNode*, 1);
   g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
-  g_assert_cmpstr(a->start_token->text, ==, "a");
+  g_assert_cmpint(a->children->len, ==, 1);
   g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
-  g_assert_cmpstr(b->start_token->text, ==, "b");
+  g_assert_cmpint(b->children->len, ==, 1);
+  const LispAstNode *a_name = g_array_index(a->children, LispAstNode*, 0);
+  const LispAstNode *b_name = g_array_index(b->children, LispAstNode*, 0);
+  g_assert_cmpint(a_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
+  g_assert_cmpint(b_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
+  g_assert_cmpstr(a_name->start_token->text, ==, "a");
+  g_assert_cmpstr(b_name->start_token->text, ==, "b");
 
   parser_fixture_free(&fixture);
 }
@@ -134,9 +143,41 @@ static void test_missing_closing_paren(void) {
   const LispAstNode *a = g_array_index(list->children, LispAstNode*, 0);
   const LispAstNode *b = g_array_index(list->children, LispAstNode*, 1);
   g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
-  g_assert_cmpstr(a->start_token->text, ==, "a");
   g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
-  g_assert_cmpstr(b->start_token->text, ==, "b");
+  g_assert_cmpint(a->children->len, ==, 1);
+  g_assert_cmpint(b->children->len, ==, 1);
+  const LispAstNode *a_name = g_array_index(a->children, LispAstNode*, 0);
+  const LispAstNode *b_name = g_array_index(b->children, LispAstNode*, 0);
+  g_assert_cmpint(a_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
+  g_assert_cmpint(b_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
+  g_assert_cmpstr(a_name->start_token->text, ==, "a");
+  g_assert_cmpstr(b_name->start_token->text, ==, "b");
+
+  parser_fixture_free(&fixture);
+}
+
+static void test_symbol_with_package(void) {
+  ParserFixture fixture = parser_fixture_from_text("pkg:foo");
+
+  GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
+  g_assert_cmpint(tokens->len, ==, 3);
+  const LispToken *sep = &g_array_index(tokens, LispToken, 1);
+  g_assert_cmpint(sep->type, ==, LISP_TOKEN_TYPE_SYMBOL_SEPARATOR);
+
+  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  g_assert_cmpint(ast->children->len, ==, 1);
+  const LispAstNode *sym = g_array_index(ast->children, LispAstNode*, 0);
+  g_assert_cmpint(sym->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
+  g_assert_cmpint(sym->children->len, ==, 3);
+  const LispAstNode *pkg = g_array_index(sym->children, LispAstNode*, 0);
+  const LispAstNode *sep_node = g_array_index(sym->children, LispAstNode*, 1);
+  const LispAstNode *name = g_array_index(sym->children, LispAstNode*, 2);
+  g_assert_cmpint(pkg->type, ==, LISP_AST_NODE_TYPE_SYMBOL_PACKAGE);
+  g_assert_cmpint(sep_node->type, ==, LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR);
+  g_assert_cmpint(name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
+  g_assert_cmpstr(pkg->start_token->text, ==, "pkg");
+  g_assert_cmpstr(sep_node->start_token->text, ==, ":");
+  g_assert_cmpstr(name->start_token->text, ==, "foo");
 
   parser_fixture_free(&fixture);
 }
@@ -178,6 +219,7 @@ int main(int argc, char *argv[]) {
   g_test_add_func("/lisp_parser/empty_list", test_empty_list);
   g_test_add_func("/lisp_parser/list_with_elements", test_list_with_elements);
   g_test_add_func("/lisp_parser/missing_closing_paren", test_missing_closing_paren);
+  g_test_add_func("/lisp_parser/symbol_with_package", test_symbol_with_package);
   g_test_add_func("/lisp_parser/extra_closing_paren", test_extra_closing_paren);
   g_test_add_func("/lisp_parser/comment", test_comment);
   return g_test_run();
