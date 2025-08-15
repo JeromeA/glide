@@ -43,3 +43,30 @@ StructFieldInfo *struct_field_info_new(const gchar *field_name) {
   s->methods = g_ptr_array_new();
   return s;
 }
+
+const gchar *node_info_kind_to_string(NodeInfoKind kind) {
+  switch(kind) {
+    case NODE_INFO_VAR_DEF: return "VarDef";
+    case NODE_INFO_VAR_USE: return "VarUse";
+    case NODE_INFO_FUNCTION_DEF: return "FunctionDef";
+    case NODE_INFO_FUNCTION_USE: return "FunctionUse";
+    case NODE_INFO_STRUCT_FIELD: return "StructField";
+    default: return "None";
+  }
+}
+
+gchar *node_info_to_string(const NodeInfo *ni) {
+  if (!ni)
+    return NULL;
+  const gchar *type = node_info_kind_to_string(ni->kind);
+  switch(ni->kind) {
+    case NODE_INFO_STRUCT_FIELD: {
+      const StructFieldInfo *s = STRUCT_FIELD_INFO(ni);
+      if (s->field_name)
+        return g_strdup_printf("%s %s", type, s->field_name);
+      return g_strdup(type);
+    }
+    default:
+      return g_strdup(type);
+  }
+}
