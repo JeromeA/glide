@@ -23,7 +23,7 @@ SOURCES += \
   package.c \
   package_common_lisp_user.c \
   package_common_lisp.c \
-  node_info.c \
+  node.c \
   lisp_parser_view.c \
   project.c \
   gtk_text_provider.c \

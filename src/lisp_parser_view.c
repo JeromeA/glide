@@ -79,7 +79,7 @@ node_type_to_string(LispAstNodeType type)
 }
 
 static void
-add_ast_node(LispParserView *self, const LispAstNode *node, GtkTreeIter *parent)
+add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent)
 {
   GtkTreeIter iter;
   const gchar *type = node_type_to_string(node->type);
@@ -92,8 +92,8 @@ add_ast_node(LispParserView *self, const LispAstNode *node, GtkTreeIter *parent)
   else
     text = g_strdup(start_text);
 
-  if (node->node_info)
-    info = node_info_to_string(node->node_info);
+  if (node->sd_type)
+    info = node_to_string(node);
 
   gtk_tree_store_append(self->store, &iter, parent);
   gtk_tree_store_set(self->store, &iter,
@@ -108,7 +108,7 @@ add_ast_node(LispParserView *self, const LispAstNode *node, GtkTreeIter *parent)
   {
     for (guint i = 0; i < node->children->len; i++)
     {
-      LispAstNode *child = g_array_index(node->children, LispAstNode*, i);
+      Node *child = g_array_index(node->children, Node*, i);
       add_ast_node(self, child, &iter);
     }
   }
@@ -122,7 +122,7 @@ populate_store(LispParserView *self)
 
   gtk_tree_store_clear(self->store);
   LispParser *parser = project_file_get_parser(self->file);
-  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  const Node *ast = lisp_parser_get_ast(parser);
   if (ast)
     add_ast_node(self, ast, NULL);
 

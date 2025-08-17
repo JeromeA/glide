@@ -1,6 +1,6 @@
 #include "package.h"
 #include "package_common_lisp_user.h"
-#include "node_info.h"
+#include "node.h"
 #include <assert.h>
 
 int main(void) {
@@ -25,11 +25,13 @@ int main(void) {
   assert(g_hash_table_contains(user->nicknames, "CL-USER"));
   assert(g_hash_table_contains(user->uses, "COMMON-LISP"));
 
-  NodeInfo *node_info = node_info_new_package_def(package);
-  assert(node_info_is(node_info, NODE_INFO_PACKAGE_DEF));
-  assert(node_info->package == package);
+  Node *node = g_new0(Node, 1);
+  g_atomic_int_set(&node->ref, 1);
+  node_set_package_def(node, package);
+  assert(node_is(node, SDT_PACKAGE_DEF));
+  assert(node->package == package);
 
-  node_info_unref(node_info);
+  node_unref(node);
   package_unref(package);
   package_unref(user);
   return 0;

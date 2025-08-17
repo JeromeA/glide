@@ -226,7 +226,7 @@ typedef struct {
   RealSwankSession *self;
   GString *msg;
 } MessageData;
-static gchar *node_text(const gchar *src, const LispAstNode *node)
+static gchar *node_text(const gchar *src, const Node *node)
 {
   if (!node || !node->start_token)
     return NULL;
@@ -235,12 +235,12 @@ static gchar *node_text(const gchar *src, const LispAstNode *node)
   return g_strndup(src + start->start_offset, end->end_offset - start->start_offset);
 }
 
-static void handle_return_message(RealSwankSession *self, const gchar *src, const LispAstNode *ast)
+static void handle_return_message(RealSwankSession *self, const gchar *src, const Node *ast)
 {
   if (!ast || ast->children->len < 3)
     return;
-  LispAstNode *result_node = g_array_index(ast->children, LispAstNode*, 1);
-  LispAstNode *tag_node = g_array_index(ast->children, LispAstNode*, 2);
+  Node *result_node = g_array_index(ast->children, Node*, 1);
+  Node *tag_node = g_array_index(ast->children, Node*, 2);
   if (!result_node || !tag_node || !tag_node->start_token)
     return;
   gchar *end = NULL;
@@ -250,18 +250,18 @@ static void handle_return_message(RealSwankSession *self, const gchar *src, cons
   guint32 tag = (guint32)tag64;
   if (result_node->type != LISP_AST_NODE_TYPE_LIST || result_node->children->len < 1)
     return;
-  LispAstNode *status_node = g_array_index(result_node->children, LispAstNode*, 0);
+  Node *status_node = g_array_index(result_node->children, Node*, 0);
   if (!status_node || status_node->type != LISP_AST_NODE_TYPE_SYMBOL)
     return;
   gchar *status = node_text(src, status_node);
   if (g_strcmp0(status, ":ok") == 0) {
     if (result_node->children->len < 2)
       return;
-    LispAstNode *values = g_array_index(result_node->children, LispAstNode*, 1);
+    Node *values = g_array_index(result_node->children, Node*, 1);
     if (values->type != LISP_AST_NODE_TYPE_LIST || values->children->len < 2)
       return;
-    LispAstNode *out_node = g_array_index(values->children, LispAstNode*, 0);
-    LispAstNode *res_node = g_array_index(values->children, LispAstNode*, 1);
+    Node *out_node = g_array_index(values->children, Node*, 0);
+    Node *res_node = g_array_index(values->children, Node*, 1);
     gchar *output = unescape_string(out_node->start_token->text);
     gchar *result = unescape_string(res_node->start_token->text);
     on_return_ok(self, output, result, tag);
@@ -270,7 +270,7 @@ static void handle_return_message(RealSwankSession *self, const gchar *src, cons
   } else if (g_strcmp0(status, ":abort") == 0) {
     if (result_node->children->len < 2)
       return;
-    LispAstNode *reason_node = g_array_index(result_node->children, LispAstNode*, 1);
+    Node *reason_node = g_array_index(result_node->children, Node*, 1);
     gchar *reason = unescape_string(reason_node->start_token->text);
     on_return_abort(self, reason, tag);
     g_free(reason);
@@ -293,19 +293,19 @@ real_swank_session_handle_message(gpointer data)
   GArray *tokens = lisp_lexer_get_tokens(lexer);
   LispParser *parser = lisp_parser_new();
   lisp_parser_parse(parser, tokens);
-  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  const Node *ast = lisp_parser_get_ast(parser);
 
   if (ast && ast->children && ast->children->len > 0) {
-    LispAstNode *expr = g_array_index(ast->children, LispAstNode*, 0);
+    Node *expr = g_array_index(ast->children, Node*, 0);
     if (expr->type == LISP_AST_NODE_TYPE_LIST && expr->children && expr->children->len > 0) {
-      LispAstNode *head = g_array_index(expr->children, LispAstNode*, 0);
+      Node *head = g_array_index(expr->children, Node*, 0);
       if (head->type == LISP_AST_NODE_TYPE_SYMBOL) {
         gchar *sym = node_text(msg->str, head);
         if (g_strcmp0(sym, ":return") == 0) {
           handle_return_message(self, msg->str, expr);
         } else if (g_strcmp0(sym, ":new-features") == 0) {
           if (expr->children->len >= 2) {
-            LispAstNode *arg_node = g_array_index(expr->children, LispAstNode*, 1);
+            Node *arg_node = g_array_index(expr->children, Node*, 1);
             const LispToken *start = arg_node->start_token;
             const LispToken *end = arg_node->end_token ? arg_node->end_token : start;
             gchar *text = g_strndup(msg->str + start->start_offset, end->end_offset - start->start_offset);
@@ -314,7 +314,7 @@ real_swank_session_handle_message(gpointer data)
           }
         } else if (g_strcmp0(sym, ":indentation-update") == 0) {
           if (expr->children->len >= 2) {
-            LispAstNode *arg_node = g_array_index(expr->children, LispAstNode*, 1);
+            Node *arg_node = g_array_index(expr->children, Node*, 1);
             const LispToken *start = arg_node->start_token;
             const LispToken *end = arg_node->end_token ? arg_node->end_token : start;
             gchar *text = g_strndup(msg->str + start->start_offset, end->end_offset - start->start_offset);

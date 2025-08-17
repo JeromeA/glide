@@ -31,7 +31,7 @@ static void test_empty_file(void) {
   GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
   g_assert_cmpint(tokens->len, ==, 0);
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 0);
 
   parser_fixture_free(&fixture);
@@ -45,12 +45,12 @@ static void test_symbol(void) {
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_SYMBOL);
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
-  const LispAstNode *child = g_array_index(ast->children, LispAstNode*, 0);
+  const Node *child = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpint(child->children->len, ==, 1);
-  const LispAstNode *name = g_array_index(child->children, LispAstNode*, 0);
+  const Node *name = g_array_index(child->children, Node*, 0);
   g_assert_cmpint(name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
   g_assert_cmpstr(name->start_token->text, ==, "foo");
 
@@ -65,9 +65,9 @@ static void test_number(void) {
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_NUMBER);
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
-  const LispAstNode *child = g_array_index(ast->children, LispAstNode*, 0);
+  const Node *child = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_NUMBER);
   g_assert_cmpstr(child->start_token->text, ==, "42");
 
@@ -82,9 +82,9 @@ static void test_atom_string(void) {
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_STRING);
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
-  const LispAstNode *child = g_array_index(ast->children, LispAstNode*, 0);
+  const Node *child = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_STRING);
   g_assert_cmpstr(child->start_token->text, ==, "\"bar\"");
 
@@ -94,10 +94,10 @@ static void test_atom_string(void) {
 static void test_empty_list(void) {
   ParserFixture fixture = parser_fixture_from_text("()");
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
 
-  const LispAstNode *child = g_array_index(ast->children, LispAstNode*, 0);
+  const Node *child = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_LIST);
   g_assert_cmpint(child->children->len, ==, 0);
 
@@ -107,21 +107,21 @@ static void test_empty_list(void) {
 static void test_list_with_elements(void) {
   ParserFixture fixture = parser_fixture_from_text("(a b)");
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
 
-  const LispAstNode *list = g_array_index(ast->children, LispAstNode*, 0);
+  const Node *list = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(list->type, ==, LISP_AST_NODE_TYPE_LIST);
   g_assert_cmpint(list->children->len, ==, 2);
 
-  const LispAstNode *a = g_array_index(list->children, LispAstNode*, 0);
-  const LispAstNode *b = g_array_index(list->children, LispAstNode*, 1);
+  const Node *a = g_array_index(list->children, Node*, 0);
+  const Node *b = g_array_index(list->children, Node*, 1);
   g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpint(a->children->len, ==, 1);
   g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpint(b->children->len, ==, 1);
-  const LispAstNode *a_name = g_array_index(a->children, LispAstNode*, 0);
-  const LispAstNode *b_name = g_array_index(b->children, LispAstNode*, 0);
+  const Node *a_name = g_array_index(a->children, Node*, 0);
+  const Node *b_name = g_array_index(b->children, Node*, 0);
   g_assert_cmpint(a_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
   g_assert_cmpint(b_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
   g_assert_cmpstr(a_name->start_token->text, ==, "a");
@@ -133,21 +133,21 @@ static void test_list_with_elements(void) {
 static void test_missing_closing_paren(void) {
   ParserFixture fixture = parser_fixture_from_text("(a b");
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
 
-  const LispAstNode *list = g_array_index(ast->children, LispAstNode*, 0);
+  const Node *list = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(list->type, ==, LISP_AST_NODE_TYPE_LIST);
   g_assert_cmpint(list->children->len, ==, 2);
 
-  const LispAstNode *a = g_array_index(list->children, LispAstNode*, 0);
-  const LispAstNode *b = g_array_index(list->children, LispAstNode*, 1);
+  const Node *a = g_array_index(list->children, Node*, 0);
+  const Node *b = g_array_index(list->children, Node*, 1);
   g_assert_cmpint(a->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpint(b->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpint(a->children->len, ==, 1);
   g_assert_cmpint(b->children->len, ==, 1);
-  const LispAstNode *a_name = g_array_index(a->children, LispAstNode*, 0);
-  const LispAstNode *b_name = g_array_index(b->children, LispAstNode*, 0);
+  const Node *a_name = g_array_index(a->children, Node*, 0);
+  const Node *b_name = g_array_index(b->children, Node*, 0);
   g_assert_cmpint(a_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
   g_assert_cmpint(b_name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
   g_assert_cmpstr(a_name->start_token->text, ==, "a");
@@ -164,14 +164,14 @@ static void test_symbol_with_package(void) {
   const LispToken *sep = &g_array_index(tokens, LispToken, 1);
   g_assert_cmpint(sep->type, ==, LISP_TOKEN_TYPE_SYMBOL_SEPARATOR);
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 1);
-  const LispAstNode *sym = g_array_index(ast->children, LispAstNode*, 0);
+  const Node *sym = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(sym->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
   g_assert_cmpint(sym->children->len, ==, 3);
-  const LispAstNode *pkg = g_array_index(sym->children, LispAstNode*, 0);
-  const LispAstNode *sep_node = g_array_index(sym->children, LispAstNode*, 1);
-  const LispAstNode *name = g_array_index(sym->children, LispAstNode*, 2);
+  const Node *pkg = g_array_index(sym->children, Node*, 0);
+  const Node *sep_node = g_array_index(sym->children, Node*, 1);
+  const Node *name = g_array_index(sym->children, Node*, 2);
   g_assert_cmpint(pkg->type, ==, LISP_AST_NODE_TYPE_SYMBOL_PACKAGE);
   g_assert_cmpint(sep_node->type, ==, LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR);
   g_assert_cmpint(name->type, ==, LISP_AST_NODE_TYPE_SYMBOL_NAME);
@@ -190,7 +190,7 @@ static void test_extra_closing_paren(void) {
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_END);
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 0);
 
   parser_fixture_free(&fixture);
@@ -204,7 +204,7 @@ static void test_comment(void) {
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_COMMENT);
 
-  const LispAstNode *ast = lisp_parser_get_ast(fixture.parser);
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
   g_assert_cmpint(ast->children->len, ==, 0);
 
   parser_fixture_free(&fixture);

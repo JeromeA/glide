@@ -1,6 +1,6 @@
 #include "project.h"
 #include "string_text_provider.h"
-#include "node_info.h"
+#include "node.h"
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <string.h>
@@ -29,7 +29,7 @@ static void test_parse_on_change(void)
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_START);
   project_file_changed(project, file); /* should still parse without error */
-  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  const Node *ast = lisp_parser_get_ast(parser);
   g_assert_cmpint(ast->children->len, ==, 1);
   project_file_changed(project, file);
   g_object_unref(project);
@@ -82,15 +82,15 @@ static void test_function_analysis(void)
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_SCRATCH);
   g_object_unref(provider);
   LispParser *parser = project_file_get_parser(file);
-  const LispAstNode *ast = lisp_parser_get_ast(parser);
-  const LispAstNode *form = g_array_index(ast->children, LispAstNode*, 0);
-  LispAstNode *defsym = g_array_index(form->children, LispAstNode*, 0);
-  LispAstNode *name = g_array_index(form->children, LispAstNode*, 1);
-  LispAstNode *call = g_array_index(form->children, LispAstNode*, 3);
-  LispAstNode *callee = g_array_index(call->children, LispAstNode*, 0);
-  g_assert_true(node_info_is(defsym->node_info, NODE_INFO_FUNCTION_USE));
-  g_assert_true(node_info_is(name->node_info, NODE_INFO_FUNCTION_DEF));
-  g_assert_true(node_info_is(callee->node_info, NODE_INFO_FUNCTION_USE));
+  const Node *ast = lisp_parser_get_ast(parser);
+  const Node *form = g_array_index(ast->children, Node*, 0);
+  Node *defsym = g_array_index(form->children, Node*, 0);
+  Node *name = g_array_index(form->children, Node*, 1);
+  Node *call = g_array_index(form->children, Node*, 3);
+  Node *callee = g_array_index(call->children, Node*, 0);
+  g_assert_true(node_is(defsym, SDT_FUNCTION_USE));
+  g_assert_true(node_is(name, SDT_FUNCTION_DEF));
+  g_assert_true(node_is(callee, SDT_FUNCTION_USE));
   g_object_unref(project);
 }
 
@@ -102,26 +102,26 @@ static void test_index(void)
       PROJECT_FILE_SCRATCH);
   g_object_unref(provider);
   LispParser *parser = project_file_get_parser(file);
-  const LispAstNode *ast = lisp_parser_get_ast(parser);
-  const LispAstNode *form = g_array_index(ast->children, LispAstNode*, 0);
-  LispAstNode *defsym = g_array_index(form->children, LispAstNode*, 0);
-  LispAstNode *name = g_array_index(form->children, LispAstNode*, 1);
-  LispAstNode *call = g_array_index(form->children, LispAstNode*, 3);
-  LispAstNode *callee = g_array_index(call->children, LispAstNode*, 0);
-  GHashTable *defs = project_get_index(project, NODE_INFO_FUNCTION_DEF);
-  GHashTable *uses = project_get_index(project, NODE_INFO_FUNCTION_USE);
+  const Node *ast = lisp_parser_get_ast(parser);
+  const Node *form = g_array_index(ast->children, Node*, 0);
+  Node *defsym = g_array_index(form->children, Node*, 0);
+  Node *name = g_array_index(form->children, Node*, 1);
+  Node *call = g_array_index(form->children, Node*, 3);
+  Node *callee = g_array_index(call->children, Node*, 0);
+  GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
+  GHashTable *uses = project_get_index(project, SDT_FUNCTION_USE);
   GPtrArray *defarr = g_hash_table_lookup(defs, "foo");
   g_assert_nonnull(defarr);
   g_assert_cmpuint(defarr->len, ==, 1);
-  g_assert_true(g_ptr_array_index(defarr, 0) == name->node_info);
+  g_assert_true(g_ptr_array_index(defarr, 0) == name);
   GPtrArray *use_defun = g_hash_table_lookup(uses, "defun");
   GPtrArray *use_bar = g_hash_table_lookup(uses, "bar");
   g_assert_nonnull(use_defun);
   g_assert_nonnull(use_bar);
   g_assert_cmpuint(use_defun->len, ==, 1);
   g_assert_cmpuint(use_bar->len, ==, 1);
-  g_assert_true(g_ptr_array_index(use_defun, 0) == defsym->node_info);
-  g_assert_true(g_ptr_array_index(use_bar, 0) == callee->node_info);
+  g_assert_true(g_ptr_array_index(use_defun, 0) == defsym);
+  g_assert_true(g_ptr_array_index(use_bar, 0) == callee);
   g_object_unref(project);
 }
 
