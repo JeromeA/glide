@@ -20,6 +20,7 @@ SOURCES += \
   lisp_lexer.c \
   lisp_parser.c \
   analyser.c \
+  package.c \
   node_info.c \
   lisp_parser_view.c \
   project.c \
