@@ -249,4 +249,3 @@ gboolean project_file_load(Project *self, ProjectFile *file) {
   g_free(content);
   return TRUE;
 }
-

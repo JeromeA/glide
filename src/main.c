@@ -10,6 +10,7 @@
 #include "interactions_view.c"
 #include "lisp_lexer.c"
 #include "package.c"
+#include "package_common_lisp_user.c"
 #include "package_common_lisp.c"
 #include "node_info.c"
 #include "lisp_parser.c"
