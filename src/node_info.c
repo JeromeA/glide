@@ -1,5 +1,6 @@
 #include "node_info.h"
 #include "package.h"
+#include "lisp_parser.h"
 
 VariableInfo *variable_info_new(void) {
   VariableInfo *var = g_new0(VariableInfo, 1);
@@ -70,6 +71,12 @@ NodeInfo *node_info_new_package_def(Package *package) {
   return ni;
 }
 
+NodeInfo *node_info_new_package_use(Package *package) {
+  NodeInfo *ni = node_info_new(NODE_INFO_PACKAGE_USE);
+  ni->package = package ? package_ref(package) : NULL;
+  return ni;
+}
+
 void node_info_finalize(NodeInfo *ni) {
   switch (ni->kind) {
     case NODE_INFO_VAR_USE:
@@ -87,6 +94,7 @@ void node_info_finalize(NodeInfo *ni) {
       }
       break;
     case NODE_INFO_PACKAGE_DEF:
+    case NODE_INFO_PACKAGE_USE:
       if (ni->package)
         package_unref(ni->package);
       break;
@@ -112,6 +120,7 @@ const gchar *node_info_kind_to_string(NodeInfoKind kind) {
     case NODE_INFO_FUNCTION_DEF: return "FunctionDef";
     case NODE_INFO_FUNCTION_USE: return "FunctionUse";
     case NODE_INFO_PACKAGE_DEF: return "PackageDef";
+    case NODE_INFO_PACKAGE_USE: return "PackageUse";
     case NODE_INFO_STRUCT_FIELD: return "StructField";
     default: return "None";
   }
@@ -128,6 +137,20 @@ gchar *node_info_to_string(const NodeInfo *ni) {
       return g_strdup(type);
     default:
       return g_strdup(type);
+  }
+}
+
+const gchar *node_info_get_name(const NodeInfo *ni, const LispAstNode *node) {
+  if (!ni)
+    return NULL;
+  switch(ni->kind) {
+    case NODE_INFO_STRUCT_FIELD:
+      return ni->field_name;
+    case NODE_INFO_PACKAGE_DEF:
+    case NODE_INFO_PACKAGE_USE:
+      return ni->package ? ni->package->name : NULL;
+    default:
+      return (node && node->start_token) ? node->start_token->text : NULL;
   }
 }
 
