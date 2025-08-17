@@ -16,16 +16,16 @@ process_test: process_test.c process.c real_process.c
 swank_process_test: swank_process_test.c swank_process.c real_swank_process.c process.c preferences.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-swank_session_test: swank_session_test.c swank_session.c swank_process.c real_swank_session.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c
+swank_session_test: swank_session_test.c swank_session.c swank_process.c real_swank_session.c lisp_lexer.c lisp_parser.c node_info.c string_text_provider.c text_provider.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-lisp_parser_test: lisp_parser_test.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c
+lisp_parser_test: lisp_parser_test.c lisp_lexer.c lisp_parser.c node_info.c string_text_provider.c text_provider.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-project_test: project_test.c project.c analyser.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c
+project_test: project_test.c project.c analyser.c node_info.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-asdf_test: asdf_test.c asdf.c string_text_provider.c text_provider.c lisp_lexer.c lisp_parser.c project.c analyser.c
+asdf_test: asdf_test.c asdf.c string_text_provider.c text_provider.c lisp_lexer.c lisp_parser.c node_info.c project.c analyser.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 run: all
