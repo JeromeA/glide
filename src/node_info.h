@@ -9,17 +9,20 @@ typedef enum {
   NODE_INFO_VAR_USE,
   NODE_INFO_FUNCTION_DEF,
   NODE_INFO_FUNCTION_USE,
+  NODE_INFO_PACKAGE_DEF,
   NODE_INFO_STRUCT_FIELD,
 } NodeInfoKind;
 
 typedef struct VariableInfo VariableInfo;
 typedef struct NodeInfo NodeInfo;
 typedef NodeInfo FunctionInfo;
+typedef struct Package Package;
 
 struct NodeInfo {
   NodeInfoKind kind;
   gint ref;
   VariableInfo *var;
+  Package *package;
   gchar *field_name;
   GPtrArray *methods; /* FunctionInfo* */
 };
@@ -40,6 +43,7 @@ NodeInfo *node_info_new(NodeInfoKind kind);
 NodeInfo *node_info_new_var_use(VariableInfo *var);
 NodeInfo *node_info_new_var_def(VariableInfo *var_new);
 NodeInfo *node_info_new_struct_field(const gchar *field_name);
+NodeInfo *node_info_new_package_def(Package *package);
 
 static inline NodeInfo *node_info_ref(NodeInfo *ni) {
   g_atomic_int_inc(&ni->ref);

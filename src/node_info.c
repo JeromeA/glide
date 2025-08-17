@@ -1,4 +1,5 @@
 #include "node_info.h"
+#include "package.h"
 
 VariableInfo *variable_info_new(void) {
   VariableInfo *var = g_new0(VariableInfo, 1);
@@ -63,6 +64,12 @@ NodeInfo *node_info_new_struct_field(const gchar *field_name) {
   return ni;
 }
 
+NodeInfo *node_info_new_package_def(Package *package) {
+  NodeInfo *ni = node_info_new(NODE_INFO_PACKAGE_DEF);
+  ni->package = package ? package_ref(package) : NULL;
+  return ni;
+}
+
 void node_info_finalize(NodeInfo *ni) {
   switch (ni->kind) {
     case NODE_INFO_VAR_USE:
@@ -78,6 +85,10 @@ void node_info_finalize(NodeInfo *ni) {
           ni->var->definition = NULL;
         variable_info_unref(ni->var);
       }
+      break;
+    case NODE_INFO_PACKAGE_DEF:
+      if (ni->package)
+        package_unref(ni->package);
       break;
     case NODE_INFO_STRUCT_FIELD:
       g_clear_pointer(&ni->field_name, g_free);
@@ -100,6 +111,7 @@ const gchar *node_info_kind_to_string(NodeInfoKind kind) {
     case NODE_INFO_VAR_USE: return "VarUse";
     case NODE_INFO_FUNCTION_DEF: return "FunctionDef";
     case NODE_INFO_FUNCTION_USE: return "FunctionUse";
+    case NODE_INFO_PACKAGE_DEF: return "PackageDef";
     case NODE_INFO_STRUCT_FIELD: return "StructField";
     default: return "None";
   }
