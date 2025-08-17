@@ -9,20 +9,14 @@ static void analyse_node(LispAstNode *node) {
     if (node->children->len > 0) {
       LispAstNode *first = g_array_index(node->children, LispAstNode*, 0);
       if (first->type == LISP_AST_NODE_TYPE_SYMBOL) {
-        if (!first->node_info) {
-          NodeInfo *ni = g_new0(NodeInfo, 1);
-          node_info_init(ni, NODE_INFO_FUNCTION_USE, NULL);
-          first->node_info = ni;
-        }
+        if (!first->node_info)
+          first->node_info = node_info_new(NODE_INFO_FUNCTION_USE);
         if (first->start_token && first->start_token->text &&
             g_ascii_strcasecmp(first->start_token->text, "defun") == 0 &&
             node->children->len > 1) {
           LispAstNode *name = g_array_index(node->children, LispAstNode*, 1);
-          if (name->type == LISP_AST_NODE_TYPE_SYMBOL && !name->node_info) {
-            NodeInfo *ni = g_new0(NodeInfo, 1);
-            node_info_init(ni, NODE_INFO_FUNCTION_DEF, NULL);
-            name->node_info = ni;
-          }
+          if (name->type == LISP_AST_NODE_TYPE_SYMBOL && !name->node_info)
+            name->node_info = node_info_new(NODE_INFO_FUNCTION_DEF);
         }
       }
     }
