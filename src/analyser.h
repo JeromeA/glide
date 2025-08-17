@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lisp_parser.h"
+#include "node.h"
 
-void analyse_ast(LispAstNode *root);
+void analyse_ast(Node *root);
 

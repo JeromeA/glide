@@ -125,7 +125,7 @@ static gchar *unquote(const gchar *text) {
   return g_strdup(text);
 }
 
-static gchar *node_text(const gchar *src, const LispAstNode *node) {
+static gchar *node_text(const gchar *src, const Node *node) {
   if (!node || !node->start_token)
     return NULL;
   const LispToken *start = node->start_token;
@@ -141,16 +141,16 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
   GArray *tokens = lisp_lexer_get_tokens(lexer);
   lisp_parser_parse(parser, tokens);
 
-  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  const Node *ast = lisp_parser_get_ast(parser);
   if (!ast)
     goto cleanup;
 
-  const LispAstNode *defsystem = NULL;
+  const Node *defsystem = NULL;
   for (guint i = 0; i < ast->children->len; i++) {
-    const LispAstNode *child = g_array_index(ast->children, LispAstNode*, i);
+    const Node *child = g_array_index(ast->children, Node*, i);
     if (child->type != LISP_AST_NODE_TYPE_LIST || child->children->len < 2)
       continue;
-    const LispAstNode *head = g_array_index(child->children, LispAstNode*, 0);
+    const Node *head = g_array_index(child->children, Node*, 0);
     if (head->type == LISP_AST_NODE_TYPE_SYMBOL &&
         g_strcmp0(head->start_token->text, "defsystem") == 0) {
       defsystem = child;
@@ -162,8 +162,8 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
     goto cleanup;
 
   for (guint i = 2; i + 1 < defsystem->children->len; i += 2) {
-    const LispAstNode *key = g_array_index(defsystem->children, LispAstNode*, i);
-    const LispAstNode *val = g_array_index(defsystem->children, LispAstNode*, i + 1);
+    const Node *key = g_array_index(defsystem->children, Node*, i);
+    const Node *val = g_array_index(defsystem->children, Node*, i + 1);
     if (key->type != LISP_AST_NODE_TYPE_SYMBOL)
       continue;
     gchar *kw = node_text(contents, key);
@@ -179,11 +179,11 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
     } else if (g_strcmp0(kw, ":components") == 0) {
       if (val->type == LISP_AST_NODE_TYPE_LIST) {
         for (guint j = 0; j < val->children->len; j++) {
-          const LispAstNode *comp = g_array_index(val->children, LispAstNode*, j);
+          const Node *comp = g_array_index(val->children, Node*, j);
           if (comp->type != LISP_AST_NODE_TYPE_LIST || comp->children->len < 2)
             continue;
-          const LispAstNode *sym = g_array_index(comp->children, LispAstNode*, 0);
-          const LispAstNode *fname = g_array_index(comp->children, LispAstNode*, 1);
+          const Node *sym = g_array_index(comp->children, Node*, 0);
+          const Node *fname = g_array_index(comp->children, Node*, 1);
           if (sym->type == LISP_AST_NODE_TYPE_SYMBOL &&
               g_strcmp0(sym->start_token->text, "file") == 0) {
             gchar *f = unquote(fname->start_token->text);
@@ -195,7 +195,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
     } else if (g_strcmp0(kw, ":depends-on") == 0) {
       if (val->type == LISP_AST_NODE_TYPE_LIST) {
         for (guint j = 0; j < val->children->len; j++) {
-          const LispAstNode *dep = g_array_index(val->children, LispAstNode*, j);
+          const Node *dep = g_array_index(val->children, Node*, j);
           gchar *d = unquote(dep->start_token->text);
           asdf_add_dependency(self, d);
           g_free(d);

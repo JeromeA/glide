@@ -20,7 +20,7 @@ struct _Project {
   GObject parent_instance;
   GPtrArray *files; /* ProjectFile* */
   guint next_scratch_id;
-  GHashTable *function_defs; /* name -> GPtrArray* NodeInfo* */
+  GHashTable *function_defs; /* name -> GPtrArray* Node* */
   GHashTable *function_uses;
   GHashTable *variable_defs;
   GHashTable *variable_uses;
@@ -38,9 +38,9 @@ static guint project_signals[N_SIGNALS];
 static void project_finalize(GObject *obj);
 ProjectFile *project_create_scratch(Project *self);
 static void project_index_clear(Project *self);
-static void project_index_node(Project *self, const LispAstNode *node);
-static void project_index_walk(Project *self, const LispAstNode *node);
-static GHashTable *project_index_table(Project *self, NodeInfoKind kind);
+static void project_index_node(Project *self, const Node *node);
+static void project_index_walk(Project *self, const Node *node);
+static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type);
 
 G_DEFINE_TYPE(Project, project, G_TYPE_OBJECT)
 
@@ -179,14 +179,14 @@ TextProvider *project_file_get_provider(ProjectFile *file) {
   return file->provider;
 }
 
-static GHashTable *project_index_table(Project *self, NodeInfoKind kind) {
-  switch(kind) {
-    case NODE_INFO_FUNCTION_DEF: return self->function_defs;
-    case NODE_INFO_FUNCTION_USE: return self->function_uses;
-    case NODE_INFO_VAR_DEF: return self->variable_defs;
-    case NODE_INFO_VAR_USE: return self->variable_uses;
-    case NODE_INFO_PACKAGE_DEF: return self->package_defs;
-    case NODE_INFO_PACKAGE_USE: return self->package_uses;
+static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type) {
+  switch(sd_type) {
+    case SDT_FUNCTION_DEF: return self->function_defs;
+    case SDT_FUNCTION_USE: return self->function_uses;
+    case SDT_VAR_DEF: return self->variable_defs;
+    case SDT_VAR_USE: return self->variable_uses;
+    case SDT_PACKAGE_DEF: return self->package_defs;
+    case SDT_PACKAGE_USE: return self->package_uses;
     default: return NULL;
   }
 }
@@ -200,37 +200,37 @@ static void project_index_clear(Project *self) {
       g_hash_table_remove_all(tables[t]);
 }
 
-void project_index_add(Project *self, NodeInfo *ni, const LispAstNode *node) {
+void project_index_add(Project *self, Node *node) {
   g_return_if_fail(GLIDE_IS_PROJECT(self));
-  if (!ni || !node) return;
-  const gchar *name = node_info_get_name(ni, node);
+  if (!node) return;
+  const gchar *name = node_get_name(node);
   if (!name) return;
-  GHashTable *table = project_index_table(self, ni->kind);
+  GHashTable *table = project_index_table(self, node->sd_type);
   if (!table) return;
   GPtrArray *arr = g_hash_table_lookup(table, name);
   if (!arr) {
-    arr = g_ptr_array_new_with_free_func((GDestroyNotify)node_info_unref);
+    arr = g_ptr_array_new_with_free_func((GDestroyNotify)node_unref);
     g_hash_table_insert(table, g_strdup(name), arr);
   }
-  g_ptr_array_add(arr, node_info_ref(ni));
+  g_ptr_array_add(arr, node_ref(node));
 }
 
-GHashTable *project_get_index(Project *self, NodeInfoKind kind) {
+GHashTable *project_get_index(Project *self, StringDesignatorType sd_type) {
   g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
-  return project_index_table(self, kind);
+  return project_index_table(self, sd_type);
 }
 
-static void project_index_node(Project *self, const LispAstNode *node) {
-  if (!node || !node->node_info) return;
-  project_index_add(self, node->node_info, node);
+static void project_index_node(Project *self, const Node *node) {
+  if (!node || !node->sd_type) return;
+  project_index_add(self, (Node*)node);
 }
 
-static void project_index_walk(Project *self, const LispAstNode *node) {
+static void project_index_walk(Project *self, const Node *node) {
   if (!node) return;
   project_index_node(self, node);
   if (node->children)
     for (guint i = 0; i < node->children->len; i++)
-      project_index_walk(self, g_array_index(node->children, LispAstNode*, i));
+      project_index_walk(self, g_array_index(node->children, Node*, i));
 }
 
 void project_file_changed(Project *self, ProjectFile *file) {
@@ -238,16 +238,16 @@ void project_file_changed(Project *self, ProjectFile *file) {
   g_return_if_fail(file != NULL);
   if (!file->lexer || !file->parser)
     return;
+  project_index_clear(self);
   lisp_lexer_lex(file->lexer);
   GArray *tokens = lisp_lexer_get_tokens(file->lexer);
   lisp_parser_parse(file->parser, tokens);
-  const LispAstNode *ast = lisp_parser_get_ast(file->parser);
+  const Node *ast = lisp_parser_get_ast(file->parser);
   if (ast)
-    analyse_ast((LispAstNode*)ast);
-  project_index_clear(self);
+    analyse_ast((Node*)ast);
   for (guint i = 0; i < self->files->len; i++) {
     ProjectFile *f = g_ptr_array_index(self->files, i);
-    const LispAstNode *a = lisp_parser_get_ast(f->parser);
+    const Node *a = lisp_parser_get_ast(f->parser);
     if (a)
       project_index_walk(self, a);
   }

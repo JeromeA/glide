@@ -12,7 +12,7 @@
 #include "package.c"
 #include "package_common_lisp_user.c"
 #include "package_common_lisp.c"
-#include "node_info.c"
+#include "node.c"
 #include "lisp_parser.c"
 #include "analyser.c"
 #include "lisp_source_notebook.c"
