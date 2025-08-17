@@ -27,13 +27,17 @@ s/\.string\s"(.*)"/db `$1`, 0/g;
 s/\.ascii\s"(.*)"/db `$1`/g;
 s/\.byte\s(-?\d+)/db $1/g;
 s/\.value\s(-?\d+)/dw $1/g;
-s/\.long\s(-?\d+)/dd $1/g;
+s/\.long\s(.+)/dd $1/g;
 s/\.quad\s(-?\d+)/dq $1/g;
 s/\.quad\s(\S+)/dq BASE_ADDR + $1/g;
 
 # Replace local labels with global ones.
 s/\.LC(\d+)/LC$1/g;
 s/\.L(\d+)/L$1/g;
+
+# NOTRACK is not supported by NASM, but is encoded the same as DS.
+# NASM emits a warning, but it works.
+s/notrack/ds/g;
 
 # Change call/jmp to external symbols.
 s/ *(call|jmp)\s+(\S+)\@PLT/$labels{$2} = 1; "    $1 [$2]"/ge;
