@@ -94,6 +94,7 @@ static void test_function_analysis(void)
   g_object_unref(project);
 }
 
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);

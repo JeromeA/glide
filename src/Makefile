@@ -21,6 +21,7 @@ SOURCES += \
   lisp_parser.c \
   analyser.c \
   package.c \
+  package_common_lisp_user.c \
   node_info.c \
   lisp_parser_view.c \
   project.c \

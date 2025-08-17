@@ -28,7 +28,7 @@ project_test: project_test.c project.c analyser.c node_info.c package.c lisp_lex
 asdf_test: asdf_test.c asdf.c string_text_provider.c text_provider.c lisp_lexer.c lisp_parser.c node_info.c package.c project.c analyser.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-package_test: package_test.c package.c node_info.c
+package_test: package_test.c package.c package_common_lisp_user.c node_info.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 run: all
