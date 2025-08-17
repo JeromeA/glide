@@ -20,6 +20,12 @@ struct _Project {
   GObject parent_instance;
   GPtrArray *files; /* ProjectFile* */
   guint next_scratch_id;
+  GHashTable *function_defs; /* name -> GPtrArray* NodeInfo* */
+  GHashTable *function_uses;
+  GHashTable *variable_defs;
+  GHashTable *variable_uses;
+  GHashTable *package_defs;
+  GHashTable *package_uses;
 };
 
 enum {
@@ -31,6 +37,10 @@ static guint project_signals[N_SIGNALS];
 
 static void project_finalize(GObject *obj);
 ProjectFile *project_create_scratch(Project *self);
+static void project_index_clear(Project *self);
+static void project_index_node(Project *self, const LispAstNode *node);
+static void project_index_walk(Project *self, const LispAstNode *node);
+static GHashTable *project_index_table(Project *self, NodeInfoKind kind);
 
 G_DEFINE_TYPE(Project, project, G_TYPE_OBJECT)
 
@@ -63,10 +73,23 @@ static void project_file_free(ProjectFile *file) {
 static void project_init(Project *self) {
   self->files = g_ptr_array_new_with_free_func((GDestroyNotify)project_file_free);
   self->next_scratch_id = 0;
+  self->function_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->function_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->variable_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->variable_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->package_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
 }
 
 static void project_finalize(GObject *obj) {
   Project *self = GLIDE_PROJECT(obj);
+  project_index_clear(self);
+  g_clear_pointer(&self->function_defs, g_hash_table_unref);
+  g_clear_pointer(&self->function_uses, g_hash_table_unref);
+  g_clear_pointer(&self->variable_defs, g_hash_table_unref);
+  g_clear_pointer(&self->variable_uses, g_hash_table_unref);
+  g_clear_pointer(&self->package_defs, g_hash_table_unref);
+  g_clear_pointer(&self->package_uses, g_hash_table_unref);
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
   G_OBJECT_CLASS(project_parent_class)->finalize(obj);
@@ -131,8 +154,9 @@ void project_file_set_state(ProjectFile *file, ProjectFileState state) {
   file->state = state;
 }
 
-void project_file_set_provider(ProjectFile *file, TextProvider *provider,
-    GtkTextBuffer *buffer) {
+void project_file_set_provider(Project *self, ProjectFile *file,
+    TextProvider *provider, GtkTextBuffer *buffer) {
+  g_return_if_fail(GLIDE_IS_PROJECT(self));
   g_return_if_fail(file != NULL);
   g_return_if_fail(GLIDE_IS_TEXT_PROVIDER(provider));
   if (file->parser)
@@ -147,7 +171,7 @@ void project_file_set_provider(ProjectFile *file, TextProvider *provider,
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
-  project_file_changed(NULL, file);
+  project_file_changed(self, file);
 }
 
 TextProvider *project_file_get_provider(ProjectFile *file) {
@@ -155,7 +179,62 @@ TextProvider *project_file_get_provider(ProjectFile *file) {
   return file->provider;
 }
 
-void project_file_changed(Project * /*self*/, ProjectFile *file) {
+static GHashTable *project_index_table(Project *self, NodeInfoKind kind) {
+  switch(kind) {
+    case NODE_INFO_FUNCTION_DEF: return self->function_defs;
+    case NODE_INFO_FUNCTION_USE: return self->function_uses;
+    case NODE_INFO_VAR_DEF: return self->variable_defs;
+    case NODE_INFO_VAR_USE: return self->variable_uses;
+    case NODE_INFO_PACKAGE_DEF: return self->package_defs;
+    case NODE_INFO_PACKAGE_USE: return self->package_uses;
+    default: return NULL;
+  }
+}
+
+static void project_index_clear(Project *self) {
+  GHashTable *tables[] = { self->function_defs, self->function_uses,
+    self->variable_defs, self->variable_uses, self->package_defs,
+    self->package_uses };
+  for (guint t = 0; t < G_N_ELEMENTS(tables); t++)
+    if (tables[t])
+      g_hash_table_remove_all(tables[t]);
+}
+
+void project_index_add(Project *self, NodeInfo *ni, const LispAstNode *node) {
+  g_return_if_fail(GLIDE_IS_PROJECT(self));
+  if (!ni || !node) return;
+  const gchar *name = node_info_get_name(ni, node);
+  if (!name) return;
+  GHashTable *table = project_index_table(self, ni->kind);
+  if (!table) return;
+  GPtrArray *arr = g_hash_table_lookup(table, name);
+  if (!arr) {
+    arr = g_ptr_array_new_with_free_func((GDestroyNotify)node_info_unref);
+    g_hash_table_insert(table, g_strdup(name), arr);
+  }
+  g_ptr_array_add(arr, node_info_ref(ni));
+}
+
+GHashTable *project_get_index(Project *self, NodeInfoKind kind) {
+  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  return project_index_table(self, kind);
+}
+
+static void project_index_node(Project *self, const LispAstNode *node) {
+  if (!node || !node->node_info) return;
+  project_index_add(self, node->node_info, node);
+}
+
+static void project_index_walk(Project *self, const LispAstNode *node) {
+  if (!node) return;
+  project_index_node(self, node);
+  if (node->children)
+    for (guint i = 0; i < node->children->len; i++)
+      project_index_walk(self, g_array_index(node->children, LispAstNode*, i));
+}
+
+void project_file_changed(Project *self, ProjectFile *file) {
+  g_return_if_fail(GLIDE_IS_PROJECT(self));
   g_return_if_fail(file != NULL);
   if (!file->lexer || !file->parser)
     return;
@@ -165,6 +244,13 @@ void project_file_changed(Project * /*self*/, ProjectFile *file) {
   const LispAstNode *ast = lisp_parser_get_ast(file->parser);
   if (ast)
     analyse_ast((LispAstNode*)ast);
+  project_index_clear(self);
+  for (guint i = 0; i < self->files->len; i++) {
+    ProjectFile *f = g_ptr_array_index(self->files, i);
+    const LispAstNode *a = lisp_parser_get_ast(f->parser);
+    if (a)
+      project_index_walk(self, a);
+  }
 }
 
 LispParser *project_file_get_parser(ProjectFile *file) {
@@ -240,7 +326,7 @@ gboolean project_file_load(Project *self, ProjectFile *file) {
   sys_close(fd);
 
   TextProvider *provider = string_text_provider_new(content);
-  project_file_set_provider(file, provider, NULL);
+  project_file_set_provider(self, file, provider, NULL);
   g_object_unref(provider);
   project_file_set_state(file, PROJECT_FILE_LIVE);
 

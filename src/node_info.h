@@ -10,6 +10,7 @@ typedef enum {
   NODE_INFO_FUNCTION_DEF,
   NODE_INFO_FUNCTION_USE,
   NODE_INFO_PACKAGE_DEF,
+  NODE_INFO_PACKAGE_USE,
   NODE_INFO_STRUCT_FIELD,
 } NodeInfoKind;
 
@@ -17,6 +18,7 @@ typedef struct VariableInfo VariableInfo;
 typedef struct NodeInfo NodeInfo;
 typedef NodeInfo FunctionInfo;
 typedef struct Package Package;
+typedef struct _LispAstNode LispAstNode;
 
 struct NodeInfo {
   NodeInfoKind kind;
@@ -44,6 +46,7 @@ NodeInfo *node_info_new_var_use(VariableInfo *var);
 NodeInfo *node_info_new_var_def(VariableInfo *var_new);
 NodeInfo *node_info_new_struct_field(const gchar *field_name);
 NodeInfo *node_info_new_package_def(Package *package);
+NodeInfo *node_info_new_package_use(Package *package);
 
 static inline NodeInfo *node_info_ref(NodeInfo *ni) {
   g_atomic_int_inc(&ni->ref);
@@ -65,6 +68,7 @@ static inline gboolean node_info_is(const NodeInfo *ni, NodeInfoKind k) {
 
 const gchar *node_info_kind_to_string(NodeInfoKind kind);
 gchar *node_info_to_string(const NodeInfo *ni);
+const gchar *node_info_get_name(const NodeInfo *ni, const LispAstNode *node);
 
 #endif // NODE_INFO_H
 

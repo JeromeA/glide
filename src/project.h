@@ -5,6 +5,7 @@ typedef struct _GtkTextBuffer GtkTextBuffer;
 #include "text_provider.h"
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
+#include "node_info.h"
 
 G_BEGIN_DECLS
 
@@ -25,8 +26,8 @@ ProjectFile *project_get_file(Project *self, guint index);
 guint project_get_file_count(Project *self);
 ProjectFileState project_file_get_state(ProjectFile *file);
 void project_file_set_state(ProjectFile *file, ProjectFileState state);
-void project_file_set_provider(ProjectFile *file, TextProvider *provider,
-    GtkTextBuffer *buffer);
+void project_file_set_provider(Project *self, ProjectFile *file,
+    TextProvider *provider, GtkTextBuffer *buffer);
 TextProvider *project_file_get_provider(ProjectFile *file);
 ProjectFile *project_add_file(Project *self, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
@@ -37,5 +38,7 @@ GtkTextBuffer *project_file_get_buffer(ProjectFile *file);
 const gchar *project_file_get_path(ProjectFile *file); // borrowed, do not free
 void project_file_set_path(ProjectFile *file, const gchar *path);
 gboolean project_file_load(Project *self, ProjectFile *file);
+void project_index_add(Project *self, NodeInfo *ni, const LispAstNode *node);
+GHashTable *project_get_index(Project *self, NodeInfoKind kind);
 
 G_END_DECLS

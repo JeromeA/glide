@@ -94,6 +94,37 @@ static void test_function_analysis(void)
   g_object_unref(project);
 }
 
+static void test_index(void)
+{
+  Project *project = project_new();
+  TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL,
+      PROJECT_FILE_SCRATCH);
+  g_object_unref(provider);
+  LispParser *parser = project_file_get_parser(file);
+  const LispAstNode *ast = lisp_parser_get_ast(parser);
+  const LispAstNode *form = g_array_index(ast->children, LispAstNode*, 0);
+  LispAstNode *defsym = g_array_index(form->children, LispAstNode*, 0);
+  LispAstNode *name = g_array_index(form->children, LispAstNode*, 1);
+  LispAstNode *call = g_array_index(form->children, LispAstNode*, 3);
+  LispAstNode *callee = g_array_index(call->children, LispAstNode*, 0);
+  GHashTable *defs = project_get_index(project, NODE_INFO_FUNCTION_DEF);
+  GHashTable *uses = project_get_index(project, NODE_INFO_FUNCTION_USE);
+  GPtrArray *defarr = g_hash_table_lookup(defs, "foo");
+  g_assert_nonnull(defarr);
+  g_assert_cmpuint(defarr->len, ==, 1);
+  g_assert_true(g_ptr_array_index(defarr, 0) == name->node_info);
+  GPtrArray *use_defun = g_hash_table_lookup(uses, "defun");
+  GPtrArray *use_bar = g_hash_table_lookup(uses, "bar");
+  g_assert_nonnull(use_defun);
+  g_assert_nonnull(use_bar);
+  g_assert_cmpuint(use_defun->len, ==, 1);
+  g_assert_cmpuint(use_bar->len, ==, 1);
+  g_assert_true(g_ptr_array_index(use_defun, 0) == defsym->node_info);
+  g_assert_true(g_ptr_array_index(use_bar, 0) == callee->node_info);
+  g_object_unref(project);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -102,5 +133,6 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/parse_on_change", test_parse_on_change);
   g_test_add_func("/project/file_load", test_file_load);
   g_test_add_func("/project/function_analysis", test_function_analysis);
+  g_test_add_func("/project/index", test_index);
   return g_test_run();
 }
