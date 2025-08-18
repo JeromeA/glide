@@ -110,12 +110,12 @@ static void test_index(void)
   Node *callee = g_array_index(call->children, Node*, 0);
   GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
   GHashTable *uses = project_get_index(project, SDT_FUNCTION_USE);
-  GPtrArray *defarr = g_hash_table_lookup(defs, "foo");
+  GPtrArray *defarr = g_hash_table_lookup(defs, "FOO");
   g_assert_nonnull(defarr);
   g_assert_cmpuint(defarr->len, ==, 1);
   g_assert_true(g_ptr_array_index(defarr, 0) == name);
-  GPtrArray *use_defun = g_hash_table_lookup(uses, "defun");
-  GPtrArray *use_bar = g_hash_table_lookup(uses, "bar");
+  GPtrArray *use_defun = g_hash_table_lookup(uses, "DEFUN");
+  GPtrArray *use_bar = g_hash_table_lookup(uses, "BAR");
   g_assert_nonnull(use_defun);
   g_assert_nonnull(use_bar);
   g_assert_cmpuint(use_defun->len, ==, 1);
