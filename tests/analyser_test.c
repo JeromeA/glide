@@ -9,7 +9,8 @@ int main(void) {
   const gchar *text =
     "(defun foo ())\n"
     "(in-package \"MY-PACK\")\n"
-    "(defun bar ())";
+    "(defun bar ())\n"
+    "(foo baz)";
   TextProvider *provider = string_text_provider_new(text);
   LispLexer *lexer = lisp_lexer_new(provider);
   lisp_lexer_lex(lexer);
@@ -27,6 +28,11 @@ int main(void) {
   Node *bar_expr = g_array_index(ast->children, Node*, 2);
   Node *bar_name = g_array_index(bar_expr->children, Node*, 1);
   g_assert_cmpstr(bar_name->package_context, ==, "MY-PACK");
+
+  Node *call_expr = g_array_index(ast->children, Node*, 3);
+  Node *var_use = g_array_index(call_expr->children, Node*, 1);
+  g_assert(node_is(var_use, SDT_VAR_USE));
+  g_assert_cmpstr(var_use->package_context, ==, "MY-PACK");
 
   lisp_parser_free(parser);
   lisp_lexer_free(lexer);

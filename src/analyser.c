@@ -29,8 +29,12 @@ static void analyse_node(Node *node, gchar **context) {
         }
       }
     }
-    for (guint i = 0; i < node->children->len; i++)
-      analyse_node(g_array_index(node->children, Node*, i), context);
+    for (guint i = 0; i < node->children->len; i++) {
+      Node *child = g_array_index(node->children, Node*, i);
+      if (i > 0 && child->type == LISP_AST_NODE_TYPE_SYMBOL && !child->sd_type)
+        node_set_sd_type(child, SDT_VAR_USE, *context);
+      analyse_node(child, context);
+    }
   }
 }
 
