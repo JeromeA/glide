@@ -1,5 +1,6 @@
 #include "node.h"
 #include "package.h"
+#include <string.h>
 
 VariableInfo *variable_info_new(void) {
   VariableInfo *var = g_new0(VariableInfo, 1);
@@ -33,43 +34,45 @@ void function_info_unref(FunctionInfo *fn) {
   node_unref(fn);
 }
 
-void node_set_sd_type(Node *node, StringDesignatorType sd_type) {
+void node_set_sd_type(Node *node, StringDesignatorType sd_type, const gchar *package_context) {
   if (!node) return;
   node->sd_type = sd_type;
+  g_free(node->package_context);
+  node->package_context = package_context ? g_strdup(package_context) : NULL;
 }
 
-void node_set_var_use(Node *node, VariableInfo *var) {
+void node_set_var_use(Node *node, VariableInfo *var, const gchar *package_context) {
   if (!node) return;
-  node->sd_type = SDT_VAR_USE;
+  node_set_sd_type(node, SDT_VAR_USE, package_context);
   node->var = var ? variable_info_ref(var) : NULL;
   if (var && var->usages)
     g_ptr_array_add(var->usages, node);
 }
 
-void node_set_var_def(Node *node, VariableInfo *var_new) {
+void node_set_var_def(Node *node, VariableInfo *var_new, const gchar *package_context) {
   if (!node) return;
-  node->sd_type = SDT_VAR_DEF;
+  node_set_sd_type(node, SDT_VAR_DEF, package_context);
   node->var = var_new ? variable_info_ref(var_new) : NULL;
   if (var_new)
     var_new->definition = node;
 }
 
-void node_set_struct_field(Node *node, const gchar *field_name) {
+void node_set_struct_field(Node *node, const gchar *field_name, const gchar *package_context) {
   if (!node) return;
-  node->sd_type = SDT_STRUCT_FIELD;
+  node_set_sd_type(node, SDT_STRUCT_FIELD, package_context);
   node->field_name = field_name ? g_strdup(field_name) : NULL;
   node->methods = g_ptr_array_new();
 }
 
-void node_set_package_def(Node *node, Package *package) {
+void node_set_package_def(Node *node, Package *package, const gchar *package_context) {
   if (!node) return;
-  node->sd_type = SDT_PACKAGE_DEF;
+  node_set_sd_type(node, SDT_PACKAGE_DEF, package_context);
   node->package = package ? package_ref(package) : NULL;
 }
 
-void node_set_package_use(Node *node, Package *package) {
+void node_set_package_use(Node *node, Package *package, const gchar *package_context) {
   if (!node) return;
-  node->sd_type = SDT_PACKAGE_USE;
+  node_set_sd_type(node, SDT_PACKAGE_USE, package_context);
   node->package = package ? package_ref(package) : NULL;
 }
 
@@ -108,6 +111,8 @@ static void node_finalize(Node *node) {
     default:
       break;
   }
+  g_clear_pointer(&node->package_context, g_free);
+  g_clear_pointer(&node->name, g_free);
 }
 
 Node *node_ref(Node *node) {
@@ -158,14 +163,20 @@ gchar *node_to_string(const Node *node) {
 const gchar *node_get_name(const Node *node) {
   if (!node)
     return NULL;
-  switch(node->sd_type) {
-    case SDT_STRUCT_FIELD:
-      return node->field_name;
-    case SDT_PACKAGE_DEF:
-    case SDT_PACKAGE_USE:
-      return node->package ? node->package->name : NULL;
-    default:
-      return node->start_token ? node->start_token->text : NULL;
+  if (node->name)
+    return node->name;
+  g_assert(node->start_token && node->start_token->text);
+  const gchar *text = node->start_token->text;
+  g_assert(node->type == LISP_AST_NODE_TYPE_STRING ||
+          node->type == LISP_AST_NODE_TYPE_SYMBOL);
+  gchar *name;
+  if (node->type == LISP_AST_NODE_TYPE_STRING) {
+    g_assert(g_str_has_prefix(text, "\"") && g_str_has_suffix(text, "\""));
+    name = g_strndup(text + 1, strlen(text) - 2);
+  } else {
+    name = g_ascii_strup(text, -1);
   }
+  ((Node*)node)->name = name;
+  return name;
 }
 
