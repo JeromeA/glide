@@ -4,19 +4,39 @@
 #include "swank_process.h"
 #include "interaction.h"
 
-#include <glib-object.h>
+#include <glib.h>
 
-#define SWANK_SESSION_TYPE (swank_session_get_type())
-G_DECLARE_INTERFACE(SwankSession, swank_session, GLIDE, SWANK_SESSION, GObject)
+typedef struct _SwankSession SwankSession;
+typedef void (*SwankSessionCallback)(SwankSession *self, Interaction *interaction, gpointer user_data);
 
-struct _SwankSessionInterface {
-  GTypeInterface parent_iface;
+typedef struct {
   void (*eval)(SwankSession *self, Interaction *interaction);
+  void (*set_interaction_added_cb)(SwankSession *self, SwankSessionCallback cb, gpointer user_data);
+  void (*set_interaction_updated_cb)(SwankSession *self, SwankSessionCallback cb, gpointer user_data);
+  void (*destroy)(SwankSession *self);
+} SwankSessionOps;
+
+struct _SwankSession {
+  const SwankSessionOps *ops;
+  int refcnt;
 };
 
 static inline void swank_session_eval(SwankSession *self, Interaction *interaction) {
-  g_return_if_fail(GLIDE_IS_SWANK_SESSION(self));
-  GLIDE_SWANK_SESSION_GET_IFACE(self)->eval(self, interaction);
+  g_return_if_fail(self);
+  self->ops->eval(self, interaction);
 }
+
+static inline void swank_session_set_interaction_added_cb(SwankSession *self, SwankSessionCallback cb, gpointer user_data) {
+  g_return_if_fail(self);
+  self->ops->set_interaction_added_cb(self, cb, user_data);
+}
+
+static inline void swank_session_set_interaction_updated_cb(SwankSession *self, SwankSessionCallback cb, gpointer user_data) {
+  g_return_if_fail(self);
+  self->ops->set_interaction_updated_cb(self, cb, user_data);
+}
+
+SwankSession *swank_session_ref(SwankSession *self);
+void swank_session_unref(SwankSession *self);
 
 #endif /* SWANK_SESSION_H */

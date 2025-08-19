@@ -19,7 +19,7 @@ static void test_bc(void) {
   g_usleep(100000);
   g_assert_nonnull(strstr(output->str, "3"));
   process_write(p, "quit\n", -1);
-  g_object_unref(p);
+  process_unref(p);
   g_string_free(output, TRUE);
 }
 
@@ -30,7 +30,7 @@ static void test_no_callbacks(void) {
   process_write(p, "1+2\n", -1);
   g_usleep(100000);
   process_write(p, "quit\n", -1);
-  g_object_unref(p);
+  process_unref(p);
 }
 
 int main(int argc, char *argv[]) {

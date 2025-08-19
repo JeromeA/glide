@@ -208,7 +208,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
 cleanup:
   lisp_parser_free(parser);
   lisp_lexer_free(lexer);
-  g_object_unref(provider);
+  text_provider_unref(provider);
 }
 
 static char *get_system_name(Asdf *self) {

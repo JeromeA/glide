@@ -1,9 +1,14 @@
 #include "swank_session.h"
 
-G_DEFINE_INTERFACE(SwankSession, swank_session, G_TYPE_OBJECT)
+SwankSession *swank_session_ref(SwankSession *self) {
+  g_return_val_if_fail(self, NULL);
+  self->refcnt++;
+  return self;
+}
 
-static void
-swank_session_default_init(SwankSessionInterface * /*iface*/)
-{
-  g_debug("SwankSession.default_init");
+void swank_session_unref(SwankSession *self) {
+  if (!self)
+    return;
+  if (--self->refcnt == 0)
+    self->ops->destroy(self);
 }

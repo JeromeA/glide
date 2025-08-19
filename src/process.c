@@ -1,9 +1,14 @@
 #include "process.h"
 
-G_DEFINE_INTERFACE(Process, process, G_TYPE_OBJECT)
+Process *process_ref(Process *self) {
+  g_return_val_if_fail(self, NULL);
+  self->refcnt++;
+  return self;
+}
 
-static void
-process_default_init(ProcessInterface * /*iface*/)
-{
-  g_debug("Process.default_init");
+void process_unref(Process *self) {
+  if (!self)
+    return;
+  if (--self->refcnt == 0)
+    self->ops->destroy(self);
 }

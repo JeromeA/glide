@@ -85,7 +85,7 @@ lisp_source_view_new_for_file (Project *project, ProjectFile *file)
   TextProvider *provider = gtk_text_provider_new(GTK_TEXT_BUFFER(self->buffer));
   project_file_set_provider(self->project, self->file, provider,
       GTK_TEXT_BUFFER(self->buffer));
-  g_object_unref(provider);
+  text_provider_unref(provider);
   g_signal_connect(self->buffer, "changed", G_CALLBACK(on_buffer_changed), self);
   return GTK_WIDGET(self);
 }

@@ -1,9 +1,14 @@
 #include "swank_process.h"
 
-G_DEFINE_INTERFACE(SwankProcess, swank_process, G_TYPE_OBJECT)
+SwankProcess *swank_process_ref(SwankProcess *self) {
+  g_return_val_if_fail(self, NULL);
+  self->refcnt++;
+  return self;
+}
 
-static void
-swank_process_default_init(SwankProcessInterface * /*iface*/)
-{
-  g_debug("SwankProcess.default_init");
+void swank_process_unref(SwankProcess *self) {
+  if (!self)
+    return;
+  if (--self->refcnt == 0)
+    self->ops->destroy(self);
 }
