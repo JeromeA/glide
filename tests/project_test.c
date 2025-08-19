@@ -20,7 +20,7 @@ static void test_parse_on_change(void)
   Project *project = project_new();
   TextProvider *provider = string_text_provider_new("(a)");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_SCRATCH);
-  g_object_unref(provider);
+  text_provider_unref(provider);
   /* file already parsed by project_add_file */
   LispParser *parser = project_file_get_parser(file);
   LispLexer *lexer = project_file_get_lexer(file);
@@ -53,7 +53,7 @@ static void test_file_load(void)
   TextProvider *provider = string_text_provider_new("");
   ProjectFile *file = project_add_file(project, provider, NULL, filepath,
       PROJECT_FILE_LIVE);
-  g_object_unref(provider);
+  text_provider_unref(provider);
 
   int count = 0;
   g_signal_connect(project, "file-loaded", G_CALLBACK(on_file_loaded), &count);
@@ -80,7 +80,7 @@ static void test_function_analysis(void)
   Project *project = project_new();
   TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_SCRATCH);
-  g_object_unref(provider);
+  text_provider_unref(provider);
   LispParser *parser = project_file_get_parser(file);
   const Node *ast = lisp_parser_get_ast(parser);
   const Node *form = g_array_index(ast->children, Node*, 0);
@@ -100,7 +100,7 @@ static void test_index(void)
   TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL,
       PROJECT_FILE_SCRATCH);
-  g_object_unref(provider);
+  text_provider_unref(provider);
   LispParser *parser = project_file_get_parser(file);
   const Node *ast = lisp_parser_get_ast(parser);
   const Node *form = g_array_index(ast->children, Node*, 0);

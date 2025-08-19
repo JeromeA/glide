@@ -64,7 +64,7 @@ static void project_file_free(ProjectFile *file) {
   if (!file) return;
   if (file->parser) lisp_parser_free(file->parser);
   if (file->lexer) lisp_lexer_free(file->lexer);
-  if (file->provider) g_object_unref(file->provider);
+  if (file->provider) text_provider_unref(file->provider);
   if (file->buffer) g_object_unref(file->buffer);
   g_free(file->path);
   g_free(file);
@@ -104,11 +104,11 @@ Project *project_new(void) {
 ProjectFile *project_add_file(Project *self, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
   g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
-  g_return_val_if_fail(GLIDE_IS_TEXT_PROVIDER(provider), NULL);
+  g_return_val_if_fail(provider, NULL);
 
   ProjectFile *file = g_new0(ProjectFile, 1);
   file->state = state;
-  file->provider = g_object_ref(provider);
+  file->provider = text_provider_ref(provider);
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
@@ -128,7 +128,7 @@ ProjectFile *project_create_scratch(Project *self) {
   TextProvider *provider = string_text_provider_new("");
   ProjectFile *file = project_add_file(self, provider, NULL, name,
       PROJECT_FILE_SCRATCH);
-  g_object_unref(provider);
+  text_provider_unref(provider);
   return file;
 }
 
@@ -158,16 +158,16 @@ void project_file_set_provider(Project *self, ProjectFile *file,
     TextProvider *provider, GtkTextBuffer *buffer) {
   g_return_if_fail(GLIDE_IS_PROJECT(self));
   g_return_if_fail(file != NULL);
-  g_return_if_fail(GLIDE_IS_TEXT_PROVIDER(provider));
+  g_return_if_fail(provider);
   if (file->parser)
     lisp_parser_free(file->parser);
   if (file->lexer)
     lisp_lexer_free(file->lexer);
   if (file->provider)
-    g_object_unref(file->provider);
+    text_provider_unref(file->provider);
   if (file->buffer)
     g_object_unref(file->buffer);
-  file->provider = g_object_ref(provider);
+    file->provider = text_provider_ref(provider);
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
@@ -327,7 +327,7 @@ gboolean project_file_load(Project *self, ProjectFile *file) {
 
   TextProvider *provider = string_text_provider_new(content);
   project_file_set_provider(self, file, provider, NULL);
-  g_object_unref(provider);
+  text_provider_unref(provider);
   project_file_set_state(file, PROJECT_FILE_LIVE);
 
   g_signal_emit(self, project_signals[FILE_LOADED], 0, file);

@@ -24,7 +24,7 @@ static void lisp_lexer_clear_tokens(LispLexer *lexer) {
 }
 
 LispLexer *lisp_lexer_new(TextProvider *provider) {
-  g_return_val_if_fail(GLIDE_IS_TEXT_PROVIDER(provider), NULL);
+  g_return_val_if_fail(provider, NULL);
   LispLexer *lexer = g_new0(LispLexer, 1);
   lexer->provider = provider;
   return lexer;
@@ -38,7 +38,7 @@ void lisp_lexer_free(LispLexer *lexer) {
 
 void lisp_lexer_lex(LispLexer *lexer) {
   g_return_if_fail(lexer != NULL);
-  g_return_if_fail(GLIDE_IS_TEXT_PROVIDER(lexer->provider));
+  g_return_if_fail(lexer->provider);
 
   lisp_lexer_clear_tokens(lexer);
   lexer->tokens = g_array_new(FALSE, TRUE, sizeof(LispToken));

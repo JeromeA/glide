@@ -173,7 +173,7 @@ STATIC App *
 app_new (Preferences *prefs, SwankSession *swank, Project *project)
 {
   g_debug("App.new");
-  g_return_val_if_fail (GLIDE_IS_SWANK_SESSION (swank), NULL);
+  g_return_val_if_fail (swank, NULL);
 
   App *self = g_object_new (GLIDE_TYPE,
       /* GtkApplication properties */

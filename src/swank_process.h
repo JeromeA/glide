@@ -4,36 +4,42 @@
 #include "preferences.h"
 #include "process.h"
 
-#include <glib-object.h>
+#include <glib.h>
 
-#define SWANK_PROCESS_TYPE (swank_process_get_type())
-G_DECLARE_INTERFACE(SwankProcess, swank_process, GLIDE, SWANK_PROCESS, GObject)
-
+typedef struct _SwankProcess SwankProcess;
 typedef void (*SwankProcessMessageCallback)(GString *msg, gpointer user_data);
 
-struct _SwankProcessInterface {
-  GTypeInterface parent_iface;
-  void     (*start)(SwankProcess *self);
-  void     (*send)(SwankProcess *self, const GString *payload);
-  void     (*set_message_cb)(SwankProcess *self, SwankProcessMessageCallback cb,
-                             gpointer user_data);
+typedef struct {
+  void (*start)(SwankProcess *self);
+  void (*send)(SwankProcess *self, const GString *payload);
+  void (*set_message_cb)(SwankProcess *self, SwankProcessMessageCallback cb,
+                         gpointer user_data);
+  void (*destroy)(SwankProcess *self);
+} SwankProcessOps;
+
+struct _SwankProcess {
+  const SwankProcessOps *ops;
+  int refcnt;
 };
 
 static inline void swank_process_send(SwankProcess *self, const GString *payload) {
-  g_return_if_fail(GLIDE_IS_SWANK_PROCESS(self));
-  GLIDE_SWANK_PROCESS_GET_IFACE(self)->send(self, payload);
+  g_return_if_fail(self);
+  self->ops->send(self, payload);
 }
 
 static inline void swank_process_start(SwankProcess *self) {
-  g_return_if_fail(GLIDE_IS_SWANK_PROCESS(self));
-  GLIDE_SWANK_PROCESS_GET_IFACE(self)->start(self);
+  g_return_if_fail(self);
+  self->ops->start(self);
 }
 
 static inline void swank_process_set_message_cb(SwankProcess *self,
     SwankProcessMessageCallback cb,
     gpointer user_data) {
-  g_return_if_fail(GLIDE_IS_SWANK_PROCESS(self));
-  GLIDE_SWANK_PROCESS_GET_IFACE(self)->set_message_cb(self, cb, user_data);
+  g_return_if_fail(self);
+  self->ops->set_message_cb(self, cb, user_data);
 }
+
+SwankProcess *swank_process_ref(SwankProcess *self);
+void          swank_process_unref(SwankProcess *self);
 
 #endif /* SWANK_PROCESS_H */

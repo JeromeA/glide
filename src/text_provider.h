@@ -1,37 +1,44 @@
 #ifndef TEXT_PROVIDER_H
 #define TEXT_PROVIDER_H
 
-#include <glib-object.h>
+#include <glib.h>
 
-#define TEXT_PROVIDER_TYPE (text_provider_get_type())
-G_DECLARE_INTERFACE(TextProvider, text_provider, GLIDE, TEXT_PROVIDER, GObject)
+typedef struct _TextProvider TextProvider;
 
-struct _TextProviderInterface {
-  GTypeInterface parent_iface;
+typedef struct {
   gsize   (*get_length)(TextProvider *self);
   gunichar (*get_char)(TextProvider *self, gsize offset);
   gsize   (*next_offset)(TextProvider *self, gsize offset);
   gchar  *(*get_text)(TextProvider *self, gsize start, gsize end);
+  void    (*destroy)(TextProvider *self);
+} TextProviderOps;
+
+struct _TextProvider {
+  const TextProviderOps *ops;
+  int refcnt;
 };
 
 static inline gsize text_provider_get_length(TextProvider *self) {
-  g_return_val_if_fail(GLIDE_IS_TEXT_PROVIDER(self), 0);
-  return GLIDE_TEXT_PROVIDER_GET_IFACE(self)->get_length(self);
+  g_return_val_if_fail(self, 0);
+  return self->ops->get_length(self);
 }
 
 static inline gunichar text_provider_get_char(TextProvider *self, gsize offset) {
-  g_return_val_if_fail(GLIDE_IS_TEXT_PROVIDER(self), 0);
-  return GLIDE_TEXT_PROVIDER_GET_IFACE(self)->get_char(self, offset);
+  g_return_val_if_fail(self, 0);
+  return self->ops->get_char(self, offset);
 }
 
 static inline gsize text_provider_next_offset(TextProvider *self, gsize offset) {
-  g_return_val_if_fail(GLIDE_IS_TEXT_PROVIDER(self), offset);
-  return GLIDE_TEXT_PROVIDER_GET_IFACE(self)->next_offset(self, offset);
+  g_return_val_if_fail(self, offset);
+  return self->ops->next_offset(self, offset);
 }
 
 static inline gchar *text_provider_get_text(TextProvider *self, gsize start, gsize end) {
-  g_return_val_if_fail(GLIDE_IS_TEXT_PROVIDER(self), NULL);
-  return GLIDE_TEXT_PROVIDER_GET_IFACE(self)->get_text(self, start, end);
+  g_return_val_if_fail(self, NULL);
+  return self->ops->get_text(self, start, end);
 }
+
+TextProvider *text_provider_ref(TextProvider *self);
+void          text_provider_unref(TextProvider *self);
 
 #endif /* TEXT_PROVIDER_H */

@@ -18,8 +18,6 @@ typedef struct {
 struct _InteractionsView {
   GtkBox parent_instance;
   SwankSession *session;
-  gulong handler_id;
-  gulong update_handler_id;
   GHashTable *rows;
 };
 
@@ -88,12 +86,11 @@ interactions_view_finalize(GObject *obj)
 {
   g_debug("InteractionsView.finalize");
   InteractionsView *self = GLIDE_INTERACTIONS_VIEW(obj);
-  if (self->session && self->handler_id)
-    g_signal_handler_disconnect(self->session, self->handler_id);
-  if (self->session && self->update_handler_id)
-    g_signal_handler_disconnect(self->session, self->update_handler_id);
-  if (self->session)
-    g_object_unref(self->session);
+  if (self->session) {
+    swank_session_set_interaction_added_cb(self->session, NULL, NULL);
+    swank_session_set_interaction_updated_cb(self->session, NULL, NULL);
+    swank_session_unref(self->session);
+  }
   if (self->rows)
     g_hash_table_destroy(self->rows);
   G_OBJECT_CLASS(interactions_view_parent_class)->finalize(obj);
@@ -128,8 +125,6 @@ interactions_view_init(InteractionsView *self)
   g_object_unref(provider); // Provider is referenced by the context now
 
   self->session = NULL;
-  self->handler_id = 0;
-  self->update_handler_id = 0;
   self->rows = g_hash_table_new_full(g_direct_hash, g_direct_equal,
       NULL, interaction_row_free);
 }
@@ -138,13 +133,11 @@ InteractionsView *
 interactions_view_new(SwankSession *session)
 {
   g_debug("InteractionsView.new");
-  g_return_val_if_fail(GLIDE_IS_SWANK_SESSION(session), NULL);
+  g_return_val_if_fail(session, NULL);
   InteractionsView *self = g_object_new(INTERACTIONS_VIEW_TYPE, NULL);
-  self->session = g_object_ref(session);
-  self->handler_id = g_signal_connect(self->session, "interaction-added",
-      G_CALLBACK(on_interaction_added), self);
-  self->update_handler_id = g_signal_connect(self->session, "interaction-updated",
-      G_CALLBACK(on_interaction_updated), self);
+  self->session = swank_session_ref(session);
+  swank_session_set_interaction_added_cb(self->session, on_interaction_added, self);
+  swank_session_set_interaction_updated_cb(self->session, on_interaction_updated, self);
   return self;
 }
 

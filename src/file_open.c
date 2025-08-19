@@ -32,7 +32,7 @@ void file_open(GtkWidget *, gpointer data) {
 
     TextProvider *provider = string_text_provider_new("");
     ProjectFile *file = project_add_file(project, provider, NULL, filename, PROJECT_FILE_LIVE);
-    g_object_unref(provider);
+    text_provider_unref(provider);
 
     if (file) {
       project_file_load(project, file);

@@ -8,97 +8,20 @@
 #include <string.h>
 #include <errno.h>
 
-struct _RealSwankProcess {
-  GObject parent_instance;
-  Process *proc;
-  Preferences *prefs;
-  int swank_fd;
-  GSocketConnection *connection;
-  GString *out_data;
-  gsize out_consumed;
-  GMutex out_mutex;
-  GCond  out_cond;
-  GString *swank_data;
-  gsize swank_consumed;
-  GMutex swank_mutex;
-  SwankProcessMessageCallback msg_cb;
-  gpointer msg_cb_data;
-  int port;
-  GThread *swank_thread;
-  gboolean started;
-};
-
 static void sp_start(SwankProcess *self);
 static void sp_send(SwankProcess *self, const GString *payload);
 static void sp_set_message_cb(SwankProcess *self, SwankProcessMessageCallback cb,
                               gpointer user_data);
+static void sp_destroy(SwankProcess *self);
 
-static void
-real_swank_process_swank_process_iface_init(SwankProcessInterface *iface)
-{
-  g_debug("RealSwankProcess.swank_process_iface_init");
-  iface->start = sp_start;
-  iface->send = sp_send;
-  iface->set_message_cb = sp_set_message_cb;
-}
+static const SwankProcessOps real_swank_process_ops = {
+  .start = sp_start,
+  .send = sp_send,
+  .set_message_cb = sp_set_message_cb,
+  .destroy = sp_destroy,
+};
 
-G_DEFINE_TYPE_WITH_CODE(RealSwankProcess, real_swank_process, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE(SWANK_PROCESS_TYPE, real_swank_process_swank_process_iface_init))
-
-static void
-real_swank_process_finalize(GObject *obj)
-{
-  g_debug("RealSwankProcess.finalize");
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(obj);
-  if (self->swank_fd >= 0)
-    close(self->swank_fd);
-  if (self->swank_thread)
-    g_thread_join(self->swank_thread);
-  if (self->proc)
-    g_object_unref(self->proc);
-  if (self->prefs)
-    g_object_unref(self->prefs);
-  if (self->connection)
-    g_object_unref(self->connection);
-  g_string_free(self->out_data, TRUE);
-  g_string_free(self->swank_data, TRUE);
-  g_mutex_clear(&self->out_mutex);
-  g_cond_clear(&self->out_cond);
-  g_mutex_clear(&self->swank_mutex);
-  G_OBJECT_CLASS(real_swank_process_parent_class)->finalize(obj);
-}
-
-static void
-real_swank_process_class_init(RealSwankProcessClass *klass)
-{
-  g_debug("RealSwankProcess.class_init");
-  GObjectClass *obj = G_OBJECT_CLASS(klass);
-  obj->finalize = real_swank_process_finalize;
-}
-
-static void
-real_swank_process_init(RealSwankProcess *self)
-{
-  g_debug("RealSwankProcess.init");
-  self->proc = NULL;
-  self->prefs = NULL;
-  self->swank_fd = -1;
-  self->connection = NULL;
-  self->out_data = g_string_new(NULL);
-  self->swank_data = g_string_new(NULL);
-  g_mutex_init(&self->out_mutex);
-  g_cond_init(&self->out_cond);
-  g_mutex_init(&self->swank_mutex);
-  self->port = 4005;
-  self->swank_thread = NULL;
-  self->msg_cb = NULL;
-  self->msg_cb_data = NULL;
-  self->started = FALSE;
-}
-
-static gpointer
-swank_reader_thread(gpointer data)
-{
+static gpointer swank_reader_thread(gpointer data) {
   g_debug("RealSwankProcess.swank_reader_thread");
   RealSwankProcess *self = data;
   char buf[1024];
@@ -143,9 +66,7 @@ swank_reader_thread(gpointer data)
   return NULL;
 }
 
-static void
-read_until(RealSwankProcess *self, const char *pattern)
-{
+static void read_until(RealSwankProcess *self, const char *pattern) {
   g_debug("RealSwankProcess.read_until %s", pattern);
   const gsize patlen = strlen(pattern);
   g_mutex_lock(&self->out_mutex);
@@ -162,9 +83,7 @@ read_until(RealSwankProcess *self, const char *pattern)
   }
 }
 
-static void
-on_proc_out(GString *data, gpointer user_data)
-{
+static void on_proc_out(GString *data, gpointer user_data) {
   g_debug("RealSwankProcess.on_proc_out %s", data->str);
   RealSwankProcess *self = user_data;
   g_mutex_lock(&self->out_mutex);
@@ -173,25 +92,18 @@ on_proc_out(GString *data, gpointer user_data)
   g_mutex_unlock(&self->out_mutex);
 }
 
-static void
-on_proc_err(GString *data, gpointer /*user_data*/)
-{
+static void on_proc_err(GString *data, gpointer /*user_data*/) {
   g_debug("RealSwankProcess.on_proc_err %s", data->str);
 }
 
-static void start_swank(RealSwankProcess *self)
-{
+static void start_swank(RealSwankProcess *self) {
   g_debug("RealSwankProcess.start_swank");
   if (!self->proc)
     return;
   read_until(self, "* ");
-  // TODO: select the right loading command: (ql:quickload :swank) or (require :swank)
   const char *ql_cmd = "(require :swank)\n";
   g_debug("RealSwankProcess.start_swank send:%s", ql_cmd);
   process_write(self->proc, ql_cmd, -1);
-  // TODO: select the right output:
-  // - (:SWANK) for quickload
-  // - ("SB-INTROSPECT" "SB-CLTL2") for require
   read_until(self, "(\"SB-INTROSPECT\" \"SB-CLTL2\")");
   read_until(self, "* ");
   char create_cmd[128];
@@ -202,8 +114,7 @@ static void start_swank(RealSwankProcess *self)
   read_until(self, "* ");
 }
 
-static void connect_swank(RealSwankProcess *self)
-{
+static void connect_swank(RealSwankProcess *self) {
   g_debug("RealSwankProcess.connect_swank port:%d", self->port);
   GSocketClient *client = g_socket_client_new();
   GError *conn_err = NULL;
@@ -220,11 +131,9 @@ static void connect_swank(RealSwankProcess *self)
   self->swank_thread = g_thread_new("swank-reader", swank_reader_thread, self);
 }
 
-static void
-sp_start(SwankProcess *base)
-{
+static void sp_start(SwankProcess *base) {
   g_debug("RealSwankProcess.start");
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
+  RealSwankProcess *self = (RealSwankProcess*)base;
   if (self->started)
     return;
   if (!self->proc || !self->prefs)
@@ -235,35 +144,41 @@ sp_start(SwankProcess *base)
   self->started = TRUE;
 }
 
-SwankProcess *
-real_swank_process_new(Process *proc, Preferences *prefs)
-{
+SwankProcess *real_swank_process_new(Process *proc, Preferences *prefs) {
   g_debug("RealSwankProcess.new");
-  RealSwankProcess *self = g_object_new(REAL_SWANK_PROCESS_TYPE, NULL);
-  self->proc = proc ? g_object_ref(proc) : NULL;
+  RealSwankProcess *self = g_new0(RealSwankProcess, 1);
+  self->base.ops = &real_swank_process_ops;
+  self->base.refcnt = 1;
+  self->proc = proc ? process_ref(proc) : NULL;
   self->prefs = prefs ? g_object_ref(prefs) : NULL;
+  self->swank_fd = -1;
+  self->connection = NULL;
+  self->out_data = g_string_new(NULL);
+  self->swank_data = g_string_new(NULL);
+  g_mutex_init(&self->out_mutex);
+  g_cond_init(&self->out_cond);
+  g_mutex_init(&self->swank_mutex);
   self->port = prefs ? preferences_get_swank_port(prefs) : 4005;
-
+  self->swank_thread = NULL;
+  self->msg_cb = NULL;
+  self->msg_cb_data = NULL;
+  self->started = FALSE;
   if (proc) {
     process_set_stdout_cb(proc, on_proc_out, self);
     process_set_stderr_cb(proc, on_proc_err, self);
   }
-  return GLIDE_SWANK_PROCESS(self);
+  return (SwankProcess*)self;
 }
 
-void
-real_swank_process_set_socket(RealSwankProcess *self, int fd)
-{
+void real_swank_process_set_socket(RealSwankProcess *self, int fd) {
   g_debug("RealSwankProcess.set_socket %d", fd);
   if (self->swank_fd >= 0)
     close(self->swank_fd);
   self->swank_fd = fd;
 }
 
-static void
-sp_send(SwankProcess *base, const GString *payload)
-{
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
+static void sp_send(SwankProcess *base, const GString *payload) {
+  RealSwankProcess *self = (RealSwankProcess*)base;
   size_t len = payload->len;
   char hdr[7];
   g_snprintf(hdr, sizeof(hdr), "%06zx", len);
@@ -276,15 +191,33 @@ sp_send(SwankProcess *base, const GString *payload)
     g_printerr("Failed to write swank payload (errno %d)\n", errno);
 }
 
-static void
-sp_set_message_cb(SwankProcess *base, SwankProcessMessageCallback cb,
-                  gpointer user_data)
-{
+static void sp_set_message_cb(SwankProcess *base, SwankProcessMessageCallback cb,
+                              gpointer user_data) {
   g_debug("RealSwankProcess.set_message_cb");
-  RealSwankProcess *self = GLIDE_REAL_SWANK_PROCESS(base);
+  RealSwankProcess *self = (RealSwankProcess*)base;
   g_mutex_lock(&self->swank_mutex);
   self->msg_cb = cb;
   self->msg_cb_data = user_data;
   g_mutex_unlock(&self->swank_mutex);
 }
 
+static void sp_destroy(SwankProcess *base) {
+  g_debug("RealSwankProcess.destroy");
+  RealSwankProcess *self = (RealSwankProcess*)base;
+  if (self->swank_fd >= 0)
+    close(self->swank_fd);
+  if (self->swank_thread)
+    g_thread_join(self->swank_thread);
+  if (self->proc)
+    process_unref(self->proc);
+  if (self->prefs)
+    g_object_unref(self->prefs);
+  if (self->connection)
+    g_object_unref(self->connection);
+  g_string_free(self->out_data, TRUE);
+  g_string_free(self->swank_data, TRUE);
+  g_mutex_clear(&self->out_mutex);
+  g_cond_clear(&self->out_cond);
+  g_mutex_clear(&self->swank_mutex);
+  g_free(self);
+}
