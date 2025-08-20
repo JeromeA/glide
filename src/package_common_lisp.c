@@ -1,4 +1,13 @@
 #include "package_common_lisp.h"
+#include "swank_session.h"
+
+static SwankSession *swank_session = NULL;
+
+void package_common_lisp_set_swank_session(SwankSession *swank) {
+  if (swank_session)
+    swank_session_unref(swank_session);
+  swank_session = swank ? swank_session_ref(swank) : NULL;
+}
 
 static const gchar *const functions[] = {
   "*",

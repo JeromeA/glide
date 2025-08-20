@@ -44,6 +44,7 @@
 #include "swank_process.h"
 #include "swank_session.h"
 #include "project.h"
+#include "package_common_lisp.h"
 
 int
 main (int argc, char *argv[])
@@ -57,6 +58,7 @@ main (int argc, char *argv[])
   Process *proc = real_process_new (sdk_path);
   SwankProcess *swank_proc = real_swank_process_new (proc, prefs);
   SwankSession *swank = real_swank_session_new (swank_proc);
+  package_common_lisp_set_swank_session(swank);
   Project *project = project_new();
   App *app     = app_new (prefs, swank, project);
 

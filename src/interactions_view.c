@@ -146,6 +146,8 @@ on_interaction_added(SwankSession * /*session*/, Interaction *interaction, gpoin
 {
   InteractionsView *self = GLIDE_INTERACTIONS_VIEW(user_data);
   g_debug("InteractionsView.on_interaction_added %s", interaction->expression);
+  if (interaction->type != INTERACTION_USER)
+    return;
   InteractionRow *row = g_new0(InteractionRow, 1);
   row->frame = gtk_frame_new(NULL);
   gtk_widget_set_margin_start(row->frame, 5);
@@ -165,6 +167,8 @@ on_interaction_updated(SwankSession * /*session*/, Interaction *interaction, gpo
 {
   InteractionsView *self = GLIDE_INTERACTIONS_VIEW(user_data);
   g_debug("InteractionsView.on_interaction_updated %s", interaction->expression);
+  if (interaction->type != INTERACTION_USER)
+    return;
   InteractionRow *row = g_hash_table_lookup(self->rows, interaction);
   if (!row) {
     g_debug("InteractionsView.on_interaction_updated row not found for %s", interaction->expression);
