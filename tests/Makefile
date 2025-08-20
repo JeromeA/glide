@@ -34,7 +34,7 @@ analyser_test: analyser_test.c analyser.c node.c package.c lisp_lexer.c lisp_par
 package_test: package_test.c package.c package_common_lisp_user.c node.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-package_common_lisp_test: package_common_lisp_test.c package_common_lisp.c package.c
+package_common_lisp_test: package_common_lisp_test.c package_common_lisp.c package.c swank_session.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 run: all

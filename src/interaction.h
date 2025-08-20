@@ -10,10 +10,16 @@ typedef enum {
   INTERACTION_ERROR
 } InteractionStatus;
 
+typedef enum {
+  INTERACTION_USER,
+  INTERACTION_INTERNAL
+} InteractionType;
+
 typedef struct {
   gchar *expression;
   guint32 tag;
   InteractionStatus status;
+  InteractionType type;
   gchar *result;
   gchar *output;
   gchar *error;
@@ -23,6 +29,7 @@ static inline void interaction_init(Interaction *self, const gchar *expr) {
   self->expression = g_strdup(expr);
   self->tag = 0;
   self->status = INTERACTION_CREATED;
+  self->type = INTERACTION_USER;
   self->result = NULL;
   self->output = NULL;
   self->error = NULL;
