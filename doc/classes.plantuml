@@ -27,6 +27,7 @@ Interaction : expression
 Interaction : result
 Interaction : output
 Interaction : error
+Interaction : done_cb
 SwankSession : eval(Interaction)
 SwankSession : interactions
 SwankSession "1" --> "*" Interaction

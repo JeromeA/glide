@@ -53,7 +53,6 @@ on_evaluate(App *self)
     Interaction *interaction = g_new0(Interaction, 1);
     interaction_init(interaction, expr);
     swank_session_eval(swank, interaction);
-    /* The interaction will be cleared when the session returns the result. */
   }
 
   g_free(expr);
