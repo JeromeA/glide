@@ -3,6 +3,10 @@
 
 #include <glib.h>
 
+typedef struct _Interaction Interaction;
+
+typedef void (*InteractionCallback)(Interaction *self, gpointer user_data);
+
 typedef enum {
   INTERACTION_CREATED,
   INTERACTION_RUNNING,
@@ -15,7 +19,7 @@ typedef enum {
   INTERACTION_INTERNAL
 } InteractionType;
 
-typedef struct {
+struct _Interaction {
   gchar *expression;
   guint32 tag;
   InteractionStatus status;
@@ -23,7 +27,9 @@ typedef struct {
   gchar *result;
   gchar *output;
   gchar *error;
-} Interaction;
+  InteractionCallback done_cb;
+  gpointer done_cb_data;
+};
 
 static inline void interaction_init(Interaction *self, const gchar *expr) {
   self->expression = g_strdup(expr);
@@ -33,6 +39,8 @@ static inline void interaction_init(Interaction *self, const gchar *expr) {
   self->result = NULL;
   self->output = NULL;
   self->error = NULL;
+  self->done_cb = NULL;
+  self->done_cb_data = NULL;
 }
 
 static inline void interaction_clear(Interaction *self) {
@@ -40,6 +48,8 @@ static inline void interaction_clear(Interaction *self) {
   g_free(self->result);
   g_free(self->output);
   g_free(self->error);
+  self->done_cb = NULL;
+  self->done_cb_data = NULL;
 }
 
 #endif /* INTERACTION_H */

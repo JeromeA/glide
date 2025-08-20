@@ -121,6 +121,8 @@ static void on_return_ok(RealSwankSession *self, const gchar *output, const gcha
   interaction->status = INTERACTION_OK;
   if (self->updated_cb)
     self->updated_cb((SwankSession*)self, interaction, self->updated_cb_data);
+  if (interaction->done_cb)
+    interaction->done_cb(interaction, interaction->done_cb_data);
 }
 
 static void on_return_abort(RealSwankSession *self, const gchar *reason, guint32 tag) {
@@ -137,6 +139,8 @@ static void on_return_abort(RealSwankSession *self, const gchar *reason, guint32
   interaction->status = INTERACTION_ERROR;
   if (self->updated_cb)
     self->updated_cb((SwankSession*)self, interaction, self->updated_cb_data);
+  if (interaction->done_cb)
+    interaction->done_cb(interaction, interaction->done_cb_data);
 }
 
 static void real_swank_session_set_added(SwankSession *session, SwankSessionCallback cb, gpointer user_data) {

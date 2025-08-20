@@ -59,6 +59,11 @@ static void on_interaction_updated(SwankSession * /*session*/, Interaction * /*i
   (*count)++;
 }
 
+static void on_interaction_done(Interaction * /*interaction*/, gpointer user_data) {
+  int *count = user_data;
+  (*count)++;
+}
+
 static void test_eval(void)
 {
   MockSwankProcess *mock_swank_process = mock_swank_process_new();
@@ -124,6 +129,25 @@ static void test_interaction_updated_signal(void)
   swank_process_unref((SwankProcess*)proc);
 }
 
+static void test_interaction_done_callback(void)
+{
+  MockSwankProcess *proc = mock_swank_process_new();
+  SwankSession *sess = real_swank_session_new((SwankProcess*)proc);
+  Interaction interaction;
+  interaction_init(&interaction, "(+ 1 2)");
+  int count = 0;
+  interaction.done_cb = on_interaction_done;
+  interaction.done_cb_data = &count;
+  swank_session_eval(sess, &interaction);
+  GString *msg = g_string_new("(:return (:ok (\"\" \"5\")) 1)");
+  real_swank_session_on_message(msg, sess);
+  g_assert_cmpint(count, ==, 1);
+  interaction_clear(&interaction);
+  g_string_free(msg, TRUE);
+  swank_session_unref(sess);
+  swank_process_unref((SwankProcess*)proc);
+}
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
@@ -131,5 +155,6 @@ int main(int argc, char *argv[])
   g_test_add_func("/session/on_message_return_ok", test_on_message_return_ok);
   g_test_add_func("/session/on_message_return_abort", test_on_message_return_abort);
   g_test_add_func("/session/interaction_updated_signal", test_interaction_updated_signal);
+  g_test_add_func("/session/interaction_done_callback", test_interaction_done_callback);
   return g_test_run();
 }
