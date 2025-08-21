@@ -16,6 +16,7 @@
 
 - All DI should happen in main.c, there should be no call to an `xxx_new()` in any other file.
 - All dependencies should be based on interfaces, to allow for easy mocking.
+- Use GObject when needed to interface with an API that requires it, but prefer light OO patterns otherwise.
 
 ## Testing
 
@@ -24,5 +25,6 @@
 ## Common Agent mistakes
 
 - Don't forget to add any new file to the INLINE version in main.c.
-- Don't forget to run "make app-full" as part of your testing.
+- Don't forget to run "make app-full" in src/ as part of your testing.
+- Don't forget to run "make run" in tests/ as part of your testing.
 
