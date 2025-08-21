@@ -23,6 +23,14 @@ struct _InteractionsView {
 
 G_DEFINE_TYPE(InteractionsView, interactions_view, GTK_TYPE_BOX)
 
+typedef struct {
+  InteractionsView *self;
+  Interaction *interaction;
+} InteractionDispatch;
+
+static gboolean dispatch_interaction_added(gpointer data);
+static gboolean dispatch_interaction_updated(gpointer data);
+
 static void on_interaction_added(SwankSession *session, Interaction *interaction, gpointer user_data);
 static void on_interaction_updated(SwankSession *session, Interaction *interaction, gpointer user_data);
 static void interaction_row_update(InteractionRow *row, Interaction *interaction);
@@ -79,6 +87,55 @@ interaction_row_update(InteractionRow *row, Interaction *interaction)
       interaction->result, CSS_CLASS_RESULT, TRUE);
   if (row->result)
     gtk_box_reorder_child(GTK_BOX(row->box), row->result, -1);
+}
+
+static gboolean
+dispatch_interaction_added(gpointer data)
+{
+  InteractionDispatch *d = data;
+  InteractionsView *self = d->self;
+  Interaction *interaction = d->interaction;
+  g_debug("InteractionsView.on_interaction_added %s", interaction->expression);
+  if (interaction->type != INTERACTION_USER)
+    goto out;
+  InteractionRow *row = g_new0(InteractionRow, 1);
+  row->frame = gtk_frame_new(NULL);
+  gtk_widget_set_margin_start(row->frame, 5);
+  gtk_widget_set_margin_end(row->frame, 5);
+  gtk_widget_set_margin_top(row->frame, 5);
+  gtk_widget_set_margin_bottom(row->frame, 5);
+  row->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+  gtk_container_add(GTK_CONTAINER(row->frame), row->box);
+  interaction_row_update(row, interaction);
+  g_hash_table_insert(self->rows, interaction, row);
+  gtk_box_pack_start(GTK_BOX(self), row->frame, FALSE, FALSE, 0);
+  gtk_widget_show_all(row->frame);
+out:
+  g_object_unref(self);
+  g_free(d);
+  return FALSE;
+}
+
+static gboolean
+dispatch_interaction_updated(gpointer data)
+{
+  InteractionDispatch *d = data;
+  InteractionsView *self = d->self;
+  Interaction *interaction = d->interaction;
+  g_debug("InteractionsView.on_interaction_updated %s", interaction->expression);
+  if (interaction->type != INTERACTION_USER)
+    goto out;
+  InteractionRow *row = g_hash_table_lookup(self->rows, interaction);
+  if (!row) {
+    g_debug("InteractionsView.on_interaction_updated row not found for %s", interaction->expression);
+    goto out;
+  }
+  interaction_row_update(row, interaction);
+  gtk_widget_show_all(row->frame);
+out:
+  g_object_unref(self);
+  g_free(d);
+  return FALSE;
 }
 
 static void
@@ -144,37 +201,18 @@ interactions_view_new(SwankSession *session)
 static void
 on_interaction_added(SwankSession * /*session*/, Interaction *interaction, gpointer user_data)
 {
-  InteractionsView *self = GLIDE_INTERACTIONS_VIEW(user_data);
-  g_debug("InteractionsView.on_interaction_added %s", interaction->expression);
-  if (interaction->type != INTERACTION_USER)
-    return;
-  InteractionRow *row = g_new0(InteractionRow, 1);
-  row->frame = gtk_frame_new(NULL);
-  gtk_widget_set_margin_start(row->frame, 5);
-  gtk_widget_set_margin_end(row->frame, 5);
-  gtk_widget_set_margin_top(row->frame, 5);
-  gtk_widget_set_margin_bottom(row->frame, 5);
-  row->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_container_add(GTK_CONTAINER(row->frame), row->box);
-  interaction_row_update(row, interaction);
-  g_hash_table_insert(self->rows, interaction, row);
-  gtk_box_pack_start(GTK_BOX(self), row->frame, FALSE, FALSE, 0);
-  gtk_widget_show_all(row->frame);
+  InteractionDispatch *d = g_new0(InteractionDispatch, 1);
+  d->self = g_object_ref(GLIDE_INTERACTIONS_VIEW(user_data));
+  d->interaction = interaction;
+  g_main_context_invoke(NULL, dispatch_interaction_added, d);
 }
 
 static void
 on_interaction_updated(SwankSession * /*session*/, Interaction *interaction, gpointer user_data)
 {
-  InteractionsView *self = GLIDE_INTERACTIONS_VIEW(user_data);
-  g_debug("InteractionsView.on_interaction_updated %s", interaction->expression);
-  if (interaction->type != INTERACTION_USER)
-    return;
-  InteractionRow *row = g_hash_table_lookup(self->rows, interaction);
-  if (!row) {
-    g_debug("InteractionsView.on_interaction_updated row not found for %s", interaction->expression);
-    return;
-  }
-  interaction_row_update(row, interaction);
-  gtk_widget_show_all(row->frame);
+  InteractionDispatch *d = g_new0(InteractionDispatch, 1);
+  d->self = g_object_ref(GLIDE_INTERACTIONS_VIEW(user_data));
+  d->interaction = interaction;
+  g_main_context_invoke(NULL, dispatch_interaction_updated, d);
 }
 

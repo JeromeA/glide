@@ -34,7 +34,9 @@ static gpointer swank_reader_thread(gpointer data) {
       g_free(dbg);
       g_mutex_lock(&self->swank_mutex);
       g_string_append_len(self->swank_data, buf, n);
-      if (self->msg_cb) {
+      SwankProcessMessageCallback cb = self->msg_cb;
+      gpointer cb_data = self->msg_cb_data;
+      if (cb) {
         while (TRUE) {
           if (self->swank_data->len - self->swank_consumed >= 6) {
             char hdr[7];
@@ -45,7 +47,7 @@ static gpointer swank_reader_thread(gpointer data) {
               char *start = self->swank_data->str + self->swank_consumed + 6;
               GString *msg = g_string_new_len(start, len);
               self->swank_consumed += 6 + len;
-              self->msg_cb(msg, self->msg_cb_data);
+              cb(msg, cb_data);
               g_string_free(msg, TRUE);
               continue;
             }
