@@ -63,12 +63,12 @@ main (int argc, char *argv[])
   App *app     = app_new (prefs, swank, project);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
-  g_object_unref (app);
-  g_object_unref (swank);
-  g_object_unref (swank_proc);
-  g_object_unref (proc);
-  project_unref (project);
-  preferences_unref (prefs);
+  g_object_unref(app);
+  swank_session_unref(swank);
+  swank_process_unref(swank_proc);
+  process_unref(proc);
+  project_unref(project);
+  preferences_unref(prefs);
   exit(status);
 }
 
