@@ -12,7 +12,7 @@ static void test_default_scratch(void)
   ProjectFile *file = project_get_file(project, 0);
   g_assert_cmpint(project_file_get_state(file), ==, PROJECT_FILE_SCRATCH);
   g_assert_cmpstr(project_file_get_path(file), ==, "scratch00");
-  g_object_unref(project);
+  project_unref(project);
 }
 
 static void test_parse_on_change(void)
@@ -32,7 +32,7 @@ static void test_parse_on_change(void)
   const Node *ast = lisp_parser_get_ast(parser);
   g_assert_cmpint(ast->children->len, ==, 1);
   project_file_changed(project, file);
-  g_object_unref(project);
+  project_unref(project);
 }
 
 static void on_file_loaded(Project * /*project*/, ProjectFile * /*file*/,
@@ -56,7 +56,7 @@ static void test_file_load(void)
   text_provider_unref(provider);
 
   int count = 0;
-  g_signal_connect(project, "file-loaded", G_CALLBACK(on_file_loaded), &count);
+  project_set_file_loaded_cb(project, on_file_loaded, &count);
 
   gboolean ok = project_file_load(project, file);
   g_assert_true(ok);
@@ -68,7 +68,7 @@ static void test_file_load(void)
   g_assert_cmpstr(text, ==, contents);
   g_free(text);
 
-  g_object_unref(project);
+  project_unref(project);
   g_remove(filepath);
   g_rmdir(tmpdir);
   g_free(filepath);
@@ -91,7 +91,7 @@ static void test_function_analysis(void)
   g_assert_true(node_is(defsym, SDT_FUNCTION_USE));
   g_assert_true(node_is(name, SDT_FUNCTION_DEF));
   g_assert_true(node_is(callee, SDT_FUNCTION_USE));
-  g_object_unref(project);
+  project_unref(project);
 }
 
 static void test_index(void)
@@ -122,7 +122,7 @@ static void test_index(void)
   g_assert_cmpuint(use_bar->len, ==, 1);
   g_assert_true(g_ptr_array_index(use_defun, 0) == defsym);
   g_assert_true(g_ptr_array_index(use_bar, 0) == callee);
-  g_object_unref(project);
+  project_unref(project);
 }
 
 

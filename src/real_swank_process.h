@@ -4,6 +4,8 @@
 #include "swank_process.h"
 #include <gio/gio.h>
 
+typedef struct _Preferences Preferences;
+
 typedef struct {
   SwankProcess base;
   Process *proc;

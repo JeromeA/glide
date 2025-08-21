@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <glib-object.h>
 #include "syscalls.h"
 
 struct _ProjectFile {
@@ -17,7 +18,6 @@ struct _ProjectFile {
 };
 
 struct _Project {
-  GObject parent_instance;
   GPtrArray *files; /* ProjectFile* */
   guint next_scratch_id;
   GHashTable *function_defs; /* name -> GPtrArray* Node* */
@@ -26,39 +26,16 @@ struct _Project {
   GHashTable *variable_uses;
   GHashTable *package_defs;
   GHashTable *package_uses;
+  ProjectFileLoadedCb file_loaded_cb;
+  gpointer file_loaded_data;
+  gint refcnt;
 };
 
-enum {
-  FILE_LOADED,
-  N_SIGNALS
-};
-
-static guint project_signals[N_SIGNALS];
-
-static void project_finalize(GObject *obj);
 ProjectFile *project_create_scratch(Project *self);
 static void project_index_clear(Project *self);
 static void project_index_node(Project *self, const Node *node);
 static void project_index_walk(Project *self, const Node *node);
 static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type);
-
-G_DEFINE_TYPE(Project, project, G_TYPE_OBJECT)
-
-static void project_class_init(ProjectClass *klass) {
-  project_signals[FILE_LOADED] = g_signal_new(
-      "file-loaded",
-      G_TYPE_FROM_CLASS(klass),
-      G_SIGNAL_RUN_FIRST,
-      0,
-      NULL, NULL,
-      g_cclosure_marshal_VOID__POINTER,
-      G_TYPE_NONE,
-      1,
-      G_TYPE_POINTER);
-
-  GObjectClass *obj = G_OBJECT_CLASS(klass);
-  obj->finalize = project_finalize;
-}
 
 static void project_file_free(ProjectFile *file) {
   if (!file) return;
@@ -70,7 +47,9 @@ static void project_file_free(ProjectFile *file) {
   g_free(file);
 }
 
-static void project_init(Project *self) {
+static Project *project_init(void) {
+  Project *self = g_new0(Project, 1);
+  self->refcnt = 1;
   self->files = g_ptr_array_new_with_free_func((GDestroyNotify)project_file_free);
   self->next_scratch_id = 0;
   self->function_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
@@ -79,10 +58,10 @@ static void project_init(Project *self) {
   self->variable_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  return self;
 }
 
-static void project_finalize(GObject *obj) {
-  Project *self = GLIDE_PROJECT(obj);
+static void project_free(Project *self) {
   project_index_clear(self);
   g_clear_pointer(&self->function_defs, g_hash_table_unref);
   g_clear_pointer(&self->function_uses, g_hash_table_unref);
@@ -92,18 +71,18 @@ static void project_finalize(GObject *obj) {
   g_clear_pointer(&self->package_uses, g_hash_table_unref);
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
-  G_OBJECT_CLASS(project_parent_class)->finalize(obj);
+  g_free(self);
 }
 
 Project *project_new(void) {
-  Project *self = g_object_new(PROJECT_TYPE, NULL);
+  Project *self = project_init();
   project_create_scratch(self);
   return self;
 }
 
 ProjectFile *project_add_file(Project *self, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(provider, NULL);
 
   ProjectFile *file = g_new0(ProjectFile, 1);
@@ -122,7 +101,7 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
 }
 
 ProjectFile *project_create_scratch(Project *self) {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  g_return_val_if_fail(self != NULL, NULL);
   gchar name[12];
   g_snprintf(name, sizeof(name), "scratch%02u", self->next_scratch_id++);
   TextProvider *provider = string_text_provider_new("");
@@ -133,12 +112,12 @@ ProjectFile *project_create_scratch(Project *self) {
 }
 
 guint project_get_file_count(Project *self) {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(self), 0);
+  g_return_val_if_fail(self != NULL, 0);
   return self->files->len;
 }
 
 ProjectFile *project_get_file(Project *self, guint index) {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  g_return_val_if_fail(self != NULL, NULL);
   if (index >= self->files->len)
     return NULL;
   return g_ptr_array_index(self->files, index);
@@ -156,7 +135,7 @@ void project_file_set_state(ProjectFile *file, ProjectFileState state) {
 
 void project_file_set_provider(Project *self, ProjectFile *file,
     TextProvider *provider, GtkTextBuffer *buffer) {
-  g_return_if_fail(GLIDE_IS_PROJECT(self));
+  g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
   g_return_if_fail(provider);
   if (file->parser)
@@ -167,7 +146,7 @@ void project_file_set_provider(Project *self, ProjectFile *file,
     text_provider_unref(file->provider);
   if (file->buffer)
     g_object_unref(file->buffer);
-    file->provider = text_provider_ref(provider);
+  file->provider = text_provider_ref(provider);
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
@@ -201,7 +180,7 @@ static void project_index_clear(Project *self) {
 }
 
 void project_index_add(Project *self, Node *node) {
-  g_return_if_fail(GLIDE_IS_PROJECT(self));
+  g_return_if_fail(self != NULL);
   if (!node) return;
   const gchar *name = node_get_name(node);
   if (!name) return;
@@ -216,7 +195,7 @@ void project_index_add(Project *self, Node *node) {
 }
 
 GHashTable *project_get_index(Project *self, StringDesignatorType sd_type) {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(self), NULL);
+  g_return_val_if_fail(self != NULL, NULL);
   return project_index_table(self, sd_type);
 }
 
@@ -234,7 +213,7 @@ static void project_index_walk(Project *self, const Node *node) {
 }
 
 void project_file_changed(Project *self, ProjectFile *file) {
-  g_return_if_fail(GLIDE_IS_PROJECT(self));
+  g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
   if (!file->lexer || !file->parser)
     return;
@@ -280,7 +259,7 @@ void project_file_set_path(ProjectFile *file, const gchar *path) {
 }
 
 gboolean project_file_load(Project *self, ProjectFile *file) {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(self), FALSE);
+  g_return_val_if_fail(self != NULL, FALSE);
   g_return_val_if_fail(file != NULL, FALSE);
 
   const gchar *path = project_file_get_path(file);
@@ -330,8 +309,28 @@ gboolean project_file_load(Project *self, ProjectFile *file) {
   text_provider_unref(provider);
   project_file_set_state(file, PROJECT_FILE_LIVE);
 
-  g_signal_emit(self, project_signals[FILE_LOADED], 0, file);
+  if (self->file_loaded_cb)
+    self->file_loaded_cb(self, file, self->file_loaded_data);
 
   g_free(content);
   return TRUE;
+}
+
+Project *project_ref(Project *self) {
+  g_return_val_if_fail(self != NULL, NULL);
+  g_atomic_int_inc(&self->refcnt);
+  return self;
+}
+
+void project_unref(Project *self) {
+  if (!self)
+    return;
+  if (g_atomic_int_dec_and_test(&self->refcnt))
+    project_free(self);
+}
+
+void project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer user_data) {
+  g_return_if_fail(self != NULL);
+  self->file_loaded_cb = cb;
+  self->file_loaded_data = user_data;
 }

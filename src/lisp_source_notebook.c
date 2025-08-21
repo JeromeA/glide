@@ -20,7 +20,11 @@ static void
 lisp_source_notebook_dispose(GObject *object)
 {
   LispSourceNotebook *self = LISP_SOURCE_NOTEBOOK(object);
-  g_clear_object(&self->project);
+  if (self->project) {
+    project_set_file_loaded_cb(self->project, NULL, NULL);
+    project_unref(self->project);
+    self->project = NULL;
+  }
   G_OBJECT_CLASS(lisp_source_notebook_parent_class)->dispose(object);
 }
 
@@ -32,15 +36,15 @@ lisp_source_notebook_class_init(LispSourceNotebookClass *klass)
 }
 
 GtkWidget *
+
 lisp_source_notebook_new(Project *project)
 {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(project), NULL);
+  g_return_val_if_fail(project != NULL, NULL);
 
   LispSourceNotebook *self = g_object_new(LISP_TYPE_SOURCE_NOTEBOOK, NULL);
-  self->project = g_object_ref(project);
+  self->project = project_ref(project);
 
-  g_signal_connect(project, "file-loaded",
-      G_CALLBACK(on_file_loaded), self);
+  project_set_file_loaded_cb(project, on_file_loaded, self);
 
   guint count = project_get_file_count(project);
   for (guint i = 0; i < count; i++) {

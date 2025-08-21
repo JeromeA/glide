@@ -46,7 +46,10 @@ lisp_source_view_dispose (GObject *object)
   if (self->buffer)
     g_signal_handlers_disconnect_by_data (self->buffer, self);
 
-  g_clear_object(&self->project);
+  if (self->project) {
+    project_unref(self->project);
+    self->project = NULL;
+  }
   
   // Buffer is a GObject, gtk_text_view_set_buffer increments its ref count.
   // It will be unref'd when GtkTextView is disposed, or we can g_clear_object it.
@@ -67,11 +70,11 @@ lisp_source_view_class_init (LispSourceViewClass *klass)
 GtkWidget *
 lisp_source_view_new_for_file (Project *project, ProjectFile *file)
 {
-  g_return_val_if_fail(GLIDE_IS_PROJECT(project), NULL);
+  g_return_val_if_fail(project != NULL, NULL);
   g_return_val_if_fail(file != NULL, NULL);
 
   LispSourceView *self = g_object_new (LISP_TYPE_SOURCE_VIEW, NULL);
-  self->project = g_object_ref(project);
+  self->project = project_ref(project);
   self->file = file;
 
   TextProvider *existing = project_file_get_provider(self->file);
