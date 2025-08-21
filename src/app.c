@@ -143,12 +143,12 @@ app_dispose (GObject *object)
     project_unref(self->project);
     self->project = NULL;
   }
-  g_clear_object (&self->notebook);
+  g_clear_object(&self->notebook);
   if (self->preferences) {
     preferences_unref(self->preferences);
     self->preferences = NULL;
   }
-  g_clear_object (&self->swank);
+  g_clear_pointer(&self->swank, swank_session_unref);
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
 }
 
@@ -187,9 +187,9 @@ app_new (Preferences *prefs, SwankSession *swank, Project *project)
       "flags",             G_APPLICATION_HANDLES_OPEN,
       NULL);
 
-  self->preferences = preferences_ref (prefs);
-  self->swank       = g_object_ref (swank);
-  self->project     = project_ref (project);
+  self->preferences = preferences_ref(prefs);
+  self->swank       = swank_session_ref(swank);
+  self->project     = project_ref(project);
   return self;
 }
 
