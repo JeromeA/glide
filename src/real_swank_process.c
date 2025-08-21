@@ -1,4 +1,5 @@
 #include "real_swank_process.h"
+#include "preferences.h"
 
 #include "syscalls.h"
 #include "util.h"
@@ -150,7 +151,7 @@ SwankProcess *real_swank_process_new(Process *proc, Preferences *prefs) {
   self->base.ops = &real_swank_process_ops;
   self->base.refcnt = 1;
   self->proc = proc ? process_ref(proc) : NULL;
-  self->prefs = prefs ? g_object_ref(prefs) : NULL;
+  self->prefs = prefs ? preferences_ref(prefs) : NULL;
   self->swank_fd = -1;
   self->connection = NULL;
   self->out_data = g_string_new(NULL);
@@ -211,7 +212,7 @@ static void sp_destroy(SwankProcess *base) {
   if (self->proc)
     process_unref(self->proc);
   if (self->prefs)
-    g_object_unref(self->prefs);
+    preferences_unref(self->prefs);
   if (self->connection)
     g_object_unref(self->connection);
   g_string_free(self->out_data, TRUE);

@@ -67,8 +67,8 @@ main (int argc, char *argv[])
   g_object_unref (swank);
   g_object_unref (swank_proc);
   g_object_unref (proc);
-  g_object_unref (project);
-  g_object_unref (prefs);
+  project_unref (project);
+  preferences_unref (prefs);
   exit(status);
 }
 
