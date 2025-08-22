@@ -12,6 +12,9 @@ typedef struct {
   gboolean started;
   guint32 next_tag;
   GHashTable *interactions;
+  GAsyncQueue *queue;
+  GThread *thread;
+  GMutex lock;
   SwankSessionCallback added_cb;
   gpointer added_cb_data;
   SwankSessionCallback updated_cb;

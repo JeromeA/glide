@@ -73,6 +73,8 @@ static void test_eval(void)
   Interaction interaction;
   interaction_init(&interaction, "(+ 1 2)");
   swank_session_eval(sess, &interaction);
+  while (!interaction.tag)
+    g_usleep(1000);
   interaction_clear(&interaction);
   g_assert_cmpint(interaction.tag, ==, 1);
   g_assert_cmpstr(mock_swank_process->last->str, ==,
@@ -101,6 +103,8 @@ static void test_on_message_return_abort(void)
   Interaction interaction;
   interaction_init(&interaction, "(+ 1 2)");
   swank_session_eval(sess, &interaction);
+  while (!interaction.tag)
+    g_usleep(1000);
   GString *msg = g_string_new("(:return (:abort \"fail\") 1)");
   g_test_expect_message(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG,
       "RealSwankSession.on_return_abort fail 1");
@@ -123,6 +127,8 @@ static void test_interaction_updated_signal(void)
   Interaction interaction;
   interaction_init(&interaction, "(+ 1 2)");
   swank_session_eval(sess, &interaction);
+  while (!interaction.tag)
+    g_usleep(1000);
   int count = 0;
   swank_session_set_interaction_updated_cb(sess, on_interaction_updated, &count);
   GString *msg = g_string_new("(:return (:ok (\"\" \"5\")) 1)");
@@ -147,6 +153,8 @@ static void test_interaction_done_callback(void)
   interaction.done_cb = on_interaction_done;
   interaction.done_cb_data = &count;
   swank_session_eval(sess, &interaction);
+  while (!interaction.tag)
+    g_usleep(1000);
   GString *msg = g_string_new("(:return (:ok (\"\" \"5\")) 1)");
   real_swank_session_on_message(msg, sess);
   g_assert_cmpint(count, ==, 1);

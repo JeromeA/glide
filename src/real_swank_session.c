@@ -6,6 +6,7 @@
 #include "lisp_parser.h"
 #include "string_text_provider.h"
 
+static gpointer real_swank_session_thread(gpointer data);
 static void real_swank_session_eval(SwankSession *session, Interaction *interaction);
 static void real_swank_session_set_added(SwankSession *session, SwankSessionCallback cb, gpointer user_data);
 static void real_swank_session_set_updated(SwankSession *session, SwankSessionCallback cb, gpointer user_data);
@@ -28,12 +29,15 @@ SwankSession *real_swank_session_new(SwankProcess *proc, StatusService *status_s
   self->started = FALSE;
   self->next_tag = 1;
   self->interactions = g_hash_table_new(g_direct_hash, g_direct_equal);
+  self->queue = g_async_queue_new();
+  g_mutex_init(&self->lock);
   self->added_cb = NULL;
   self->added_cb_data = NULL;
   self->updated_cb = NULL;
   self->updated_cb_data = NULL;
   if (self->proc)
     swank_process_set_message_cb(self->proc, real_swank_session_on_message, self);
+  self->thread = g_thread_new("swank-session", real_swank_session_thread, self);
   return (SwankSession*)self;
 }
 
@@ -83,37 +87,56 @@ static gchar *unescape_string(const char *token) {
   return g_strdup(token);
 }
 
-static void real_swank_session_eval(SwankSession *session, Interaction *interaction) {
-  g_debug("RealSwankSession.eval %s", interaction->expression);
-  RealSwankSession *self = (RealSwankSession*)session;
-  if (!self->proc)
-    return;
-  if (!self->started) {
-    guint status_id = status_service_publish(self->status_service, "SBCL is starting...");
-    swank_process_start(self->proc);
-    status_service_unpublish(self->status_service, status_id);
-    self->started = TRUE;
+static gpointer real_swank_session_thread(gpointer data) {
+  RealSwankSession *self = data;
+  for (;;) {
+    gpointer item = g_async_queue_pop(self->queue);
+    if (item == GINT_TO_POINTER(1))
+      break;
+    Interaction *interaction = item;
+    g_debug("RealSwankSession.thread %s", interaction->expression);
+    if (!self->proc)
+      continue;
+    g_mutex_lock(&self->lock);
+    if (!self->started) {
+      guint status_id = status_service_publish(self->status_service, "SBCL is starting...");
+      swank_process_start(self->proc);
+      status_service_unpublish(self->status_service, status_id);
+      self->started = TRUE;
+    }
+    interaction->tag = self->next_tag++;
+    interaction->status = INTERACTION_RUNNING;
+    g_hash_table_insert(self->interactions, GUINT_TO_POINTER(interaction->tag), interaction);
+    SwankSessionCallback added_cb = self->added_cb;
+    gpointer added_cb_data = self->added_cb_data;
+    g_mutex_unlock(&self->lock);
+    if (added_cb)
+      added_cb((SwankSession*)self, interaction, added_cb_data);
+    gchar *escaped = escape_string(interaction->expression);
+    gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)", escaped, interaction->tag);
+    GString *payload = g_string_new(rpc);
+    g_free(escaped);
+    g_free(rpc);
+    swank_process_send(self->proc, payload);
+    g_string_free(payload, TRUE);
   }
-  interaction->tag = self->next_tag++;
-  interaction->status = INTERACTION_RUNNING;
-  g_hash_table_insert(self->interactions, GUINT_TO_POINTER(interaction->tag), interaction);
-  if (self->added_cb)
-    self->added_cb(session, interaction, self->added_cb_data);
-  gchar *escaped = escape_string(interaction->expression);
-  gchar *rpc = g_strdup_printf("(:emacs-rex (swank:eval-and-grab-output \"%s\") \"COMMON-LISP-USER\" t %u)", escaped, interaction->tag);
-  GString *payload = g_string_new(rpc);
-  g_free(escaped);
-  g_free(rpc);
-  swank_process_send(self->proc, payload);
-  g_string_free(payload, TRUE);
+  return NULL;
+}
+
+static void real_swank_session_eval(SwankSession *session, Interaction *interaction) {
+  RealSwankSession *self = (RealSwankSession*)session;
+  if (self->queue)
+    g_async_queue_push(self->queue, interaction);
 }
 
 static void on_return_ok(RealSwankSession *self, const gchar *output, const gchar *result, guint32 tag) {
   g_debug("RealSwankSession.on_return_ok %s %s %u", output, result, tag);
   if (!self)
     return;
+  g_mutex_lock(&self->lock);
   Interaction *interaction = g_hash_table_lookup(self->interactions, GUINT_TO_POINTER(tag));
   if (!interaction) {
+    g_mutex_unlock(&self->lock);
     g_debug("RealSwankSession.on_return_ok unknown tag:%u", tag);
     return;
   }
@@ -122,28 +145,40 @@ static void on_return_ok(RealSwankSession *self, const gchar *output, const gcha
   interaction->output = g_strdup(output);
   interaction->result = g_strdup(result);
   interaction->status = INTERACTION_OK;
-  if (self->updated_cb)
-    self->updated_cb((SwankSession*)self, interaction, self->updated_cb_data);
-  if (interaction->done_cb)
-    interaction->done_cb(interaction, interaction->done_cb_data);
+  SwankSessionCallback updated_cb = self->updated_cb;
+  gpointer updated_cb_data = self->updated_cb_data;
+  InteractionCallback done_cb = interaction->done_cb;
+  gpointer done_cb_data = interaction->done_cb_data;
+  g_mutex_unlock(&self->lock);
+  if (updated_cb)
+    updated_cb((SwankSession*)self, interaction, updated_cb_data);
+  if (done_cb)
+    done_cb(interaction, done_cb_data);
 }
 
 static void on_return_abort(RealSwankSession *self, const gchar *reason, guint32 tag) {
   g_debug("RealSwankSession.on_return_abort %s %u", reason, tag);
   if (!self)
     return;
+  g_mutex_lock(&self->lock);
   Interaction *interaction = g_hash_table_lookup(self->interactions, GUINT_TO_POINTER(tag));
   if (!interaction) {
+    g_mutex_unlock(&self->lock);
     g_debug("RealSwankSession.on_return_abort unknown tag:%u", tag);
     return;
   }
   g_free(interaction->error);
   interaction->error = g_strdup(reason);
   interaction->status = INTERACTION_ERROR;
-  if (self->updated_cb)
-    self->updated_cb((SwankSession*)self, interaction, self->updated_cb_data);
-  if (interaction->done_cb)
-    interaction->done_cb(interaction, interaction->done_cb_data);
+  SwankSessionCallback updated_cb = self->updated_cb;
+  gpointer updated_cb_data = self->updated_cb_data;
+  InteractionCallback done_cb = interaction->done_cb;
+  gpointer done_cb_data = interaction->done_cb_data;
+  g_mutex_unlock(&self->lock);
+  if (updated_cb)
+    updated_cb((SwankSession*)self, interaction, updated_cb_data);
+  if (done_cb)
+    done_cb(interaction, done_cb_data);
 }
 
 static void real_swank_session_set_added(SwankSession *session, SwankSessionCallback cb, gpointer user_data) {
@@ -161,10 +196,17 @@ static void real_swank_session_set_updated(SwankSession *session, SwankSessionCa
 static void real_swank_session_destroy(SwankSession *session) {
   g_debug("RealSwankSession.destroy");
   RealSwankSession *self = (RealSwankSession*)session;
+  if (self->queue)
+    g_async_queue_push(self->queue, GINT_TO_POINTER(1));
+  if (self->thread)
+    g_thread_join(self->thread);
   if (self->proc)
     swank_process_unref(self->proc);
   if (self->interactions)
     g_hash_table_destroy(self->interactions);
+  if (self->queue)
+    g_async_queue_unref(self->queue);
+  g_mutex_clear(&self->lock);
   g_free(self);
 }
 
