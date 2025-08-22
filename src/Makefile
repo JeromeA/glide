@@ -5,7 +5,6 @@ SOURCES += \
   file_save.c \
   preferences.c \
   preferences_dialog.c \
-  find_executables.c \
   process.c \
   real_process.c \
   swank_process.c \
