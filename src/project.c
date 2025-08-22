@@ -28,6 +28,7 @@ struct _Project {
   GHashTable *package_uses;
   ProjectFileLoadedCb file_loaded_cb;
   gpointer file_loaded_data;
+  Asdf *asdf; /* owned, nullable */
   gint refcnt;
 };
 
@@ -58,6 +59,7 @@ static Project *project_init(void) {
   self->variable_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->asdf = NULL;
   return self;
 }
 
@@ -71,6 +73,7 @@ static void project_free(Project *self) {
   g_clear_pointer(&self->package_uses, g_hash_table_unref);
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
+  g_clear_object(&self->asdf);
   g_free(self);
 }
 
@@ -197,6 +200,27 @@ void project_index_add(Project *self, Node *node) {
 GHashTable *project_get_index(Project *self, StringDesignatorType sd_type) {
   g_return_val_if_fail(self != NULL, NULL);
   return project_index_table(self, sd_type);
+}
+
+void project_set_asdf(Project *self, Asdf *asdf) {
+  g_return_if_fail(self != NULL);
+  if (self->asdf)
+    g_object_unref(self->asdf);
+  self->asdf = asdf ? g_object_ref(asdf) : NULL;
+}
+
+Asdf *project_get_asdf(Project *self) {
+  g_return_val_if_fail(self != NULL, NULL);
+  return self->asdf;
+}
+
+void project_clear(Project *self) {
+  g_return_if_fail(self != NULL);
+  project_index_clear(self);
+  if (self->files)
+    g_ptr_array_set_size(self->files, 0);
+  self->next_scratch_id = 0;
+  project_set_asdf(self, NULL);
 }
 
 static void project_index_node(Project *self, const Node *node) {

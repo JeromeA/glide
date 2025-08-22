@@ -6,6 +6,7 @@ typedef struct _GtkTextBuffer GtkTextBuffer;
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
 #include "node.h"
+#include "asdf.h"
 
 typedef struct _Project Project;
 typedef struct _ProjectFile ProjectFile;
@@ -41,3 +42,6 @@ void           project_file_set_path(ProjectFile *file, const gchar *path);
 gboolean       project_file_load(Project *self, ProjectFile *file);
 void           project_index_add(Project *self, Node *node);
 GHashTable    *project_get_index(Project *self, StringDesignatorType sd_type);
+void           project_set_asdf(Project *self, Asdf *asdf);
+Asdf          *project_get_asdf(Project *self);
+void           project_clear(Project *self);

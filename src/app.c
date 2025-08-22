@@ -125,7 +125,9 @@ app_activate (GApplication *app)
   self->statusbar = status_bar_new(self->status_service);
   gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(self->statusbar), FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(self->window), vbox);
-
+  const gchar *proj = preferences_get_project_file(self->preferences);
+  if (proj)
+    file_open_path(self, proj);
   gtk_widget_show_all (self->window);
 }
 

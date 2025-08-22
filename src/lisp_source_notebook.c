@@ -88,6 +88,15 @@ lisp_source_notebook_add_file(LispSourceNotebook *self, ProjectFile *file)
   return page;
 }
 
+void
+lisp_source_notebook_clear(LispSourceNotebook *self)
+{
+  g_return_if_fail(LISP_IS_SOURCE_NOTEBOOK(self));
+  gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(self));
+  while (pages-- > 0)
+    gtk_notebook_remove_page(GTK_NOTEBOOK(self), 0);
+}
+
 LispSourceView *
 lisp_source_notebook_get_current_view(LispSourceNotebook *self)
 {

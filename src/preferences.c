@@ -7,6 +7,7 @@ struct _Preferences {
   gchar   *filename;
   gchar   *sdk;
   guint16  swank_port;
+  gchar   *project_file;
   gint     refcnt;
 };
 
@@ -23,6 +24,12 @@ static void preferences_load(Preferences *self) {
     gint port = g_key_file_get_integer(key_file, "General", "swank_port", NULL);
     if (port) {
       self->swank_port = (guint16)port;
+    }
+
+    char *proj = g_key_file_get_string(key_file, "General", "project_file", NULL);
+    if (proj) {
+      preferences_set_project_file(self, proj);
+      g_free(proj);
     }
   }
 
@@ -44,6 +51,8 @@ static void preferences_save(Preferences *self) {
   if (self->sdk)
     g_key_file_set_string(key_file, "General", "sdk", self->sdk);
   g_key_file_set_integer(key_file, "General", "swank_port", self->swank_port);
+  if (self->project_file)
+    g_key_file_set_string(key_file, "General", "project_file", self->project_file);
 
   if (!g_key_file_save_to_file(key_file, self->filename, &error)) {
     g_printerr("Failed to save config: %s\n", error->message);
@@ -57,6 +66,7 @@ static void preferences_save(Preferences *self) {
 static void preferences_free(Preferences *self) {
   g_free(self->filename);
   g_free(self->sdk);
+  g_free(self->project_file);
   g_free(self);
 }
 
@@ -90,6 +100,18 @@ guint16 preferences_get_swank_port(Preferences *self) {
 void preferences_set_swank_port(Preferences *self, guint16 new_port) {
   if (self->swank_port != new_port) {
     self->swank_port = new_port;
+    preferences_save(self);
+  }
+}
+
+const gchar *preferences_get_project_file(Preferences *self) {
+  return self->project_file;
+}
+
+void preferences_set_project_file(Preferences *self, const gchar *file) {
+  if (g_strcmp0(self->project_file, file) != 0) {
+    g_free(self->project_file);
+    self->project_file = g_strdup(file);
     preferences_save(self);
   }
 }
