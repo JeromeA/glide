@@ -5,7 +5,6 @@
 #include "evaluate.c"
 #include "file_open.c"
 #include "file_save.c"
-#include "find_executables.c"
 #include "gtk_text_provider.c"
 #include "interactions_view.c"
 #include "lisp_lexer.c"

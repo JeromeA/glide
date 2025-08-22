@@ -1,7 +1,6 @@
 
 #include <gtk/gtk.h>
 #include "preferences.h"
-#include "find_executables.h"
 #if __has_include("app.h")
 # define WITH_APP
 # include "app.h"
@@ -9,9 +8,36 @@
 
 typedef struct {
   GtkWidget *dialog;
-  GtkWidget *binary_combo_box;
+  GtkWidget *binary_entry;
   Preferences *preferences;
 } PreferencesDialog;
+
+static void
+on_choose_binary(GtkButton * /*button*/, gpointer data) {
+  PreferencesDialog *self = data;
+  GtkWidget *dialog = gtk_file_chooser_dialog_new("Select Lisp Binary",
+    GTK_WINDOW(self->dialog), GTK_FILE_CHOOSER_ACTION_OPEN,
+    "_Cancel", GTK_RESPONSE_CANCEL,
+    "_Open", GTK_RESPONSE_ACCEPT,
+    NULL);
+  if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+    gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+    gtk_entry_set_text(GTK_ENTRY(self->binary_entry), filename);
+    g_free(filename);
+  }
+  gtk_widget_destroy(dialog);
+}
+
+static void
+on_install_sbcl(GtkButton * /*button*/, gpointer /*data*/) {
+  const gchar *argv[] = {
+    "/usr/bin/x-terminal-emulator",
+    "-e",
+    "sudo apt install sbcl",
+    NULL
+  };
+  g_spawn_async(NULL, (gchar **)argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL);
+}
 
 PreferencesDialog *
 preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
@@ -37,16 +63,20 @@ preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   gtk_container_add(GTK_CONTAINER(content_area), grid);
 
   GtkWidget *binary_label = gtk_label_new("Lisp binary:");
-  self->binary_combo_box = gtk_combo_box_text_new();
-  GPtrArray *executables = find_lisp_executables();
-  for (guint i = 0; i < executables->len; i++) {
-    const gchar *executable = g_ptr_array_index(executables, i);
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(self->binary_combo_box), executable, executable);
-  }
-  g_ptr_array_free(executables, TRUE);
+  self->binary_entry = gtk_entry_new();
+  GtkWidget *choose_button = gtk_button_new_with_label("...");
+  g_signal_connect(choose_button, "clicked", G_CALLBACK(on_choose_binary), self);
 
   gtk_grid_attach(GTK_GRID(grid), binary_label, 0, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), self->binary_combo_box, 1, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), self->binary_entry, 1, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), choose_button, 2, 0, 1, 1);
+
+  GtkWidget *install_button = gtk_button_new_with_label("Install SBCL");
+  g_signal_connect(install_button, "clicked", G_CALLBACK(on_install_sbcl), NULL);
+  gtk_grid_attach(GTK_GRID(grid), install_button, 1, 1, 2, 1);
+
+  GtkWidget *install_label = gtk_label_new("To install manually, run: sudo apt install sbcl");
+  gtk_grid_attach(GTK_GRID(grid), install_label, 1, 2, 2, 1);
 
   gtk_widget_show_all(self->dialog);
 
@@ -61,13 +91,13 @@ void preferences_dialog_free(PreferencesDialog *prefs) {
 void preferences_dialog_load(PreferencesDialog *prefs) {
     // Set current value from preferences
     const gchar *current_sdk = preferences_get_sdk(prefs->preferences);
-    gtk_combo_box_set_active_id(GTK_COMBO_BOX(prefs->binary_combo_box), current_sdk);
+    gtk_entry_set_text(GTK_ENTRY(prefs->binary_entry), current_sdk ? current_sdk : "");
 
     gtk_widget_show_all(prefs->dialog);
 }
 
 void preferences_dialog_save(PreferencesDialog *prefs) {
-  const gchar *selected_sdk = gtk_combo_box_get_active_id(GTK_COMBO_BOX(prefs->binary_combo_box));
+  const gchar *selected_sdk = gtk_entry_get_text(GTK_ENTRY(prefs->binary_entry));
   preferences_set_sdk(prefs->preferences, selected_sdk);
 }
 
