@@ -59,10 +59,10 @@ main (int argc, char *argv[])
   const gchar *sdk_path = preferences_get_sdk (prefs);
   Process *proc = real_process_new (sdk_path);
   SwankProcess *swank_proc = real_swank_process_new (proc, prefs);
-  SwankSession *swank = real_swank_session_new (swank_proc);
+  StatusService *status_service = status_service_new();
+  SwankSession *swank = real_swank_session_new (swank_proc, status_service);
   package_common_lisp_set_swank_session(swank);
   Project *project = project_new();
-  StatusService *status_service = status_service_new();
   App *app     = app_new (prefs, swank, project, status_service);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);

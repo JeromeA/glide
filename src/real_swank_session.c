@@ -18,12 +18,13 @@ static const SwankSessionOps real_swank_session_ops = {
   .destroy = real_swank_session_destroy,
 };
 
-SwankSession *real_swank_session_new(SwankProcess *proc) {
+SwankSession *real_swank_session_new(SwankProcess *proc, StatusService *status_service) {
   g_debug("RealSwankSession.new");
   RealSwankSession *self = g_new0(RealSwankSession, 1);
   self->base.ops = &real_swank_session_ops;
   self->base.refcnt = 1;
   self->proc = proc ? swank_process_ref(proc) : NULL;
+  self->status_service = status_service;
   self->started = FALSE;
   self->next_tag = 1;
   self->interactions = g_hash_table_new(g_direct_hash, g_direct_equal);
@@ -88,7 +89,9 @@ static void real_swank_session_eval(SwankSession *session, Interaction *interact
   if (!self->proc)
     return;
   if (!self->started) {
+    guint status_id = status_service_publish(self->status_service, "SBCL is starting...");
     swank_process_start(self->proc);
+    status_service_unpublish(self->status_service, status_id);
     self->started = TRUE;
   }
   interaction->tag = self->next_tag++;

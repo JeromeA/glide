@@ -2,6 +2,7 @@
 #include "real_swank_session.h"
 #include "swank_process.h"
 #include "interaction.h"
+#include "status_service.h"
 #include <glib.h>
 #include <string.h>
 
@@ -67,7 +68,8 @@ static void on_interaction_done(Interaction * /*interaction*/, gpointer user_dat
 static void test_eval(void)
 {
   MockSwankProcess *mock_swank_process = mock_swank_process_new();
-  SwankSession *sess = real_swank_session_new((SwankProcess*)mock_swank_process);
+  StatusService *status_service = status_service_new();
+  SwankSession *sess = real_swank_session_new((SwankProcess*)mock_swank_process, status_service);
   Interaction interaction;
   interaction_init(&interaction, "(+ 1 2)");
   swank_session_eval(sess, &interaction);
@@ -77,6 +79,7 @@ static void test_eval(void)
       "(:emacs-rex (swank:eval-and-grab-output \"(+ 1 2)\") \"COMMON-LISP-USER\" t 1)");
   g_assert_cmpint(mock_swank_process->start_count, ==, 1);
   swank_session_unref(sess);
+  status_service_free(status_service);
   swank_process_unref((SwankProcess*)mock_swank_process);
 }
 
@@ -93,7 +96,8 @@ static void test_on_message_return_ok(void)
 static void test_on_message_return_abort(void)
 {
   MockSwankProcess *mock_swank_process = mock_swank_process_new();
-  SwankSession *sess = real_swank_session_new((SwankProcess*)mock_swank_process);
+  StatusService *status_service = status_service_new();
+  SwankSession *sess = real_swank_session_new((SwankProcess*)mock_swank_process, status_service);
   Interaction interaction;
   interaction_init(&interaction, "(+ 1 2)");
   swank_session_eval(sess, &interaction);
@@ -107,13 +111,15 @@ static void test_on_message_return_abort(void)
   interaction_clear(&interaction);
   g_string_free(msg, TRUE);
   swank_session_unref(sess);
+  status_service_free(status_service);
   swank_process_unref((SwankProcess*)mock_swank_process);
 }
 
 static void test_interaction_updated_signal(void)
 {
   MockSwankProcess *proc = mock_swank_process_new();
-  SwankSession *sess = real_swank_session_new((SwankProcess*)proc);
+  StatusService *status_service = status_service_new();
+  SwankSession *sess = real_swank_session_new((SwankProcess*)proc, status_service);
   Interaction interaction;
   interaction_init(&interaction, "(+ 1 2)");
   swank_session_eval(sess, &interaction);
@@ -126,13 +132,15 @@ static void test_interaction_updated_signal(void)
   interaction_clear(&interaction);
   g_string_free(msg, TRUE);
   swank_session_unref(sess);
+  status_service_free(status_service);
   swank_process_unref((SwankProcess*)proc);
 }
 
 static void test_interaction_done_callback(void)
 {
   MockSwankProcess *proc = mock_swank_process_new();
-  SwankSession *sess = real_swank_session_new((SwankProcess*)proc);
+  StatusService *status_service = status_service_new();
+  SwankSession *sess = real_swank_session_new((SwankProcess*)proc, status_service);
   Interaction interaction;
   interaction_init(&interaction, "(+ 1 2)");
   int count = 0;
@@ -145,6 +153,7 @@ static void test_interaction_done_callback(void)
   interaction_clear(&interaction);
   g_string_free(msg, TRUE);
   swank_session_unref(sess);
+  status_service_free(status_service);
   swank_process_unref((SwankProcess*)proc);
 }
 
