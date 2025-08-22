@@ -6,6 +6,9 @@ App *-- SwankSession
 App *-- Window
 App *-- LispSourceNotebook
 App *-- Preferences
+App *-- StatusBar
+App *-- StatusService
+StatusBar *-- StatusService
 
 GtkSourceView <|-- LispSourceView
 LispSourceView *-- GtkSourceBuffer
@@ -21,6 +24,7 @@ ProjectFile *-- TextProvider
 ProjectFile : path
 
 GtkBox <|-- InteractionsView
+GtkBox <|-- StatusBar
 InteractionsView "1" o-- "*" Interaction
 InteractionsView *-- SwankSession
 Interaction : expression

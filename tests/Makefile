@@ -1,8 +1,8 @@
 VPATH = ../src
 INCLUDES = -I$(VPATH) -I..
-CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0`
-LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0`
-TESTS = preferences_test process_test swank_process_test swank_session_test lisp_parser_test project_test asdf_test analyser_test package_test package_common_lisp_test
+CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0`
+LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0`
+TESTS = preferences_test process_test swank_process_test swank_session_test lisp_parser_test project_test asdf_test analyser_test package_test package_common_lisp_test status_service_test
 CLEANABLES = $(TESTS)
 
 all: $(TESTS)
@@ -37,6 +37,9 @@ package_test: package_test.c package.c package_common_lisp_user.c node.c
 package_common_lisp_test: package_common_lisp_test.c package_common_lisp.c package.c swank_session.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
+status_service_test: status_service_test.c status_service.c
+	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+
 run: all
 	./preferences_test
 	./process_test
@@ -48,6 +51,7 @@ run: all
 	./analyser_test
 	./package_test
 	./package_common_lisp_test
+	./status_service_test
 
 clean:
 	rm -f $(CLEANABLES)

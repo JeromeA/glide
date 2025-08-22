@@ -9,6 +9,7 @@
 #include "lisp_source_notebook.h"
 #include "lisp_parser_view.h"
 #include "project.h"
+#include "status_bar.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -25,6 +26,8 @@ struct _App
   Preferences    *preferences;
   SwankSession   *swank;
   Project        *project;
+  StatusBar      *statusbar;
+  StatusService  *status_service;
 };
 
 static void
@@ -119,10 +122,8 @@ app_activate (GApplication *app)
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), paned, TRUE, TRUE, 0);
-  GtkWidget *statusbar = gtk_statusbar_new();
-  guint context_id = gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar), "default");
-  gtk_statusbar_push(GTK_STATUSBAR(statusbar), context_id, "Ready.");
-  gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, FALSE, 0);
+  self->statusbar = status_bar_new(self->status_service);
+  gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(self->statusbar), FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(self->window), vbox);
 
   gtk_widget_show_all (self->window);
@@ -177,10 +178,12 @@ app_init (App *self)
   self->swank = NULL;
   self->project = NULL;
   self->notebook = NULL;
+  self->statusbar = NULL;
+  self->status_service = NULL;
 }
 
 STATIC App *
-app_new (Preferences *prefs, SwankSession *swank, Project *project)
+app_new (Preferences *prefs, SwankSession *swank, Project *project, StatusService *status_service)
 {
   g_debug("App.new");
   g_return_val_if_fail (swank, NULL);
@@ -191,9 +194,10 @@ app_new (Preferences *prefs, SwankSession *swank, Project *project)
       "flags",             G_APPLICATION_HANDLES_OPEN,
       NULL);
 
-  self->preferences = preferences_ref(prefs);
-  self->swank       = swank_session_ref(swank);
-  self->project     = project_ref(project);
+  self->preferences    = preferences_ref(prefs);
+  self->swank          = swank_session_ref(swank);
+  self->project        = project_ref(project);
+  self->status_service = status_service;
   return self;
 }
 
@@ -245,6 +249,14 @@ app_get_swank (App *self)
   g_debug("App.get_swank");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->swank;
+}
+
+STATIC StatusService *
+app_get_status_service (App *self)
+{
+  g_debug("App.get_status_service");
+  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
+  return self->status_service;
 }
 
 STATIC void
