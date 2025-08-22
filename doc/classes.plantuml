@@ -7,6 +7,8 @@ App *-- Window
 App *-- LispSourceNotebook
 App *-- Preferences
 App *-- StatusBar
+App *-- StatusService
+StatusBar *-- StatusService
 
 GtkSourceView <|-- LispSourceView
 LispSourceView *-- GtkSourceBuffer

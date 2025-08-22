@@ -29,7 +29,8 @@ SOURCES += \
   string_text_provider.c \
   text_provider.c \
   asdf.c \
-  status_bar.c
+  status_bar.c \
+  status_service.c
 
 include Makefile_common
 

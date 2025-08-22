@@ -7,6 +7,7 @@
 #include "file_save.c"
 #include "gtk_text_provider.c"
 #include "interactions_view.c"
+#include "status_service.c"
 #include "status_bar.c"
 #include "lisp_lexer.c"
 #include "package.c"
@@ -45,6 +46,7 @@
 #include "swank_session.h"
 #include "project.h"
 #include "package_common_lisp.h"
+#include "status_service.h"
 
 int
 main (int argc, char *argv[])
@@ -60,7 +62,8 @@ main (int argc, char *argv[])
   SwankSession *swank = real_swank_session_new (swank_proc);
   package_common_lisp_set_swank_session(swank);
   Project *project = project_new();
-  App *app     = app_new (prefs, swank, project);
+  StatusService *status_service = status_service_new();
+  App *app     = app_new (prefs, swank, project, status_service);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref(app);
@@ -68,6 +71,7 @@ main (int argc, char *argv[])
   swank_process_unref(swank_proc);
   process_unref(proc);
   project_unref(project);
+  status_service_free(status_service);
   preferences_unref(prefs);
   exit(status);
 }
