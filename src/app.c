@@ -119,6 +119,10 @@ app_activate (GApplication *app)
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), paned, TRUE, TRUE, 0);
+  GtkWidget *statusbar = gtk_statusbar_new();
+  guint context_id = gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar), "default");
+  gtk_statusbar_push(GTK_STATUSBAR(statusbar), context_id, "Ready.");
+  gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(self->window), vbox);
 
   gtk_widget_show_all (self->window);
