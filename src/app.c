@@ -9,6 +9,7 @@
 #include "lisp_source_notebook.h"
 #include "lisp_parser_view.h"
 #include "project.h"
+#include "status_bar.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -25,6 +26,7 @@ struct _App
   Preferences    *preferences;
   SwankSession   *swank;
   Project        *project;
+  StatusBar      *statusbar;
 };
 
 static void
@@ -119,10 +121,8 @@ app_activate (GApplication *app)
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), paned, TRUE, TRUE, 0);
-  GtkWidget *statusbar = gtk_statusbar_new();
-  guint context_id = gtk_statusbar_get_context_id(GTK_STATUSBAR(statusbar), "default");
-  gtk_statusbar_push(GTK_STATUSBAR(statusbar), context_id, "Ready.");
-  gtk_box_pack_start(GTK_BOX(vbox), statusbar, FALSE, FALSE, 0);
+  self->statusbar = status_bar_new();
+  gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(self->statusbar), FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(self->window), vbox);
 
   gtk_widget_show_all (self->window);

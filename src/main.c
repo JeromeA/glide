@@ -7,6 +7,7 @@
 #include "file_save.c"
 #include "gtk_text_provider.c"
 #include "interactions_view.c"
+#include "status_bar.c"
 #include "lisp_lexer.c"
 #include "package.c"
 #include "package_common_lisp_user.c"

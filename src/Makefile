@@ -28,7 +28,8 @@ SOURCES += \
   gtk_text_provider.c \
   string_text_provider.c \
   text_provider.c \
-  asdf.c
+  asdf.c \
+  status_bar.c
 
 include Makefile_common
 
