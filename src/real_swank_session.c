@@ -56,37 +56,6 @@ static gchar *escape_string(const char *str) {
   return ret;
 }
 
-static gchar *unescape_string(const char *token) {
-  g_debug("RealSwankSession.unescape_string input:%s", token);
-  if (*token == '"') {
-    GString *out = g_string_new(NULL);
-    const char *p = token + 1;
-    gboolean esc = FALSE;
-    for (; *p && *p != '"'; p++) {
-      char c = *p;
-      if (esc) {
-        switch (c) {
-          case 'n': g_string_append_c(out, '\n'); break;
-          case 't': g_string_append_c(out, '\t'); break;
-          case 'r': g_string_append_c(out, '\r'); break;
-          case '\\': g_string_append_c(out, '\\'); break;
-          case '"': g_string_append_c(out, '"'); break;
-          default: g_string_append_c(out, c); break;
-        }
-        esc = FALSE;
-      } else if (c == '\\') {
-        esc = TRUE;
-      } else {
-        g_string_append_c(out, c);
-      }
-    }
-    gchar *ret = g_string_free(out, FALSE);
-    g_debug("RealSwankSession.unescape_string output:%s", ret);
-    return ret;
-  }
-  return g_strdup(token);
-}
-
 static gpointer real_swank_session_thread(gpointer data) {
   RealSwankSession *self = data;
   for (;;) {
