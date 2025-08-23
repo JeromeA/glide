@@ -1,5 +1,4 @@
-#ifndef GLIDE_H
-#define GLIDE_H
+#pragma once
 
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
@@ -32,4 +31,3 @@ STATIC StatusService *app_get_status_service(App *self);
 
 G_END_DECLS
 
-#endif /* GLIDE_H */

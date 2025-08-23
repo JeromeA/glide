@@ -1,5 +1,4 @@
-#ifndef STATUS_SERVICE_H
-#define STATUS_SERVICE_H
+#pragma once
 
 #include <glib.h>
 
@@ -16,4 +15,3 @@ void status_service_unpublish(StatusService *self, guint id);
 const gchar *status_service_get(StatusService *self);
 void status_service_set_callback(StatusService *self, StatusServiceCallback cb, gpointer user_data);
 
-#endif /* STATUS_SERVICE_H */

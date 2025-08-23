@@ -1,5 +1,4 @@
-#ifndef GLIDE_UTIL_H
-#define GLIDE_UTIL_H
+#pragma once
 
 #include <glib.h>
 
@@ -11,4 +10,3 @@ static inline void g_debug_40(const char *string, const char *msg)
     g_debug("%s%s", string, msg);
 }
 
-#endif /* GLIDE_UTIL_H */

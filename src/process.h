@@ -1,5 +1,4 @@
-#ifndef PROCESS_H
-#define PROCESS_H
+#pragma once
 
 #include <glib.h>
 
@@ -43,4 +42,3 @@ static inline void process_start(Process *self) {
 Process *process_ref(Process *self);
 void     process_unref(Process *self);
 
-#endif /* PROCESS_H */

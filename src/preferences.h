@@ -1,6 +1,4 @@
-
-#ifndef PREFERENCES_H
-#define PREFERENCES_H
+#pragma once
 
 #include <glib.h>
 
@@ -16,4 +14,3 @@ void         preferences_set_swank_port(Preferences *self, guint16 new_port);
 const gchar *preferences_get_project_file(Preferences *self);
 void         preferences_set_project_file(Preferences *self, const gchar *file);
 
-#endif // PREFERENCES_H

@@ -1,5 +1,4 @@
-#ifndef SWANK_PROCESS_H
-#define SWANK_PROCESS_H
+#pragma once
 
 #include "preferences.h"
 #include "process.h"
@@ -42,4 +41,3 @@ static inline void swank_process_set_message_cb(SwankProcess *self,
 SwankProcess *swank_process_ref(SwankProcess *self);
 void          swank_process_unref(SwankProcess *self);
 
-#endif /* SWANK_PROCESS_H */

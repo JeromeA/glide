@@ -1,5 +1,4 @@
-#ifndef STATUS_BAR_H
-#define STATUS_BAR_H
+#pragma once
 
 #include <gtk/gtk.h>
 #include "status_service.h"
@@ -13,4 +12,3 @@ StatusBar *status_bar_new(StatusService *service);
 
 G_END_DECLS
 
-#endif /* STATUS_BAR_H */

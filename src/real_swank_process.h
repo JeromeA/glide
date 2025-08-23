@@ -1,5 +1,4 @@
-#ifndef REAL_SWANK_PROCESS_H
-#define REAL_SWANK_PROCESS_H
+#pragma once
 
 #include "swank_process.h"
 #include <gio/gio.h>
@@ -29,4 +28,3 @@ typedef struct {
 SwankProcess *real_swank_process_new(Process *proc, Preferences *prefs);
 void real_swank_process_set_socket(RealSwankProcess *self, int fd);
 
-#endif /* REAL_SWANK_PROCESS_H */
