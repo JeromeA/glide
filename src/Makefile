@@ -3,6 +3,7 @@ LIBS += gtksourceview-4
 SOURCES += \
   file_open.c \
   file_new.c \
+  file_rename.c \
   project_new_wizard.c \
   file_save.c \
   preferences.c \
