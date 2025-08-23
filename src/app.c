@@ -2,6 +2,7 @@
 #include "app.h"
 #include "file_open.h"
 #include "file_new.h"
+#include "project_new_wizard.h"
 #include "preferences_dialog.h"
 #include "evaluate.h"
 #include "interactions_view.h"
@@ -120,6 +121,7 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exit_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
 
+  g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
   g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
   g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
   g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
