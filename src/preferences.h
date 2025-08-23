@@ -17,4 +17,6 @@ const gchar *preferences_get_project_dir(Preferences *self);
 void         preferences_set_project_dir(Preferences *self, const gchar *dir);
 gint         preferences_get_asdf_view_width(Preferences *self);
 void         preferences_set_asdf_view_width(Preferences *self, gint width);
+const GList *preferences_get_recent_projects(Preferences *self);
+void         preferences_add_recent_project(Preferences *self, const gchar *path);
 

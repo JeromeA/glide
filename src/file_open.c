@@ -91,6 +91,8 @@ gboolean file_open_path(App *app, const gchar *filename) {
 
   Preferences *prefs = app_get_preferences(app);
   preferences_set_project_file(prefs, filename);
+  preferences_add_recent_project(prefs, filename);
+  app_update_recent_menu(app);
 
   LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
   if (view)

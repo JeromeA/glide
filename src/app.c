@@ -17,6 +17,8 @@
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
 STATIC void     quit_menu_item   (GtkWidget * /*item*/,   gpointer data);
 STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, gpointer data);
+STATIC void     app_update_recent_menu(App *self);
+STATIC void     on_recent_project_activate(GtkWidget *item, gpointer data);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -33,6 +35,7 @@ struct _App
   StatusService  *status_service;
   GtkWidget      *notebook_paned;
   GtkWidget      *asdf_scrolled;
+  GtkWidget      *recent_menu;
 };
 
 static void
@@ -110,6 +113,7 @@ app_activate (GApplication *app)
   GtkWidget *proj_open_item = gtk_menu_item_new_with_label("Open…");
   GtkWidget *proj_recent_item = gtk_menu_item_new_with_label("Recent");
   GtkWidget *recent_menu   = gtk_menu_new();
+  self->recent_menu = recent_menu;
 
   GtkWidget *newfile_item  = gtk_menu_item_new_with_label("New file");
   GtkWidget *settings_item = gtk_menu_item_new_with_label("Settings…");
@@ -149,6 +153,7 @@ app_activate (GApplication *app)
   const gchar *proj = preferences_get_project_file(self->preferences);
   if (proj)
     file_open_path(self, proj);
+  app_update_recent_menu(self);
   gtk_widget_show_all (self->window);
 }
 
@@ -174,6 +179,7 @@ app_dispose (GObject *object)
   g_clear_object(&self->notebook);
   g_clear_object(&self->asdf_scrolled);
   g_clear_object(&self->notebook_paned);
+  g_clear_object(&self->recent_menu);
   if (self->preferences) {
     preferences_unref(self->preferences);
     self->preferences = NULL;
@@ -207,6 +213,7 @@ app_init (App *self)
   self->status_service = NULL;
   self->notebook_paned = NULL;
   self->asdf_scrolled = NULL;
+  self->recent_menu = NULL;
 }
 
 STATIC App *
@@ -296,6 +303,38 @@ on_notebook_paned_position(GObject *object, GParamSpec * /*pspec*/, gpointer dat
     return;
   gint pos = gtk_paned_get_position(GTK_PANED(object));
   preferences_set_asdf_view_width(prefs, pos);
+}
+
+STATIC void
+app_update_recent_menu(App *self)
+{
+  g_return_if_fail(GLIDE_IS_APP(self));
+  if (!self->recent_menu)
+    return;
+  GList *children = gtk_container_get_children(GTK_CONTAINER(self->recent_menu));
+  for (GList *l = children; l; l = l->next)
+    gtk_widget_destroy(GTK_WIDGET(l->data));
+  g_list_free(children);
+  const GList *recent = preferences_get_recent_projects(self->preferences);
+  for (const GList *l = recent; l; l = l->next) {
+    const gchar *path = l->data;
+    gchar *label = g_path_get_basename(path);
+    GtkWidget *item = gtk_menu_item_new_with_label(label);
+    g_free(label);
+    g_object_set_data_full(G_OBJECT(item), "project-path", g_strdup(path), g_free);
+    g_signal_connect(item, "activate", G_CALLBACK(on_recent_project_activate), self);
+    gtk_menu_shell_append(GTK_MENU_SHELL(self->recent_menu), item);
+  }
+  gtk_widget_show_all(self->recent_menu);
+}
+
+STATIC void
+on_recent_project_activate(GtkWidget *item, gpointer data)
+{
+  App *self = GLIDE_APP(data);
+  const gchar *path = g_object_get_data(G_OBJECT(item), "project-path");
+  if (path)
+    file_open_path(self, path);
 }
 
 
