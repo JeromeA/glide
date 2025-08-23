@@ -9,6 +9,7 @@ struct _Preferences {
   guint16  swank_port;
   gchar   *project_file;
   gchar   *project_dir;
+  gint     asdf_view_width;
   gint     refcnt;
 };
 
@@ -38,6 +39,10 @@ static void preferences_load(Preferences *self) {
       preferences_set_project_dir(self, proj_dir);
       g_free(proj_dir);
     }
+
+    gint width = g_key_file_get_integer(key_file, "General", "asdf_view_width", NULL);
+    if (width)
+      preferences_set_asdf_view_width(self, width);
   }
 
   g_key_file_free(key_file);
@@ -62,6 +67,7 @@ static void preferences_save(Preferences *self) {
     g_key_file_set_string(key_file, "General", "project_file", self->project_file);
   if (self->project_dir)
     g_key_file_set_string(key_file, "General", "project_dir", self->project_dir);
+  g_key_file_set_integer(key_file, "General", "asdf_view_width", self->asdf_view_width);
 
   if (!g_key_file_save_to_file(key_file, self->filename, &error)) {
     g_printerr("Failed to save config: %s\n", error->message);
@@ -88,6 +94,7 @@ preferences_new(const gchar *config_dir)
   self->refcnt = 1;
   self->filename = g_build_filename(config_dir, "glide", "preferences.ini", NULL);
   self->project_dir = g_strdup("~/lisp");
+  self->asdf_view_width = 200;
   preferences_load(self);
   return self;
 }
@@ -135,6 +142,17 @@ void preferences_set_project_dir(Preferences *self, const gchar *dir) {
   if (g_strcmp0(self->project_dir, dir) != 0) {
     g_free(self->project_dir);
     self->project_dir = g_strdup(dir);
+    preferences_save(self);
+  }
+}
+
+gint preferences_get_asdf_view_width(Preferences *self) {
+  return self->asdf_view_width;
+}
+
+void preferences_set_asdf_view_width(Preferences *self, gint width) {
+  if (self->asdf_view_width != width) {
+    self->asdf_view_width = width;
     preferences_save(self);
   }
 }

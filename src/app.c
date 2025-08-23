@@ -16,6 +16,7 @@
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
 STATIC void     quit_menu_item   (GtkWidget * /*item*/,   gpointer data);
+STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, gpointer data);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -91,6 +92,8 @@ app_activate (GApplication *app)
   GtkWidget *notebook = lisp_source_notebook_new (self->project);
   self->notebook = LISP_SOURCE_NOTEBOOK(notebook);
   self->notebook_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+  g_signal_connect(self->notebook_paned, "notify::position",
+      G_CALLBACK(on_notebook_paned_position), self);
   gtk_paned_pack2(GTK_PANED(self->notebook_paned), notebook, TRUE, TRUE);
 
   LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
@@ -278,6 +281,21 @@ app_update_asdf_view(App *self)
   gtk_container_add(GTK_CONTAINER(self->asdf_scrolled), view);
   gtk_widget_show_all(self->asdf_scrolled);
   gtk_paned_pack1(GTK_PANED(self->notebook_paned), self->asdf_scrolled, FALSE, TRUE);
+  gint width = preferences_get_asdf_view_width(self->preferences);
+  gtk_paned_set_position(GTK_PANED(self->notebook_paned), width);
+}
+
+STATIC void
+on_notebook_paned_position(GObject *object, GParamSpec * /*pspec*/, gpointer data)
+{
+  App *self = GLIDE_APP(data);
+  if (!self->asdf_scrolled)
+    return;
+  Preferences *prefs = app_get_preferences(self);
+  if (!prefs)
+    return;
+  gint pos = gtk_paned_get_position(GTK_PANED(object));
+  preferences_set_asdf_view_width(prefs, pos);
 }
 
 
