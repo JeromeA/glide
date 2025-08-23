@@ -204,7 +204,10 @@ app_activate (GApplication *app)
     }
   }
   app_update_recent_menu(self);
-  gtk_widget_show_all (self->window);
+  gtk_widget_show_all(self->window);
+  LispSourceView *current_view = lisp_source_notebook_get_current_view(self->notebook);
+  if (current_view)
+    gtk_widget_grab_focus(GTK_WIDGET(current_view));
 }
 
 static void
