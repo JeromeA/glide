@@ -74,8 +74,6 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
 
   g_ptr_array_add(self->files, file);
 
-  project_file_changed(self, file);
-
   return file;
 }
 
