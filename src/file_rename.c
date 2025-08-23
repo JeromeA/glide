@@ -21,7 +21,7 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
       "_Refactor", GTK_RESPONSE_ACCEPT,
       NULL);
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gchar *label_text = g_strdup_printf("rename file '%s' and its usages to:", basename);
+  gchar *label_text = g_strdup_printf("Rename file '%s' and its usages to:", basename);
   GtkWidget *label = gtk_label_new(label_text);
   GtkWidget *entry = gtk_entry_new();
   gtk_entry_set_text(GTK_ENTRY(entry), basename);
