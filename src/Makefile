@@ -2,6 +2,7 @@
 LIBS += gtksourceview-4
 SOURCES += \
   file_open.c \
+  file_new.c \
   file_save.c \
   preferences.c \
   preferences_dialog.c \

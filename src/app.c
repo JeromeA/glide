@@ -1,7 +1,7 @@
 #include "includes.h"
 #include "app.h"
 #include "file_open.h"
-#include "file_save.h"
+#include "file_new.h"
 #include "preferences_dialog.h"
 #include "evaluate.h"
 #include "interactions_view.h"
@@ -92,27 +92,38 @@ app_activate (GApplication *app)
 
   /* Menu bar ------------------------------------------------------ */
   GtkWidget *menu_bar      = gtk_menu_bar_new ();
-  GtkWidget *file_menu     = gtk_menu_new ();
-  GtkWidget *file_item     = gtk_menu_item_new_with_label ("File");
-  GtkWidget *open_item     = gtk_menu_item_new_with_label ("Open…");
-  GtkWidget *save_item     = gtk_menu_item_new_with_label ("Save");
-  GtkWidget *saveas_item   = gtk_menu_item_new_with_label ("Save as…");
-  GtkWidget *pref_item     = gtk_menu_item_new_with_label ("Preferences…");
-  GtkWidget *quit_item     = gtk_menu_item_new_with_label ("Quit");
+  GtkWidget *file_menu     = gtk_menu_new();
+  GtkWidget *file_item     = gtk_menu_item_new_with_label("File");
 
-  gtk_menu_item_set_submenu (GTK_MENU_ITEM (file_item), file_menu);
-  gtk_menu_shell_append (GTK_MENU_SHELL (file_menu), open_item);
-  gtk_menu_shell_append (GTK_MENU_SHELL (file_menu), save_item);
-  gtk_menu_shell_append (GTK_MENU_SHELL (file_menu), saveas_item);
-  gtk_menu_shell_append (GTK_MENU_SHELL (file_menu), pref_item);
-  gtk_menu_shell_append (GTK_MENU_SHELL (file_menu), quit_item);
-  gtk_menu_shell_append (GTK_MENU_SHELL (menu_bar), file_item);
+  GtkWidget *project_menu  = gtk_menu_new();
+  GtkWidget *project_item  = gtk_menu_item_new_with_label("Project");
+  GtkWidget *proj_new_item = gtk_menu_item_new_with_label("New…");
+  GtkWidget *proj_open_item = gtk_menu_item_new_with_label("Open…");
+  GtkWidget *proj_recent_item = gtk_menu_item_new_with_label("Recent");
+  GtkWidget *recent_menu   = gtk_menu_new();
 
-  g_signal_connect (open_item,   "activate", G_CALLBACK (file_open),   self);
-  g_signal_connect (save_item,   "activate", G_CALLBACK (file_save),   self);
-  g_signal_connect (saveas_item, "activate", G_CALLBACK (file_saveas), self);
-  g_signal_connect (pref_item, "activate", G_CALLBACK (on_preferences), self);
-  g_signal_connect (quit_item, "activate", G_CALLBACK (quit_menu_item), self);
+  GtkWidget *newfile_item  = gtk_menu_item_new_with_label("New file");
+  GtkWidget *settings_item = gtk_menu_item_new_with_label("Settings…");
+  GtkWidget *exit_item     = gtk_menu_item_new_with_label("Exit");
+
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_item), file_menu);
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(project_item), project_menu);
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(proj_recent_item), recent_menu);
+  gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_new_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_open_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_recent_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), project_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), newfile_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), settings_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exit_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
+
+  g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
+  g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
+  g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
+  g_signal_connect(exit_item, "activate", G_CALLBACK(quit_menu_item), self);
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
