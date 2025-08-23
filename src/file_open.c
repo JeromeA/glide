@@ -61,8 +61,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
     project_set_asdf(project, asdf);
     g_object_unref(asdf);
     gchar *base = g_path_get_dirname(filename);
-    const gchar *pathname = asdf_get_pathname(project_get_asdf(project));
-    gchar *dir = pathname ? g_build_filename(base, pathname, NULL) : g_strdup(base);
+    gchar *dir = g_strdup(base);
     for (guint i = 0; i < asdf_get_component_count(project_get_asdf(project)); i++) {
       const gchar *comp = asdf_get_component(project_get_asdf(project), i);
       gchar *path = g_build_filename(dir, comp, NULL);
