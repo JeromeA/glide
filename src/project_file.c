@@ -70,8 +70,6 @@ void project_file_set_provider(ProjectFile *file, TextProvider *provider,
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
-  if (file->project)
-    project_file_changed(file->project, file);
 }
 
 TextProvider *project_file_get_provider(ProjectFile *file) {
