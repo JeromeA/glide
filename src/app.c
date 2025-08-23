@@ -425,7 +425,7 @@ on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data)
 }
 
 STATIC void
-on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget * /*page*/, guint /*page_num*/, gpointer data)
+on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*page_num*/, gpointer data)
 {
   App *self = GLIDE_APP(data);
   if (!self->asdf_scrolled)
@@ -433,10 +433,12 @@ on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget * /*page*/, guint 
   GtkWidget *view = gtk_bin_get_child(GTK_BIN(self->asdf_scrolled));
   if (!view)
     return;
-  LispSourceView *lsv = lisp_source_notebook_get_current_view(self->notebook);
-  if (!lsv)
+  if (!page)
     return;
-  ProjectFile *file = lisp_source_view_get_file(lsv);
+  GtkWidget *child = gtk_bin_get_child(GTK_BIN(page));
+  if (!child)
+    return;
+  ProjectFile *file = lisp_source_view_get_file(LISP_SOURCE_VIEW(child));
   if (!file)
     return;
   const gchar *rel = project_file_get_relative_path(file);
