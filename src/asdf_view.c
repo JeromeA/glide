@@ -8,7 +8,7 @@ struct _AsdfView {
 
 G_DEFINE_TYPE(AsdfView, asdf_view, GTK_TYPE_TREE_VIEW)
 
-enum { COL_TEXT, COL_VALUE, ASDF_VIEW_N_COLS };
+enum { COL_TEXT, ASDF_VIEW_N_COLS };
 
 static void asdf_view_populate_store(AsdfView *self);
 
