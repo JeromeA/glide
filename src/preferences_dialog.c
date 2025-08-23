@@ -22,6 +22,8 @@ update_status(PreferencesDialog *self) {
   }
   if (!g_file_test(filename, G_FILE_TEST_EXISTS)) {
     gtk_label_set_markup(GTK_LABEL(self->status_label), "<span foreground=\"red\">file not found</span>");
+  } else if (g_file_test(filename, G_FILE_TEST_IS_DIR)) {
+    gtk_label_set_markup(GTK_LABEL(self->status_label), "<span foreground=\"red\">is a directory</span>");
   } else if (!g_file_test(filename, G_FILE_TEST_IS_EXECUTABLE)) {
     gtk_label_set_markup(GTK_LABEL(self->status_label), "<span foreground=\"red\">not executable</span>");
   } else {
