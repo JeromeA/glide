@@ -481,7 +481,6 @@ on_recent_project_activate(GtkWidget *item, gpointer data)
 STATIC Preferences *
 app_get_preferences (App *self)
 {
-  g_debug("App.get_preferences");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->preferences;
 }
@@ -489,7 +488,6 @@ app_get_preferences (App *self)
 STATIC SwankSession *
 app_get_swank (App *self)
 {
-  g_debug("App.get_swank");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->swank;
 }
@@ -497,7 +495,6 @@ app_get_swank (App *self)
 STATIC StatusService *
 app_get_status_service (App *self)
 {
-  g_debug("App.get_status_service");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   return self->status_service;
 }
