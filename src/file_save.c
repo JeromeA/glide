@@ -104,3 +104,21 @@ void file_saveas(GtkWidget *widget, gpointer data) {
   }
   g_free(old_filename);
 }
+
+void file_save_all(GtkWidget * /*widget*/, gpointer data) {
+  App *app = (App *) data;
+  LispSourceNotebook *notebook = app_get_notebook(app);
+  if (!notebook)
+    return;
+  gint current = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
+  gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+  for (gint i = 0; i < pages; i++) {
+    GtkWidget *child = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
+    GtkTextBuffer *buffer = GTK_TEXT_BUFFER(lisp_source_view_get_buffer(LISP_SOURCE_VIEW(child)));
+    if (buffer && gtk_text_buffer_get_modified(buffer)) {
+      gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), i);
+      file_save(NULL, app);
+    }
+  }
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(notebook), current);
+}
