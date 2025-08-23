@@ -10,6 +10,7 @@ struct _Preferences {
   gchar   *project_file;
   gchar   *project_dir;
   gint     asdf_view_width;
+  GList   *recent_projects;
   gint     refcnt;
 };
 
@@ -43,6 +44,12 @@ static void preferences_load(Preferences *self) {
     gint width = g_key_file_get_integer(key_file, "General", "asdf_view_width", NULL);
     if (width)
       preferences_set_asdf_view_width(self, width);
+
+    gsize len = 0;
+    char **recent = g_key_file_get_string_list(key_file, "General", "recent_projects", &len, NULL);
+    for (gsize i = 0; i < len && i < 5; i++)
+      self->recent_projects = g_list_append(self->recent_projects, g_strdup(recent[i]));
+    g_strfreev(recent);
   }
 
   g_key_file_free(key_file);
@@ -69,6 +76,18 @@ static void preferences_save(Preferences *self) {
     g_key_file_set_string(key_file, "General", "project_dir", self->project_dir);
   g_key_file_set_integer(key_file, "General", "asdf_view_width", self->asdf_view_width);
 
+  gsize len = g_list_length(self->recent_projects);
+  if (len) {
+    const gchar **arr = g_new(const gchar *, len);
+    GList *l = self->recent_projects;
+    for (gsize i = 0; i < len; i++, l = l->next)
+      arr[i] = l->data;
+    g_key_file_set_string_list(key_file, "General", "recent_projects", arr, len);
+    g_free(arr);
+  } else {
+    g_key_file_remove_key(key_file, "General", "recent_projects", NULL);
+  }
+
   if (!g_key_file_save_to_file(key_file, self->filename, &error)) {
     g_printerr("Failed to save config: %s\n", error->message);
     g_clear_error(&error);
@@ -83,6 +102,7 @@ static void preferences_free(Preferences *self) {
   g_free(self->sdk);
   g_free(self->project_file);
   g_free(self->project_dir);
+  g_list_free_full(self->recent_projects, g_free);
   g_free(self);
 }
 
@@ -155,6 +175,25 @@ void preferences_set_asdf_view_width(Preferences *self, gint width) {
     self->asdf_view_width = width;
     preferences_save(self);
   }
+}
+
+const GList *preferences_get_recent_projects(Preferences *self) {
+  return self->recent_projects;
+}
+
+void preferences_add_recent_project(Preferences *self, const gchar *path) {
+  GList *link = g_list_find_custom(self->recent_projects, path, (GCompareFunc)g_strcmp0);
+  if (link) {
+    g_free(link->data);
+    self->recent_projects = g_list_delete_link(self->recent_projects, link);
+  }
+  self->recent_projects = g_list_prepend(self->recent_projects, g_strdup(path));
+  while (g_list_length(self->recent_projects) > 5) {
+    GList *last = g_list_last(self->recent_projects);
+    g_free(last->data);
+    self->recent_projects = g_list_delete_link(self->recent_projects, last);
+  }
+  preferences_save(self);
 }
 
 Preferences *preferences_ref(Preferences *self) {

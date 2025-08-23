@@ -108,6 +108,45 @@ test_set_asdf_view_width(void)
   g_free(tmpdir);
 }
 
+static void
+test_recent_projects(void)
+{
+  gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
+  Preferences *prefs = preferences_new(tmpdir);
+
+  preferences_add_recent_project(prefs, "/tmp/a");
+  preferences_add_recent_project(prefs, "/tmp/b");
+  preferences_add_recent_project(prefs, "/tmp/c");
+  preferences_add_recent_project(prefs, "/tmp/d");
+  preferences_add_recent_project(prefs, "/tmp/e");
+  preferences_add_recent_project(prefs, "/tmp/f");
+
+  const GList *list = preferences_get_recent_projects(prefs);
+  g_assert_cmpuint(g_list_length((GList *)list), ==, 5);
+  g_assert_cmpstr(list->data, ==, "/tmp/f");
+  g_assert_cmpstr(g_list_nth_data((GList *)list, 4), ==, "/tmp/b");
+
+  preferences_add_recent_project(prefs, "/tmp/d");
+  list = preferences_get_recent_projects(prefs);
+  g_assert_cmpstr(list->data, ==, "/tmp/d");
+  g_assert_cmpstr(g_list_nth_data((GList *)list, 1), ==, "/tmp/f");
+
+  preferences_unref(prefs);
+  prefs = preferences_new(tmpdir);
+  list = preferences_get_recent_projects(prefs);
+  g_assert_cmpstr(list->data, ==, "/tmp/d");
+  preferences_unref(prefs);
+
+  gchar *file = g_build_filename(tmpdir, "glide", "preferences.ini", NULL);
+  g_remove(file);
+  gchar *prefs_dir = g_path_get_dirname(file);
+  g_rmdir(prefs_dir);
+  g_rmdir(tmpdir);
+  g_free(prefs_dir);
+  g_free(file);
+  g_free(tmpdir);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -117,6 +156,7 @@ main(int argc, char *argv[])
     g_test_add_func("/preferences/set_sdk", test_set_sdk);
     g_test_add_func("/preferences/set_project_dir", test_set_project_dir);
     g_test_add_func("/preferences/set_asdf_view_width", test_set_asdf_view_width);
+    g_test_add_func("/preferences/recent_projects", test_recent_projects);
 
     return g_test_run();
 }
