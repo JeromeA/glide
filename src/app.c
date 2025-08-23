@@ -25,6 +25,9 @@ STATIC void     app_update_recent_menu(App *self);
 STATIC void     on_recent_project_activate(GtkWidget *item, gpointer data);
 STATIC gboolean app_maybe_save_all(App *self);
 STATIC gboolean app_close_project(App *self, gboolean forget_project);
+STATIC void     on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data);
+STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data);
+STATIC gboolean component_matches(const gchar *comp, const gchar *rel);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -110,6 +113,8 @@ app_activate (GApplication *app)
   g_signal_connect(self->notebook_paned, "notify::position",
       G_CALLBACK(on_notebook_paned_position), self);
   gtk_paned_pack2(GTK_PANED(self->notebook_paned), notebook, TRUE, TRUE);
+  g_signal_connect(self->notebook, "switch-page",
+      G_CALLBACK(on_notebook_switch_page), self);
 
   LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
   g_signal_connect (view, "key-press-event", G_CALLBACK (on_key_press), self);
@@ -326,6 +331,22 @@ app_get_current_file(App *self)
   return view ? lisp_source_view_get_file(view) : NULL;
 }
 
+STATIC gboolean
+component_matches(const gchar *comp, const gchar *rel)
+{
+  if (!comp || !rel)
+    return FALSE;
+  if (g_strcmp0(comp, rel) == 0)
+    return TRUE;
+  gchar *base = g_path_get_basename(rel);
+  gchar *dot = g_strrstr(base, ".");
+  if (dot)
+    *dot = '\0';
+  gboolean match = g_strcmp0(comp, base) == 0;
+  g_free(base);
+  return match;
+}
+
 STATIC void
 app_update_asdf_view(App *self)
 {
@@ -340,6 +361,8 @@ app_update_asdf_view(App *self)
   if (!asdf)
     return;
   GtkWidget *view = asdf_view_new(asdf);
+  GtkTreeSelection *sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
+  g_signal_connect(sel, "changed", G_CALLBACK(on_asdf_view_selection_changed), self);
   self->asdf_scrolled = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->asdf_scrolled),
       GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
@@ -348,6 +371,8 @@ app_update_asdf_view(App *self)
   gtk_paned_pack1(GTK_PANED(self->notebook_paned), self->asdf_scrolled, FALSE, TRUE);
   gint width = preferences_get_asdf_view_width(self->preferences);
   gtk_paned_set_position(GTK_PANED(self->notebook_paned), width);
+  on_notebook_switch_page(GTK_NOTEBOOK(self->notebook), NULL,
+      gtk_notebook_get_current_page(GTK_NOTEBOOK(self->notebook)), self);
 }
 
 STATIC void
@@ -361,6 +386,60 @@ on_notebook_paned_position(GObject *object, GParamSpec * /*pspec*/, gpointer dat
     return;
   gint pos = gtk_paned_get_position(GTK_PANED(object));
   preferences_set_asdf_view_width(prefs, pos);
+}
+
+STATIC void
+on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data)
+{
+  App *self = GLIDE_APP(data);
+  GtkTreeModel *model;
+  GtkTreeIter iter;
+  if (!gtk_tree_selection_get_selected(selection, &model, &iter))
+    return;
+  GtkTreeIter parent;
+  if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+    return;
+  gchar *parent_text = NULL;
+  gtk_tree_model_get(model, &parent, 0, &parent_text, -1);
+  gboolean is_component = g_strcmp0(parent_text, "components") == 0;
+  g_free(parent_text);
+  if (!is_component)
+    return;
+  gchar *comp = NULL;
+  gtk_tree_model_get(model, &iter, 0, &comp, -1);
+  if (!comp)
+    return;
+  guint count = project_get_file_count(self->project);
+  for (guint i = 0; i < count; i++) {
+    ProjectFile *file = project_get_file(self->project, i);
+    const gchar *rel = project_file_get_relative_path(file);
+    if (component_matches(comp, rel)) {
+      gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
+      break;
+    }
+  }
+  g_free(comp);
+}
+
+STATIC void
+on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget * /*page*/, guint /*page_num*/, gpointer data)
+{
+  App *self = GLIDE_APP(data);
+  if (!self->asdf_scrolled)
+    return;
+  GtkWidget *view = gtk_bin_get_child(GTK_BIN(self->asdf_scrolled));
+  if (!view)
+    return;
+  LispSourceView *lsv = lisp_source_notebook_get_current_view(self->notebook);
+  if (!lsv)
+    return;
+  ProjectFile *file = lisp_source_view_get_file(lsv);
+  if (!file)
+    return;
+  const gchar *rel = project_file_get_relative_path(file);
+  if (!rel)
+    return;
+  asdf_view_select_file(ASDF_VIEW(view), rel);
 }
 
 STATIC void
