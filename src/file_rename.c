@@ -36,18 +36,35 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
       gchar *dir = g_path_get_dirname(old_path);
       gchar *new_path = g_build_filename(dir, new_name, NULL);
       const gchar *old_rel = project_file_get_relative_path(file);
+      gchar *old_comp = g_path_get_basename(old_rel);
+      gchar *dot = g_strrstr(old_comp, ".");
+      if (dot)
+        *dot = '\0';
       if (g_rename(old_path, new_path) == 0) {
         project_file_set_path(file, new_path);
         const gchar *new_rel = project_file_get_relative_path(file);
+        gchar *new_comp = g_path_get_basename(new_rel);
+        dot = g_strrstr(new_comp, ".");
+        if (dot)
+          *dot = '\0';
         Asdf *asdf = project_get_asdf(app_get_project(app));
         if (asdf) {
-          asdf_rename_component(asdf, old_rel, new_rel);
+          asdf_rename_component(asdf, old_comp, new_comp);
           asdf_save(asdf, asdf_get_filename(asdf));
           app_update_asdf_view(app);
         }
+        LispSourceNotebook *notebook = app_get_notebook(app);
+        if (notebook) {
+          gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
+          GtkWidget *scrolled = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), page);
+          GtkWidget *tab = gtk_notebook_get_tab_label(GTK_NOTEBOOK(notebook), scrolled);
+          gtk_label_set_text(GTK_LABEL(tab), new_rel);
+        }
+        g_free(new_comp);
       }
       g_free(dir);
       g_free(new_path);
+      g_free(old_comp);
     }
   }
   gtk_widget_destroy(dialog);
