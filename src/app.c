@@ -3,6 +3,7 @@
 #include "file_open.h"
 #include "file_new.h"
 #include "file_rename.h"
+#include "file_save.h"
 #include "project_new_wizard.h"
 #include "preferences_dialog.h"
 #include "evaluate.h"
@@ -17,9 +18,12 @@
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
 STATIC void     quit_menu_item   (GtkWidget * /*item*/,   gpointer data);
+STATIC void     close_project_menu_item(GtkWidget * /*item*/, gpointer data);
 STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, gpointer data);
 STATIC void     app_update_recent_menu(App *self);
 STATIC void     on_recent_project_activate(GtkWidget *item, gpointer data);
+STATIC gboolean app_maybe_save_all(App *self);
+STATIC gboolean app_close_project(App *self);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -127,6 +131,8 @@ app_activate (GApplication *app)
   self->recent_menu = recent_menu;
 
   GtkWidget *newfile_item  = gtk_menu_item_new_with_label("New file");
+  GtkWidget *saveall_item  = gtk_menu_item_new_with_label("Save all");
+  GtkWidget *closeproj_item = gtk_menu_item_new_with_label("Close project");
   GtkWidget *settings_item = gtk_menu_item_new_with_label("Settings…");
   GtkWidget *exit_item     = gtk_menu_item_new_with_label("Exit");
 
@@ -138,6 +144,8 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_recent_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), project_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), newfile_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), saveall_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), closeproj_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), settings_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
@@ -150,6 +158,8 @@ app_activate (GApplication *app)
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
   g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
   g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
+  g_signal_connect(saveall_item, "activate", G_CALLBACK(file_save_all), self);
+  g_signal_connect(closeproj_item, "activate", G_CALLBACK(close_project_menu_item), self);
   g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
   g_signal_connect(exit_item, "activate", G_CALLBACK(quit_menu_item), self);
   g_signal_connect(rename_item, "activate", G_CALLBACK(file_rename), self);
@@ -385,6 +395,64 @@ app_get_status_service (App *self)
   return self->status_service;
 }
 
+STATIC gboolean
+app_maybe_save_all(App *self)
+{
+  LispSourceNotebook *notebook = app_get_notebook(self);
+  if (!notebook)
+    return TRUE;
+  gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+  gboolean modified = FALSE;
+  for (gint i = 0; i < pages; i++) {
+    GtkWidget *child = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
+    GtkTextBuffer *buffer = GTK_TEXT_BUFFER(lisp_source_view_get_buffer(LISP_SOURCE_VIEW(child)));
+    if (buffer && gtk_text_buffer_get_modified(buffer)) {
+      modified = TRUE;
+      break;
+    }
+  }
+  if (!modified)
+    return TRUE;
+  GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
+      GTK_MESSAGE_QUESTION, GTK_BUTTONS_NONE,
+      "Save changes to project?");
+  gtk_dialog_add_button(GTK_DIALOG(dialog), "_Cancel", GTK_RESPONSE_CANCEL);
+  gtk_dialog_add_button(GTK_DIALOG(dialog), "_Discard", GTK_RESPONSE_REJECT);
+  gtk_dialog_add_button(GTK_DIALOG(dialog), "_Save", GTK_RESPONSE_ACCEPT);
+  gint res = gtk_dialog_run(GTK_DIALOG(dialog));
+  gtk_widget_destroy(dialog);
+  if (res == GTK_RESPONSE_CANCEL)
+    return FALSE;
+  if (res == GTK_RESPONSE_ACCEPT)
+    file_save_all(NULL, self);
+  return TRUE;
+}
+
+STATIC gboolean
+app_close_project(App *self)
+{
+  g_debug("App.close_project");
+  g_return_val_if_fail(GLIDE_IS_APP(self), FALSE);
+  if (!app_maybe_save_all(self))
+    return FALSE;
+  Project *project = app_get_project(self);
+  LispSourceNotebook *notebook = app_get_notebook(self);
+  project_clear(project);
+  lisp_source_notebook_clear(notebook);
+  Preferences *prefs = app_get_preferences(self);
+  if (prefs)
+    preferences_set_project_file(prefs, NULL);
+  app_update_asdf_view(self);
+  return TRUE;
+}
+
+STATIC void
+close_project_menu_item(GtkWidget * /*item*/, gpointer data)
+{
+  g_debug("App.close_project_menu_item");
+  app_close_project(GLIDE_APP(data));
+}
+
 STATIC void
 app_quit (App *self)
 {
@@ -398,7 +466,8 @@ app_on_quit (App *self)
 {
   g_debug("App.on_quit");
   g_return_if_fail (GLIDE_IS_APP (self));
-  /* TODO: check for unsaved changes, prompt the user, stop subprocesses, ... */
+  if (!app_close_project(self))
+    return;
   app_quit (self);
 }
 
