@@ -61,6 +61,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
     project_set_asdf(project, asdf);
     g_object_unref(asdf);
     gchar *base = g_path_get_dirname(filename);
+    project_set_path(project, base);
     gchar *dir = g_strdup(base);
     for (guint i = 0; i < asdf_get_component_count(project_get_asdf(project)); i++) {
       const gchar *comp = asdf_get_component(project_get_asdf(project), i);
@@ -78,11 +79,14 @@ gboolean file_open_path(App *app, const gchar *filename) {
     g_free(base);
   } else {
     project_set_asdf(project, NULL);
+    gchar *dir = g_path_get_dirname(filename);
+    project_set_path(project, dir);
     TextProvider *provider = string_text_provider_new("");
     ProjectFile *file = project_add_file(project, provider, NULL, filename, PROJECT_FILE_LIVE);
     text_provider_unref(provider);
     if (file)
       project_file_load(file);
+    g_free(dir);
   }
 
   Preferences *prefs = app_get_preferences(app);
