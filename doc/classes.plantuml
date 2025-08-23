@@ -22,6 +22,8 @@ Project "1" o-- "*" ProjectFile
 ProjectFile *-- LispParser
 ProjectFile *-- TextProvider
 ProjectFile : path
+ProjectFile : project
+ProjectFile --> Project
 
 GtkBox <|-- InteractionsView
 GtkBox <|-- StatusBar
