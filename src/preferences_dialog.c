@@ -9,8 +9,25 @@
 typedef struct {
   GtkWidget *dialog;
   GtkWidget *binary_entry;
+  GtkWidget *status_label;
   Preferences *preferences;
 } PreferencesDialog;
+
+static void
+update_status(PreferencesDialog *self) {
+  const gchar *filename = gtk_entry_get_text(GTK_ENTRY(self->binary_entry));
+  if (!filename || !*filename) {
+    gtk_label_set_text(GTK_LABEL(self->status_label), "");
+    return;
+  }
+  if (!g_file_test(filename, G_FILE_TEST_EXISTS)) {
+    gtk_label_set_markup(GTK_LABEL(self->status_label), "<span foreground=\"red\">file not found</span>");
+  } else if (!g_file_test(filename, G_FILE_TEST_IS_EXECUTABLE)) {
+    gtk_label_set_markup(GTK_LABEL(self->status_label), "<span foreground=\"red\">not executable</span>");
+  } else {
+    gtk_label_set_markup(GTK_LABEL(self->status_label), "<span foreground=\"green\">file confirmed</span>");
+  }
+}
 
 static void
 on_choose_binary(GtkButton * /*button*/, gpointer data) {
@@ -24,8 +41,15 @@ on_choose_binary(GtkButton * /*button*/, gpointer data) {
     gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
     gtk_entry_set_text(GTK_ENTRY(self->binary_entry), filename);
     g_free(filename);
+    update_status(self);
   }
   gtk_widget_destroy(dialog);
+}
+
+static void
+on_binary_changed(GtkEditable * /*editable*/, gpointer data) {
+  PreferencesDialog *self = data;
+  update_status(self);
 }
 
 static void
@@ -92,10 +116,15 @@ preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   self->binary_entry = gtk_entry_new();
   GtkWidget *choose_button = gtk_button_new_with_label("...");
   g_signal_connect(choose_button, "clicked", G_CALLBACK(on_choose_binary), self);
+  g_signal_connect(self->binary_entry, "changed", G_CALLBACK(on_binary_changed), self);
+
+  self->status_label = gtk_label_new("");
+  gtk_widget_set_halign(self->status_label, GTK_ALIGN_START);
 
   gtk_grid_attach(GTK_GRID(grid), binary_label, 0, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), self->binary_entry, 1, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), choose_button, 2, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), self->status_label, 1, 1, 2, 1);
 
   GtkWidget *install_label = gtk_label_new("To install SBCL, run:");
   GtkWidget *install_entry = gtk_entry_new();
@@ -103,13 +132,13 @@ preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   gtk_editable_set_editable(GTK_EDITABLE(install_entry), FALSE);
   GtkWidget *copy_button = gtk_button_new_from_icon_name("edit-copy", GTK_ICON_SIZE_BUTTON);
   g_signal_connect(copy_button, "clicked", G_CALLBACK(on_copy_install), install_entry);
-  gtk_grid_attach(GTK_GRID(grid), install_label, 0, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), install_entry, 1, 1, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), copy_button, 2, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), install_label, 0, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), install_entry, 1, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), copy_button, 2, 2, 1, 1);
 
   GtkWidget *install_button = gtk_button_new_with_label("Run installer for SBCL");
   g_signal_connect(install_button, "clicked", G_CALLBACK(on_install_sbcl), NULL);
-  gtk_grid_attach(GTK_GRID(grid), install_button, 1, 2, 2, 1);
+  gtk_grid_attach(GTK_GRID(grid), install_button, 1, 3, 2, 1);
 
   gtk_widget_show_all(self->dialog);
 
@@ -125,6 +154,7 @@ void preferences_dialog_load(PreferencesDialog *prefs) {
     // Set current value from preferences
     const gchar *current_sdk = preferences_get_sdk(prefs->preferences);
     gtk_entry_set_text(GTK_ENTRY(prefs->binary_entry), current_sdk ? current_sdk : "");
+    update_status(prefs);
 
     gtk_widget_show_all(prefs->dialog);
 }
