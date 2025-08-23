@@ -92,6 +92,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
   LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
   if (view)
     app_connect_view(app, view);
+  app_update_asdf_view(app);
   return TRUE;
 }
 

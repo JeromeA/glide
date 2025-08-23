@@ -4,6 +4,7 @@
 #include "analyser.c"
 #include "app.c"
 #include "asdf.c"
+#include "asdf_view.c"
 #include "evaluate.c"
 #include "file_open.c"
 #include "file_new.c"
