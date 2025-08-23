@@ -15,6 +15,7 @@
 #include "file_save.h"
 #include "preferences.h"
 #include "asdf.h"
+#include "file_utilities.h"
 
 static gboolean save_if_modified(App *app) {
   Project *project = app_get_project(app);
@@ -37,12 +38,6 @@ static gboolean save_if_modified(App *app) {
       file_save(NULL, app);
   }
   return TRUE;
-}
-
-static gchar *ensure_lisp_extension(const gchar *path) {
-  if (g_str_has_suffix(path, ".lisp"))
-    return g_strdup(path);
-  return g_strconcat(path, ".lisp", NULL);
 }
 
 gboolean file_open_path(App *app, const gchar *filename) {
