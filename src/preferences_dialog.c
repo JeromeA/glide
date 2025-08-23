@@ -79,11 +79,11 @@ preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   gtk_grid_attach(GTK_GRID(grid), self->binary_entry, 1, 0, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), choose_button, 2, 0, 1, 1);
 
-  GtkWidget *install_button = gtk_button_new_with_label("Install SBCL");
+  GtkWidget *install_button = gtk_button_new_with_label("Run installer for SBCL");
   g_signal_connect(install_button, "clicked", G_CALLBACK(on_install_sbcl), NULL);
   gtk_grid_attach(GTK_GRID(grid), install_button, 1, 1, 2, 1);
 
-  GtkWidget *install_label = gtk_label_new("To install manually, run:");
+  GtkWidget *install_label = gtk_label_new("To install SBCL, run:");
   GtkWidget *install_entry = gtk_entry_new();
   gtk_entry_set_text(GTK_ENTRY(install_entry), "sudo apt install sbcl");
   gtk_editable_set_editable(GTK_EDITABLE(install_entry), FALSE);
