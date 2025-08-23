@@ -48,11 +48,11 @@ app.asm: template.asm app-source.asm
 	cat $^ > $@
 
 app-gdb: app.asm
-	nasm -DGDB $< -o $@ -l $@.list
+	nasm -w-prefix-seg -DGDB $< -o $@ -l $@.list
 	chmod +x $@
 
 app: app.asm
-	nasm -l $@.list $<
+	nasm -w-prefix-seg -l $@.list $<
 	chmod +x $@
 
 cov: app-cov
