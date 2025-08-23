@@ -58,7 +58,7 @@ static void test_file_load(void)
   int count = 0;
   project_set_file_loaded_cb(project, on_file_loaded, &count);
 
-  gboolean ok = project_file_load(project, file);
+  gboolean ok = project_file_load(file);
   g_assert_true(ok);
   g_assert_cmpint(count, ==, 1);
 
@@ -125,6 +125,24 @@ static void test_index(void)
   project_unref(project);
 }
 
+static void test_relative_path(void)
+{
+  gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
+  Project *project = project_new();
+  project_set_path(project, tmpdir);
+  TextProvider *provider = string_text_provider_new("");
+  gchar *filepath = g_build_filename(tmpdir, "file.lisp", NULL);
+  ProjectFile *file = project_add_file(project, provider, NULL, filepath,
+      PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
+  const gchar *rel = project_file_get_relative_path(file);
+  g_assert_cmpstr(rel, ==, "file.lisp");
+  project_unref(project);
+  g_free(filepath);
+  g_rmdir(tmpdir);
+  g_free(tmpdir);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -134,5 +152,6 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/file_load", test_file_load);
   g_test_add_func("/project/function_analysis", test_function_analysis);
   g_test_add_func("/project/index", test_index);
+  g_test_add_func("/project/relative_path", test_relative_path);
   return g_test_run();
 }

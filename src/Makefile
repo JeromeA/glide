@@ -27,6 +27,7 @@ SOURCES += \
   node.c \
   lisp_parser_view.c \
   project.c \
+  project_file.c \
   gtk_text_provider.c \
   string_text_provider.c \
   text_provider.c \

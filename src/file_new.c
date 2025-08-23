@@ -21,7 +21,7 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
     ProjectFile *file = project_add_file(project, provider, NULL, filename, PROJECT_FILE_LIVE);
     text_provider_unref(provider);
     if (file) {
-      project_file_load(project, file);
+      project_file_load(file);
       LispSourceView *view = lisp_source_notebook_get_current_view(app_get_notebook(app));
       if (view)
         app_connect_view(app, view);

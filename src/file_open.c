@@ -72,7 +72,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
       ProjectFile *pf = project_add_file(project, provider, NULL, full, PROJECT_FILE_LIVE);
       text_provider_unref(provider);
       if (pf)
-        project_file_load(project, pf);
+        project_file_load(pf);
       g_free(full);
     }
     g_free(dir);
@@ -83,7 +83,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
     ProjectFile *file = project_add_file(project, provider, NULL, filename, PROJECT_FILE_LIVE);
     text_provider_unref(provider);
     if (file)
-      project_file_load(project, file);
+      project_file_load(file);
   }
 
   Preferences *prefs = app_get_preferences(app);

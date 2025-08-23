@@ -1,21 +1,7 @@
 #include "project.h"
 #include "string_text_provider.h"
 #include "analyser.h"
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <errno.h>
 #include <glib-object.h>
-#include "syscalls.h"
-
-struct _ProjectFile {
-  ProjectFileState state;
-  gchar *path;
-  GtkTextBuffer *buffer; /* nullable */
-  TextProvider *provider; /* owned */
-  LispLexer *lexer; /* owned */
-  LispParser *parser; /* owned */
-};
 
 struct _Project {
   GPtrArray *files; /* ProjectFile* */
@@ -29,6 +15,7 @@ struct _Project {
   ProjectFileLoadedCb file_loaded_cb;
   gpointer file_loaded_data;
   Asdf *asdf; /* owned, nullable */
+  gchar *path;
   gint refcnt;
 };
 
@@ -37,16 +24,6 @@ static void project_index_clear(Project *self);
 static void project_index_node(Project *self, const Node *node);
 static void project_index_walk(Project *self, const Node *node);
 static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type);
-
-static void project_file_free(ProjectFile *file) {
-  if (!file) return;
-  if (file->parser) lisp_parser_free(file->parser);
-  if (file->lexer) lisp_lexer_free(file->lexer);
-  if (file->provider) text_provider_unref(file->provider);
-  if (file->buffer) g_object_unref(file->buffer);
-  g_free(file->path);
-  g_free(file);
-}
 
 static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
@@ -60,6 +37,7 @@ static Project *project_init(void) {
   self->package_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->asdf = NULL;
+  self->path = NULL;
   return self;
 }
 
@@ -74,6 +52,7 @@ static void project_free(Project *self) {
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
   g_clear_object(&self->asdf);
+  g_free(self->path);
   g_free(self);
 }
 
@@ -91,13 +70,7 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
 
   g_debug("project_add_file path=%s state=%d", path ? path : "(null)", state);
 
-  ProjectFile *file = g_new0(ProjectFile, 1);
-  file->state = state;
-  file->provider = text_provider_ref(provider);
-  file->buffer = buffer ? g_object_ref(buffer) : NULL;
-  file->lexer = lisp_lexer_new(file->provider);
-  file->parser = lisp_parser_new();
-  file->path = path ? g_strdup(path) : NULL;
+  ProjectFile *file = project_file_new(self, provider, buffer, path, state);
 
   g_ptr_array_add(self->files, file);
 
@@ -128,41 +101,6 @@ ProjectFile *project_get_file(Project *self, guint index) {
   if (index >= self->files->len)
     return NULL;
   return g_ptr_array_index(self->files, index);
-}
-
-ProjectFileState project_file_get_state(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, PROJECT_FILE_DORMANT);
-  return file->state;
-}
-
-void project_file_set_state(ProjectFile *file, ProjectFileState state) {
-  g_return_if_fail(file != NULL);
-  file->state = state;
-}
-
-void project_file_set_provider(Project *self, ProjectFile *file,
-    TextProvider *provider, GtkTextBuffer *buffer) {
-  g_return_if_fail(self != NULL);
-  g_return_if_fail(file != NULL);
-  g_return_if_fail(provider);
-  if (file->parser)
-    lisp_parser_free(file->parser);
-  if (file->lexer)
-    lisp_lexer_free(file->lexer);
-  if (file->provider)
-    text_provider_unref(file->provider);
-  if (file->buffer)
-    g_object_unref(file->buffer);
-  file->provider = text_provider_ref(provider);
-  file->buffer = buffer ? g_object_ref(buffer) : NULL;
-  file->lexer = lisp_lexer_new(file->provider);
-  file->parser = lisp_parser_new();
-  project_file_changed(self, file);
-}
-
-TextProvider *project_file_get_provider(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, NULL);
-  return file->provider;
 }
 
 static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type) {
@@ -219,6 +157,17 @@ Asdf *project_get_asdf(Project *self) {
   return self->asdf;
 }
 
+const gchar *project_get_path(Project *self) {
+  g_return_val_if_fail(self != NULL, NULL);
+  return self->path;
+}
+
+void project_set_path(Project *self, const gchar *path) {
+  g_return_if_fail(self != NULL);
+  g_free(self->path);
+  self->path = path ? g_strdup(path) : NULL;
+}
+
 void project_clear(Project *self) {
   g_return_if_fail(self != NULL);
   g_debug("project_clear");
@@ -245,107 +194,24 @@ static void project_index_walk(Project *self, const Node *node) {
 void project_file_changed(Project *self, ProjectFile *file) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
-  g_debug("project_file_changed path=%s", file->path);
-  if (!file->lexer || !file->parser)
+  g_debug("project_file_changed path=%s", project_file_get_path(file));
+  if (!project_file_get_lexer(file) || !project_file_get_parser(file))
     return;
   project_index_clear(self);
-  lisp_lexer_lex(file->lexer);
-  GArray *tokens = lisp_lexer_get_tokens(file->lexer);
-  lisp_parser_parse(file->parser, tokens);
-  const Node *ast = lisp_parser_get_ast(file->parser);
+  LispLexer *lexer = project_file_get_lexer(file);
+  LispParser *parser = project_file_get_parser(file);
+  lisp_lexer_lex(lexer);
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  lisp_parser_parse(parser, tokens);
+  const Node *ast = lisp_parser_get_ast(parser);
   if (ast)
     analyse_ast((Node*)ast);
   for (guint i = 0; i < self->files->len; i++) {
     ProjectFile *f = g_ptr_array_index(self->files, i);
-    const Node *a = lisp_parser_get_ast(f->parser);
+    const Node *a = lisp_parser_get_ast(project_file_get_parser(f));
     if (a)
       project_index_walk(self, a);
   }
-}
-
-LispParser *project_file_get_parser(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, NULL);
-  return file->parser;
-}
-
-LispLexer *project_file_get_lexer(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, NULL);
-  return file->lexer;
-}
-
-GtkTextBuffer *project_file_get_buffer(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, NULL);
-  return file->buffer;
-}
-
-const gchar *project_file_get_path(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, NULL);
-  return file->path;
-}
-
-void project_file_set_path(ProjectFile *file, const gchar *path) {
-  g_return_if_fail(file != NULL);
-  g_free(file->path);
-  file->path = path ? g_strdup(path) : NULL;
-}
-
-gboolean project_file_load(Project *self, ProjectFile *file) {
-  g_return_val_if_fail(self != NULL, FALSE);
-  g_return_val_if_fail(file != NULL, FALSE);
-
-  const gchar *path = project_file_get_path(file);
-  g_debug("project_file_load path=%s", path ? path : "(null)");
-  if (!path)
-    return FALSE;
-
-  int fd = sys_open(path, O_RDONLY, 0);
-  if (fd == -1) {
-    g_printerr("Failed to open file using syscalls: %s (errno: %d)\n", path, errno);
-    return FALSE;
-  }
-
-  struct stat sb;
-  if (sys_fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
-    g_printerr("Not a regular file: %s\n", path);
-    sys_close(fd);
-    return FALSE;
-  }
-
-  off_t length = sb.st_size;
-  char *content = g_malloc(length + 1);
-  if (!content) {
-    g_printerr("Failed to allocate memory for file content.\n");
-    sys_close(fd);
-    return FALSE;
-  }
-
-  ssize_t total_read = 0;
-  while (total_read < length) {
-    ssize_t r = sys_read(fd, content + total_read, length - total_read);
-    if (r == -1) {
-      g_printerr("Error reading file: %s (errno: %d)\n", path, errno);
-      g_free(content);
-      sys_close(fd);
-      return FALSE;
-    } else if (r == 0) {
-      break;
-    }
-    total_read += r;
-  }
-
-  content[total_read] = '\0';
-  sys_close(fd);
-
-  TextProvider *provider = string_text_provider_new(content);
-  project_file_set_provider(self, file, provider, NULL);
-  text_provider_unref(provider);
-  project_file_set_state(file, PROJECT_FILE_LIVE);
-
-  if (self->file_loaded_cb)
-    self->file_loaded_cb(self, file, self->file_loaded_data);
-
-  g_free(content);
-  return TRUE;
 }
 
 Project *project_ref(Project *self) {
@@ -365,4 +231,11 @@ void project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer 
   g_return_if_fail(self != NULL);
   self->file_loaded_cb = cb;
   self->file_loaded_data = user_data;
+}
+
+void project_file_loaded(Project *self, ProjectFile *file) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(file != NULL);
+  if (self->file_loaded_cb)
+    self->file_loaded_cb(self, file, self->file_loaded_data);
 }
