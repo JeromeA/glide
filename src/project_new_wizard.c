@@ -50,7 +50,9 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
 
   GtkWidget *loc_label = gtk_label_new("Location:");
   GtkWidget *loc_entry = gtk_entry_new();
-  gtk_entry_set_text(GTK_ENTRY(loc_entry), "~");
+  Preferences *prefs = app_get_preferences(app);
+  const gchar *dir = preferences_get_project_dir(prefs);
+  gtk_entry_set_text(GTK_ENTRY(loc_entry), dir);
   gtk_grid_attach(GTK_GRID(grid), loc_label, 0, 1, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), loc_entry, 1, 1, 1, 1);
 
@@ -67,6 +69,7 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     const gchar *name = gtk_entry_get_text(GTK_ENTRY(name_entry));
     const gchar *loc_text = gtk_entry_get_text(GTK_ENTRY(loc_entry));
+    preferences_set_project_dir(prefs, loc_text);
     gchar *loc = expand_home(loc_text);
     gchar *dir = g_build_filename(loc, name, NULL);
     g_mkdir_with_parents(dir, 0755);

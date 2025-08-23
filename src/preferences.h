@@ -13,4 +13,6 @@ guint16      preferences_get_swank_port(Preferences *self);
 void         preferences_set_swank_port(Preferences *self, guint16 new_port);
 const gchar *preferences_get_project_file(Preferences *self);
 void         preferences_set_project_file(Preferences *self, const gchar *file);
+const gchar *preferences_get_project_dir(Preferences *self);
+void         preferences_set_project_dir(Preferences *self, const gchar *dir);
 

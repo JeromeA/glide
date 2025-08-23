@@ -8,6 +8,7 @@ struct _Preferences {
   gchar   *sdk;
   guint16  swank_port;
   gchar   *project_file;
+  gchar   *project_dir;
   gint     refcnt;
 };
 
@@ -31,6 +32,12 @@ static void preferences_load(Preferences *self) {
       preferences_set_project_file(self, proj);
       g_free(proj);
     }
+
+    char *proj_dir = g_key_file_get_string(key_file, "General", "project_dir", NULL);
+    if (proj_dir) {
+      preferences_set_project_dir(self, proj_dir);
+      g_free(proj_dir);
+    }
   }
 
   g_key_file_free(key_file);
@@ -53,6 +60,8 @@ static void preferences_save(Preferences *self) {
   g_key_file_set_integer(key_file, "General", "swank_port", self->swank_port);
   if (self->project_file)
     g_key_file_set_string(key_file, "General", "project_file", self->project_file);
+  if (self->project_dir)
+    g_key_file_set_string(key_file, "General", "project_dir", self->project_dir);
 
   if (!g_key_file_save_to_file(key_file, self->filename, &error)) {
     g_printerr("Failed to save config: %s\n", error->message);
@@ -67,6 +76,7 @@ static void preferences_free(Preferences *self) {
   g_free(self->filename);
   g_free(self->sdk);
   g_free(self->project_file);
+  g_free(self->project_dir);
   g_free(self);
 }
 
@@ -77,6 +87,7 @@ preferences_new(const gchar *config_dir)
   self->swank_port = 4005;
   self->refcnt = 1;
   self->filename = g_build_filename(config_dir, "glide", "preferences.ini", NULL);
+  self->project_dir = g_strdup("~/lisp");
   preferences_load(self);
   return self;
 }
@@ -112,6 +123,18 @@ void preferences_set_project_file(Preferences *self, const gchar *file) {
   if (g_strcmp0(self->project_file, file) != 0) {
     g_free(self->project_file);
     self->project_file = g_strdup(file);
+    preferences_save(self);
+  }
+}
+
+const gchar *preferences_get_project_dir(Preferences *self) {
+  return self->project_dir;
+}
+
+void preferences_set_project_dir(Preferences *self, const gchar *dir) {
+  if (g_strcmp0(self->project_dir, dir) != 0) {
+    g_free(self->project_dir);
+    self->project_dir = g_strdup(dir);
     preferences_save(self);
   }
 }
