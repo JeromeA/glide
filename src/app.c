@@ -405,7 +405,8 @@ app_maybe_save_all(App *self)
   gboolean modified = FALSE;
   for (gint i = 0; i < pages; i++) {
     GtkWidget *child = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
-    GtkTextBuffer *buffer = GTK_TEXT_BUFFER(lisp_source_view_get_buffer(LISP_SOURCE_VIEW(child)));
+    GtkWidget *view = child ? gtk_bin_get_child(GTK_BIN(child)) : NULL;
+    GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(lisp_source_view_get_buffer(LISP_SOURCE_VIEW(view))) : NULL;
     if (buffer && gtk_text_buffer_get_modified(buffer)) {
       modified = TRUE;
       break;
