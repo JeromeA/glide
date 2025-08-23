@@ -1,5 +1,4 @@
-#ifndef TEXT_PROVIDER_H
-#define TEXT_PROVIDER_H
+#pragma once
 
 #include <glib.h>
 
@@ -41,4 +40,3 @@ static inline gchar *text_provider_get_text(TextProvider *self, gsize start, gsi
 TextProvider *text_provider_ref(TextProvider *self);
 void          text_provider_unref(TextProvider *self);
 
-#endif /* TEXT_PROVIDER_H */

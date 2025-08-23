@@ -1,5 +1,4 @@
-#ifndef SWANK_SESSION_H
-#define SWANK_SESSION_H
+#pragma once
 
 #include "swank_process.h"
 #include "interaction.h"
@@ -39,4 +38,3 @@ static inline void swank_session_set_interaction_updated_cb(SwankSession *self, 
 SwankSession *swank_session_ref(SwankSession *self);
 void swank_session_unref(SwankSession *self);
 
-#endif /* SWANK_SESSION_H */

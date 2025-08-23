@@ -1,5 +1,4 @@
-#ifndef SYSCALLS_H
-#define SYSCALLS_H
+#pragma once
 
 #include <sys/stat.h> // For struct stat used by fstat
 #include <stddef.h>
@@ -173,4 +172,3 @@ static inline long sys_fstat(int fd, struct stat *buf)
 
 #endif // SYSCALLS
 
-#endif

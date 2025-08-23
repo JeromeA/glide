@@ -1,5 +1,4 @@
-#ifndef __RELOC_H__
-#define __RELOC_H__
+#pragma once
 
 // In addition to the symbol name, each symbol from the ELF relocation table has a 48 byte overhead:
 // - 24 bytes in the rela section
@@ -57,4 +56,3 @@ static inline void relocate() {
 #endif
 }
 
-#endif

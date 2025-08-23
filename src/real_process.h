@@ -1,5 +1,4 @@
-#ifndef REAL_PROCESS_H
-#define REAL_PROCESS_H
+#pragma once
 
 #include "process.h"
 
@@ -22,4 +21,3 @@ typedef struct {
 Process *real_process_new(const gchar *cmd);
 Process *real_process_new_from_argv(const gchar *const *argv);
 
-#endif /* REAL_PROCESS_H */

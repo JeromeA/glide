@@ -1,5 +1,4 @@
-#ifndef PACKAGE_COMMON_LISP_H
-#define PACKAGE_COMMON_LISP_H
+#pragma once
 
 #include "package.h"
 
@@ -9,4 +8,3 @@ void package_common_lisp_set_swank_session(SwankSession *swank);
 
 Package *package_common_lisp_get_instance(void);
 
-#endif // PACKAGE_COMMON_LISP_H

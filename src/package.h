@@ -1,5 +1,4 @@
-#ifndef PACKAGE_H
-#define PACKAGE_H
+#pragma once
 
 #include <glib.h>
 
@@ -26,4 +25,3 @@ void package_add_export(Package *package, const gchar *symbol);
 void package_add_shadow(Package *package, const gchar *symbol);
 void package_add_import_from(Package *package, const gchar *symbol, const gchar *from);
 
-#endif // PACKAGE_H

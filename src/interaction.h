@@ -1,5 +1,4 @@
-#ifndef INTERACTION_H
-#define INTERACTION_H
+#pragma once
 
 #include <glib.h>
 
@@ -52,4 +51,3 @@ static inline void interaction_clear(Interaction *self) {
   self->done_cb_data = NULL;
 }
 
-#endif /* INTERACTION_H */
