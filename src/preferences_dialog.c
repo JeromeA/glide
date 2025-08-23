@@ -39,6 +39,12 @@ on_install_sbcl(GtkButton * /*button*/, gpointer /*data*/) {
   g_spawn_async(NULL, (gchar **)argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL);
 }
 
+static void
+on_copy_install(GtkButton * /*button*/, gpointer /*data*/) {
+  GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+  gtk_clipboard_set_text(clipboard, "sudo apt install sbcl", -1);
+}
+
 PreferencesDialog *
 preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   PreferencesDialog *self = g_new0(PreferencesDialog, 1);
@@ -76,7 +82,10 @@ preferences_dialog_new(GtkWindow *parent, Preferences *preferences) {
   gtk_grid_attach(GTK_GRID(grid), install_button, 1, 1, 2, 1);
 
   GtkWidget *install_label = gtk_label_new("To install manually, run: sudo apt install sbcl");
-  gtk_grid_attach(GTK_GRID(grid), install_label, 1, 2, 2, 1);
+  GtkWidget *copy_button = gtk_button_new_from_icon_name("edit-copy", GTK_ICON_SIZE_BUTTON);
+  g_signal_connect(copy_button, "clicked", G_CALLBACK(on_copy_install), NULL);
+  gtk_grid_attach(GTK_GRID(grid), install_label, 1, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), copy_button, 2, 2, 1, 1);
 
   gtk_widget_show_all(self->dialog);
 
