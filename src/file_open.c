@@ -95,7 +95,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
   return TRUE;
 }
 
-void file_open(GtkWidget *widget, gpointer data) {
+void file_open(GtkWidget */*widget*/, gpointer data) {
   App *app = (App *)data;
 
   GtkWidget *dialog = gtk_file_chooser_dialog_new(
