@@ -11,6 +11,7 @@
 #include "lisp_parser_view.h"
 #include "project.h"
 #include "status_bar.h"
+#include "asdf_view.h"
 
 /* Signal handlers */
 STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
@@ -29,6 +30,8 @@ struct _App
   Project        *project;
   StatusBar      *statusbar;
   StatusService  *status_service;
+  GtkWidget      *notebook_paned;
+  GtkWidget      *asdf_scrolled;
 };
 
 static void
@@ -87,6 +90,8 @@ app_activate (GApplication *app)
   /* Source views notebook */
   GtkWidget *notebook = lisp_source_notebook_new (self->project);
   self->notebook = LISP_SOURCE_NOTEBOOK(notebook);
+  self->notebook_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+  gtk_paned_pack2(GTK_PANED(self->notebook_paned), notebook, TRUE, TRUE);
 
   LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
   g_signal_connect (view, "key-press-event", G_CALLBACK (on_key_press), self);
@@ -129,7 +134,7 @@ app_activate (GApplication *app)
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
-  gtk_paned_pack1(GTK_PANED(paned), notebook, TRUE, TRUE);
+  gtk_paned_pack1(GTK_PANED(paned), self->notebook_paned, TRUE, TRUE);
   gtk_paned_pack2(GTK_PANED(paned), interactions, FALSE, TRUE);
 
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -164,6 +169,8 @@ app_dispose (GObject *object)
     self->project = NULL;
   }
   g_clear_object(&self->notebook);
+  g_clear_object(&self->asdf_scrolled);
+  g_clear_object(&self->notebook_paned);
   if (self->preferences) {
     preferences_unref(self->preferences);
     self->preferences = NULL;
@@ -195,6 +202,8 @@ app_init (App *self)
   self->notebook = NULL;
   self->statusbar = NULL;
   self->status_service = NULL;
+  self->notebook_paned = NULL;
+  self->asdf_scrolled = NULL;
 }
 
 STATIC App *
@@ -247,6 +256,28 @@ app_connect_view(App *self, LispSourceView *view)
   g_return_if_fail(GLIDE_IS_APP(self));
   g_return_if_fail(LISP_IS_SOURCE_VIEW(view));
   g_signal_connect(view, "key-press-event", G_CALLBACK(on_key_press), self);
+}
+
+STATIC void
+app_update_asdf_view(App *self)
+{
+  g_return_if_fail(GLIDE_IS_APP(self));
+  if (!self->notebook_paned)
+    return;
+  if (self->asdf_scrolled) {
+    gtk_widget_destroy(self->asdf_scrolled);
+    self->asdf_scrolled = NULL;
+  }
+  Asdf *asdf = project_get_asdf(self->project);
+  if (!asdf)
+    return;
+  GtkWidget *view = asdf_view_new(asdf);
+  self->asdf_scrolled = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->asdf_scrolled),
+      GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_container_add(GTK_CONTAINER(self->asdf_scrolled), view);
+  gtk_widget_show_all(self->asdf_scrolled);
+  gtk_paned_pack1(GTK_PANED(self->notebook_paned), self->asdf_scrolled, FALSE, TRUE);
 }
 
 

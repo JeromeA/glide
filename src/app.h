@@ -24,6 +24,7 @@ STATIC LispSourceView *app_get_source_view(App *self);
 STATIC LispSourceNotebook *app_get_notebook(App *self);
 STATIC Project *app_get_project(App *self);
 STATIC void app_connect_view(App *self, LispSourceView *view);
+STATIC void app_update_asdf_view(App *self);
 STATIC Preferences *app_get_preferences(App *self);
 STATIC SwankSession *app_get_swank(App *self);
 STATIC void app_on_quit(App *self);

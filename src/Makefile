@@ -31,6 +31,7 @@ SOURCES += \
   string_text_provider.c \
   text_provider.c \
   asdf.c \
+  asdf_view.c \
   status_bar.c \
   status_service.c
 
