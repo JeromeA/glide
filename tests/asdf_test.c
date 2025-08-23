@@ -6,11 +6,10 @@ static void test_parse(void)
 {
   gchar *tmpdir = g_dir_make_tmp("asdf-test-XXXXXX", NULL);
   gchar *file = g_build_filename(tmpdir, "foo.asd", NULL);
-  const gchar *contents = "(defsystem \"foo\"\n  :serial t\n  :pathname \"bar/\"\n  :components ((file \"a\") (file \"b\"))\n  :depends-on (\"dep1\" \"dep2\"))";
+  const gchar *contents = "(defsystem \"foo\"\n  :serial t\n  :components ((file \"a\") (file \"b\"))\n  :depends-on (\"dep1\" \"dep2\"))";
   g_file_set_contents(file, contents, -1, NULL);
 
   Asdf *asdf = asdf_new_from_file(file);
-  g_assert_cmpstr(asdf_get_pathname(asdf), ==, "bar/");
   g_assert_true(asdf_get_serial(asdf));
   g_assert_cmpuint(asdf_get_component_count(asdf), ==, 2);
   g_assert_cmpstr(asdf_get_component(asdf, 0), ==, "a");
@@ -20,7 +19,7 @@ static void test_parse(void)
   g_assert_cmpstr(asdf_get_dependency(asdf, 1), ==, "dep2");
 
   gchar *str = asdf_to_string(asdf);
-  g_assert_nonnull(strstr(str, "pathname \"bar/\""));
+  g_assert_null(strstr(str, "pathname"));
   g_free(str);
 
   g_object_unref(asdf);
@@ -36,7 +35,6 @@ static void test_save(void)
   gchar *out = g_build_filename(tmpdir, "out.asd", NULL);
 
   Asdf *asdf = asdf_new();
-  asdf_set_pathname(asdf, "bar/");
   asdf_set_serial(asdf, TRUE);
   asdf_add_component(asdf, "a");
   asdf_add_component(asdf, "b");

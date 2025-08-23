@@ -49,7 +49,6 @@ asdf_view_populate_store(AsdfView *self)
   GtkTreeIter root;
   GtkTreeIter iter;
   GtkTreeIter child;
-  const gchar *pathname = asdf_get_pathname(self->asdf);
   const gchar *filename = asdf_get_filename(self->asdf);
   gchar *basename = filename ? g_path_get_basename(filename) : g_strdup("");
   gtk_tree_store_clear(self->store);
@@ -59,12 +58,7 @@ asdf_view_populate_store(AsdfView *self)
   g_free(basename);
 
   gtk_tree_store_append(self->store, &iter, &root);
-  gchar *text = g_strdup_printf("pathname %s", pathname ? pathname : "");
-  gtk_tree_store_set(self->store, &iter, COL_TEXT, text, -1);
-  g_free(text);
-
-  gtk_tree_store_append(self->store, &iter, &root);
-  text = g_strdup_printf("serial %s", asdf_get_serial(self->asdf) ? "t" : "nil");
+  gchar *text = g_strdup_printf("serial %s", asdf_get_serial(self->asdf) ? "t" : "nil");
   gtk_tree_store_set(self->store, &iter, COL_TEXT, text, -1);
   g_free(text);
 
