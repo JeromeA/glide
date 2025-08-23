@@ -23,7 +23,7 @@ STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, g
 STATIC void     app_update_recent_menu(App *self);
 STATIC void     on_recent_project_activate(GtkWidget *item, gpointer data);
 STATIC gboolean app_maybe_save_all(App *self);
-STATIC gboolean app_close_project(App *self);
+STATIC gboolean app_close_project(App *self, gboolean forget_project);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -430,9 +430,9 @@ app_maybe_save_all(App *self)
 }
 
 STATIC gboolean
-app_close_project(App *self)
+app_close_project(App *self, gboolean forget_project)
 {
-  g_debug("App.close_project");
+  g_debug("App.close_project forget=%d", forget_project);
   g_return_val_if_fail(GLIDE_IS_APP(self), FALSE);
   if (!app_maybe_save_all(self))
     return FALSE;
@@ -441,7 +441,7 @@ app_close_project(App *self)
   project_clear(project);
   lisp_source_notebook_clear(notebook);
   Preferences *prefs = app_get_preferences(self);
-  if (prefs)
+  if (prefs && forget_project)
     preferences_set_project_file(prefs, NULL);
   app_update_asdf_view(self);
   return TRUE;
@@ -451,7 +451,7 @@ STATIC void
 close_project_menu_item(GtkWidget * /*item*/, gpointer data)
 {
   g_debug("App.close_project_menu_item");
-  app_close_project(GLIDE_APP(data));
+  app_close_project(GLIDE_APP(data), TRUE);
 }
 
 STATIC void
@@ -467,7 +467,7 @@ app_on_quit (App *self)
 {
   g_debug("App.on_quit");
   g_return_if_fail (GLIDE_IS_APP (self));
-  if (!app_close_project(self))
+  if (!app_close_project(self, FALSE))
     return;
   app_quit (self);
 }

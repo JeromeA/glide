@@ -41,6 +41,7 @@ static gboolean save_if_modified(App *app) {
 }
 
 gboolean file_open_path(App *app, const gchar *filename) {
+  g_debug("file_open_path %s", filename);
   g_return_val_if_fail(app != NULL, FALSE);
   if (!save_if_modified(app))
     return FALSE;
