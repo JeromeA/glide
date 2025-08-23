@@ -73,12 +73,16 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
     gchar *loc = expand_home(loc_text);
     gchar *dir = g_build_filename(loc, name, NULL);
     g_mkdir_with_parents(dir, 0755);
+    gchar *unnamed = g_build_filename(dir, "unnamed.lisp", NULL);
+    g_file_set_contents(unnamed, "", -1, NULL);
     gchar *name_asd = g_strdup_printf("%s.asd", name);
     gchar *asd_path = g_build_filename(dir, name_asd, NULL);
     Asdf *asdf = asdf_new_from_file(asd_path);
+    asdf_add_component(asdf, "unnamed");
     asdf_save(asdf, asd_path);
     project_set_asdf(app_get_project(app), asdf);
     g_object_unref(asdf);
+    g_free(unnamed);
     g_free(name_asd);
     g_free(asd_path);
     g_free(dir);
