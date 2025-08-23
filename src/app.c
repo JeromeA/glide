@@ -12,6 +12,7 @@
 #include "lisp_source_notebook.h"
 #include "lisp_parser_view.h"
 #include "project.h"
+#include "project_file.h"
 #include "status_bar.h"
 #include "asdf_view.h"
 
@@ -176,8 +177,32 @@ app_activate (GApplication *app)
   gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(self->statusbar), FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(self->window), vbox);
   const gchar *proj = preferences_get_project_file(self->preferences);
-  if (proj)
-    file_open_path(self, proj);
+  if (proj) {
+    if (file_open_path(self, proj)) {
+      const gchar *last = preferences_get_last_file(self->preferences);
+      gint pos = preferences_get_cursor_position(self->preferences);
+      if (last) {
+        Project *project = app_get_project(self);
+        guint count = project_get_file_count(project);
+        for (guint i = 0; i < count; i++) {
+          ProjectFile *pf = project_get_file(project, i);
+          if (g_strcmp0(project_file_get_path(pf), last) == 0) {
+            gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
+            LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
+            if (view) {
+              GtkTextBuffer *buffer = GTK_TEXT_BUFFER(lisp_source_view_get_buffer(view));
+              GtkTextIter iter;
+              gtk_text_buffer_get_iter_at_offset(buffer, &iter, pos);
+              gtk_text_buffer_place_cursor(buffer, &iter);
+              gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(view), &iter, 0.0, FALSE, 0, 0);
+              app_connect_view(self, view);
+            }
+            break;
+          }
+        }
+      }
+    }
+  }
   app_update_recent_menu(self);
   gtk_widget_show_all (self->window);
 }
@@ -441,8 +466,11 @@ app_close_project(App *self, gboolean forget_project)
   project_clear(project);
   lisp_source_notebook_clear(notebook);
   Preferences *prefs = app_get_preferences(self);
-  if (prefs && forget_project)
+  if (prefs && forget_project) {
     preferences_set_project_file(prefs, NULL);
+    preferences_set_last_file(prefs, NULL);
+    preferences_set_cursor_position(prefs, 0);
+  }
   app_update_asdf_view(self);
   return TRUE;
 }
@@ -467,6 +495,20 @@ app_on_quit (App *self)
 {
   g_debug("App.on_quit");
   g_return_if_fail (GLIDE_IS_APP (self));
+  Preferences *prefs = app_get_preferences(self);
+  ProjectFile *pf = app_get_current_file(self);
+  if (prefs && pf) {
+    const gchar *path = project_file_get_path(pf);
+    preferences_set_last_file(prefs, path);
+    GtkTextBuffer *buffer = project_file_get_buffer(pf);
+    if (buffer) {
+      GtkTextMark *insert_mark = gtk_text_buffer_get_insert(buffer);
+      GtkTextIter iter;
+      gtk_text_buffer_get_iter_at_mark(buffer, &iter, insert_mark);
+      gint pos = gtk_text_iter_get_offset(&iter);
+      preferences_set_cursor_position(prefs, pos);
+    }
+  }
   if (!app_close_project(self, FALSE))
     return;
   app_quit (self);

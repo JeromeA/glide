@@ -10,6 +10,8 @@ struct _Preferences {
   gchar   *project_file;
   gchar   *project_dir;
   gint     asdf_view_width;
+  gchar   *last_file;
+  gint     cursor_position;
   GList   *recent_projects;
   gint     refcnt;
 };
@@ -47,6 +49,16 @@ static void preferences_load(Preferences *self) {
     if (width)
       preferences_set_asdf_view_width(self, width);
 
+    char *last = g_key_file_get_string(key_file, "General", "last_file", NULL);
+    if (last) {
+      preferences_set_last_file(self, last);
+      g_free(last);
+    }
+
+    gint pos = g_key_file_get_integer(key_file, "General", "cursor_position", NULL);
+    if (pos)
+      preferences_set_cursor_position(self, pos);
+
     gsize len = 0;
     char **recent = g_key_file_get_string_list(key_file, "General", "recent_projects", &len, NULL);
     for (gsize i = 0; i < len && i < 5; i++)
@@ -78,6 +90,9 @@ static void preferences_save(Preferences *self) {
   if (self->project_dir)
     g_key_file_set_string(key_file, "General", "project_dir", self->project_dir);
   g_key_file_set_integer(key_file, "General", "asdf_view_width", self->asdf_view_width);
+  if (self->last_file)
+    g_key_file_set_string(key_file, "General", "last_file", self->last_file);
+  g_key_file_set_integer(key_file, "General", "cursor_position", self->cursor_position);
 
   gsize len = g_list_length(self->recent_projects);
   if (len) {
@@ -105,6 +120,7 @@ static void preferences_free(Preferences *self) {
   g_free(self->sdk);
   g_free(self->project_file);
   g_free(self->project_dir);
+  g_free(self->last_file);
   g_list_free_full(self->recent_projects, g_free);
   g_free(self);
 }
@@ -118,6 +134,7 @@ preferences_new(const gchar *config_dir)
   self->filename = g_build_filename(config_dir, "glide", "preferences.ini", NULL);
   self->project_dir = g_strdup("~/lisp");
   self->asdf_view_width = 200;
+  self->cursor_position = 0;
   preferences_load(self);
   return self;
 }
@@ -177,6 +194,30 @@ gint preferences_get_asdf_view_width(Preferences *self) {
 void preferences_set_asdf_view_width(Preferences *self, gint width) {
   if (self->asdf_view_width != width) {
     self->asdf_view_width = width;
+    preferences_save(self);
+  }
+}
+
+const gchar *preferences_get_last_file(Preferences *self) {
+  return self->last_file;
+}
+
+void preferences_set_last_file(Preferences *self, const gchar *file) {
+  g_debug("preferences_set_last_file %s", file);
+  if (g_strcmp0(self->last_file, file) != 0) {
+    g_free(self->last_file);
+    self->last_file = g_strdup(file);
+    preferences_save(self);
+  }
+}
+
+gint preferences_get_cursor_position(Preferences *self) {
+  return self->cursor_position;
+}
+
+void preferences_set_cursor_position(Preferences *self, gint pos) {
+  if (self->cursor_position != pos) {
+    self->cursor_position = pos;
     preferences_save(self);
   }
 }
