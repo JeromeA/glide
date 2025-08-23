@@ -39,12 +39,30 @@ on_install_sbcl(GtkButton * /*button*/, gpointer /*data*/) {
   g_spawn_async(NULL, (gchar **)argv, NULL, G_SPAWN_SEARCH_PATH, NULL, NULL, NULL, NULL);
 }
 
+static gboolean
+hide_toast(gpointer data) {
+  gtk_widget_destroy(GTK_WIDGET(data));
+  return G_SOURCE_REMOVE;
+}
+
 static void
-on_copy_install(GtkButton * /*button*/, gpointer data) {
+show_toast(GtkWidget *relative_to, const gchar *text) {
+  GtkWidget *popover = gtk_popover_new(relative_to);
+  GtkWidget *label = gtk_label_new(text);
+  gtk_container_add(GTK_CONTAINER(popover), label);
+  gtk_widget_show_all(popover);
+  g_timeout_add(2000, hide_toast, popover);
+}
+
+static void
+on_copy_install(GtkButton *button, gpointer data) {
   GtkWidget *install_entry = data;
   GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
   const gchar *text = gtk_entry_get_text(GTK_ENTRY(install_entry));
   gtk_clipboard_set_text(clipboard, text, -1);
+  gtk_widget_grab_focus(install_entry);
+  gtk_editable_select_region(GTK_EDITABLE(install_entry), 0, -1);
+  show_toast(GTK_WIDGET(button), "Command line copied");
 }
 
 PreferencesDialog *
