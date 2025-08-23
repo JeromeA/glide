@@ -11,9 +11,9 @@ struct _LispParserView
 
 G_DEFINE_TYPE(LispParserView, lisp_parser_view, GTK_TYPE_TREE_VIEW)
 
-enum { COL_TYPE, COL_TEXT, COL_INFO, N_COLS };
+enum { COL_TYPE, COL_TEXT, COL_INFO, PARSER_VIEW_N_COLS };
 
-static void populate_store(LispParserView *self);
+static void parser_view_populate_store(LispParserView *self);
 static void parser_view_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer data);
 
 static void
@@ -22,7 +22,7 @@ lisp_parser_view_init(LispParserView *self)
   GtkCellRenderer *renderer;
 
   self->file = NULL;
-  self->store = gtk_tree_store_new(N_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+  self->store = gtk_tree_store_new(PARSER_VIEW_N_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
 
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
 
@@ -115,7 +115,7 @@ add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent)
 }
 
 static void
-populate_store(LispParserView *self)
+parser_view_populate_store(LispParserView *self)
 {
   if (!self->file)
     return;
@@ -133,7 +133,7 @@ static void
 parser_view_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer data)
 {
   LispParserView *self = LISP_PARSER_VIEW(data);
-  populate_store(self);
+  parser_view_populate_store(self);
 }
 
 GtkWidget *
@@ -142,7 +142,7 @@ lisp_parser_view_new(ProjectFile *file)
   g_return_val_if_fail(file != NULL, NULL);
   LispParserView *self = g_object_new(LISP_TYPE_PARSER_VIEW, NULL);
   self->file = file;
-  populate_store(self);
+  parser_view_populate_store(self);
   GtkTextBuffer *buf = project_file_get_buffer(file);
   if (buf)
     g_signal_connect_after(buf, "changed", G_CALLBACK(parser_view_buffer_changed), self);

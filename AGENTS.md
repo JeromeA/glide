@@ -11,6 +11,7 @@
 - No space after function names in function calls.
 - Unused parameters should be in `/*comments*/`.
 - Keep full names for variables: it's `MockSwank *mock_swank`, not `MockSwank *ms`.
+- fix all compilation warnings.
 
 ## OO
 

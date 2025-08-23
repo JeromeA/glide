@@ -8,9 +8,9 @@ struct _AsdfView {
 
 G_DEFINE_TYPE(AsdfView, asdf_view, GTK_TYPE_TREE_VIEW)
 
-enum { COL_KEY, COL_VALUE, N_COLS };
+enum { COL_KEY, COL_VALUE, ASDF_VIEW_N_COLS };
 
-static void populate_store(AsdfView *self);
+static void asdf_view_populate_store(AsdfView *self);
 
 static void
 asdf_view_init(AsdfView *self)
@@ -18,7 +18,7 @@ asdf_view_init(AsdfView *self)
   GtkCellRenderer *renderer;
 
   self->asdf = NULL;
-  self->store = gtk_tree_store_new(N_COLS, G_TYPE_STRING, G_TYPE_STRING);
+  self->store = gtk_tree_store_new(ASDF_VIEW_N_COLS, G_TYPE_STRING, G_TYPE_STRING);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
 
   renderer = gtk_cell_renderer_text_new();
@@ -47,7 +47,7 @@ asdf_view_class_init(AsdfViewClass *klass)
 }
 
 static void
-populate_store(AsdfView *self)
+asdf_view_populate_store(AsdfView *self)
 {
   GtkTreeIter iter;
   GtkTreeIter child;
@@ -103,7 +103,7 @@ asdf_view_new(Asdf *asdf)
   g_return_val_if_fail(asdf != NULL, NULL);
   AsdfView *self = g_object_new(ASDF_VIEW_TYPE, NULL);
   self->asdf = g_object_ref(asdf);
-  populate_store(self);
+  asdf_view_populate_store(self);
   return GTK_WIDGET(self);
 }
 
