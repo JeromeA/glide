@@ -2,6 +2,7 @@
 #include "app.h"
 #include "file_open.h"
 #include "file_new.h"
+#include "file_rename.h"
 #include "project_new_wizard.h"
 #include "preferences_dialog.h"
 #include "evaluate.h"
@@ -65,6 +66,12 @@ on_key_press(GtkWidget * /*widget*/,
     on_show_parser(self);
     return TRUE;
   }
+  if ((event->keyval == GDK_KEY_F6) &&
+      (event->state & GDK_SHIFT_MASK))       /* Shift+F6 */
+  {
+    file_rename(NULL, self);
+    return TRUE;
+  }
   return FALSE;
 }
 
@@ -104,6 +111,10 @@ app_activate (GApplication *app)
   GtkWidget *file_menu     = gtk_menu_new();
   GtkWidget *file_item     = gtk_menu_item_new_with_label("File");
 
+  GtkWidget *refactor_menu = gtk_menu_new();
+  GtkWidget *refactor_item = gtk_menu_item_new_with_label("Refactor");
+  GtkWidget *rename_item   = gtk_menu_item_new_with_label("Rename");
+
   GtkWidget *project_menu  = gtk_menu_new();
   GtkWidget *project_item  = gtk_menu_item_new_with_label("Project");
   GtkWidget *proj_new_item = gtk_menu_item_new_with_label("New…");
@@ -128,12 +139,16 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exit_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_item), refactor_menu);
+  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), rename_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), refactor_item);
 
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
   g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
   g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
   g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
   g_signal_connect(exit_item, "activate", G_CALLBACK(quit_menu_item), self);
+  g_signal_connect(rename_item, "activate", G_CALLBACK(file_rename), self);
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
@@ -259,6 +274,14 @@ app_connect_view(App *self, LispSourceView *view)
   g_return_if_fail(GLIDE_IS_APP(self));
   g_return_if_fail(LISP_IS_SOURCE_VIEW(view));
   g_signal_connect(view, "key-press-event", G_CALLBACK(on_key_press), self);
+}
+
+STATIC ProjectFile *
+app_get_current_file(App *self)
+{
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
+  LispSourceView *view = app_get_source_view(self);
+  return view ? lisp_source_view_get_file(view) : NULL;
 }
 
 STATIC void

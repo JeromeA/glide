@@ -57,10 +57,20 @@ static void test_save(void)
   g_free(tmpdir);
 }
 
+static void test_rename(void)
+{
+  Asdf *asdf = asdf_new();
+  asdf_add_component(asdf, "old");
+  asdf_rename_component(asdf, "old", "new");
+  g_assert_cmpstr(asdf_get_component(asdf, 0), ==, "new");
+  g_object_unref(asdf);
+}
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/asdf/parse", test_parse);
   g_test_add_func("/asdf/save", test_save);
+  g_test_add_func("/asdf/rename", test_rename);
   return g_test_run();
 }
