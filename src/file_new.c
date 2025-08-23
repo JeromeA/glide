@@ -8,12 +8,7 @@
 #include "lisp_source_view.h"
 #include "project_file.h"
 #include "asdf.h"
-
-static gchar *ensure_lisp_extension(const gchar *name) {
-  if (g_str_has_suffix(name, ".lisp"))
-    return g_strdup(name);
-  return g_strconcat(name, ".lisp", NULL);
-}
+#include "file_utilities.h"
 
 void file_new(GtkWidget */*widget*/, gpointer data) {
   App *app = data;
