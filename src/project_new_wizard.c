@@ -3,6 +3,7 @@
 #include "app.h"
 #include "project.h"
 #include "asdf.h"
+#include "file_open.h"
 #include <glib/gstdio.h>
 
 typedef struct {
@@ -29,6 +30,7 @@ static gchar *expand_home(const gchar *path) {
 }
 
 void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
+  g_debug("project_new_wizard");
   App *app = data;
   GtkWidget *dialog = gtk_dialog_new_with_buttons("New Project", NULL,
       GTK_DIALOG_MODAL,
@@ -67,11 +69,13 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
 
   gtk_widget_show_all(dialog);
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
+    g_debug("project_new_wizard accepted");
     const gchar *name = gtk_entry_get_text(GTK_ENTRY(name_entry));
     const gchar *loc_text = gtk_entry_get_text(GTK_ENTRY(loc_entry));
     preferences_set_project_dir(prefs, loc_text);
     gchar *loc = expand_home(loc_text);
     gchar *dir = g_build_filename(loc, name, NULL);
+    g_debug("creating project in %s", dir);
     g_mkdir_with_parents(dir, 0755);
     gchar *unnamed = g_build_filename(dir, "unnamed.lisp", NULL);
     g_file_set_contents(unnamed, "", -1, NULL);
@@ -80,8 +84,8 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
     Asdf *asdf = asdf_new_from_file(asd_path);
     asdf_add_component(asdf, "unnamed");
     asdf_save(asdf, asd_path);
-    project_set_asdf(app_get_project(app), asdf);
     g_object_unref(asdf);
+    file_open_path(app, asd_path);
     g_free(unnamed);
     g_free(name_asd);
     g_free(asd_path);

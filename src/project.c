@@ -78,6 +78,7 @@ static void project_free(Project *self) {
 }
 
 Project *project_new(void) {
+  g_debug("project_new");
   Project *self = project_init();
   project_create_scratch(self);
   return self;
@@ -87,6 +88,8 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(provider, NULL);
+
+  g_debug("project_add_file path=%s state=%d", path ? path : "(null)", state);
 
   ProjectFile *file = g_new0(ProjectFile, 1);
   file->state = state;
@@ -105,6 +108,7 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
 
 ProjectFile *project_create_scratch(Project *self) {
   g_return_val_if_fail(self != NULL, NULL);
+  g_debug("project_create_scratch");
   gchar name[12];
   g_snprintf(name, sizeof(name), "scratch%02u", self->next_scratch_id++);
   TextProvider *provider = string_text_provider_new("");
@@ -204,6 +208,7 @@ GHashTable *project_get_index(Project *self, StringDesignatorType sd_type) {
 
 void project_set_asdf(Project *self, Asdf *asdf) {
   g_return_if_fail(self != NULL);
+  g_debug("project_set_asdf %p", asdf);
   if (self->asdf)
     g_object_unref(self->asdf);
   self->asdf = asdf ? g_object_ref(asdf) : NULL;
@@ -216,6 +221,7 @@ Asdf *project_get_asdf(Project *self) {
 
 void project_clear(Project *self) {
   g_return_if_fail(self != NULL);
+  g_debug("project_clear");
   project_index_clear(self);
   if (self->files)
     g_ptr_array_set_size(self->files, 0);
@@ -239,6 +245,7 @@ static void project_index_walk(Project *self, const Node *node) {
 void project_file_changed(Project *self, ProjectFile *file) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
+  g_debug("project_file_changed path=%s", file->path);
   if (!file->lexer || !file->parser)
     return;
   project_index_clear(self);
@@ -287,6 +294,7 @@ gboolean project_file_load(Project *self, ProjectFile *file) {
   g_return_val_if_fail(file != NULL, FALSE);
 
   const gchar *path = project_file_get_path(file);
+  g_debug("project_file_load path=%s", path ? path : "(null)");
   if (!path)
     return FALSE;
 
