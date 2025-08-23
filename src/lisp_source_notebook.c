@@ -81,7 +81,7 @@ lisp_source_notebook_add_file(LispSourceNotebook *self, ProjectFile *file)
   g_return_val_if_fail(file != NULL, -1);
 
   GtkWidget *scrolled = create_scrolled_view(self, file);
-  const gchar *path = project_file_get_path(file);
+  const gchar *path = project_file_get_relative_path(file);
   GtkWidget *label = gtk_label_new(path ? path : "untitled");
   gint page = gtk_notebook_append_page(GTK_NOTEBOOK(self), scrolled, label);
   gtk_widget_show_all(gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page));
