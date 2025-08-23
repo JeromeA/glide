@@ -20,6 +20,8 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   GtkWidget *entry = gtk_entry_new();
   gtk_container_add(GTK_CONTAINER(content), entry);
+  gtk_entry_set_activates_default(GTK_ENTRY(entry), TRUE);
+  gtk_dialog_set_default_response(GTK_DIALOG(dialog), GTK_RESPONSE_ACCEPT);
   gtk_widget_show_all(dialog);
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     const gchar *name = gtk_entry_get_text(GTK_ENTRY(entry));
