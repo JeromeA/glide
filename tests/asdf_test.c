@@ -6,7 +6,7 @@ static void test_parse(void)
 {
   gchar *tmpdir = g_dir_make_tmp("asdf-test-XXXXXX", NULL);
   gchar *file = g_build_filename(tmpdir, "foo.asd", NULL);
-  const gchar *contents = "(defsystem \"foo\"\n  :serial t\n  :components ((file \"a\") (file \"b\"))\n  :depends-on (\"dep1\" \"dep2\"))";
+  const gchar *contents = "(defsystem \"foo\"\n  :serial t\n  :components ((:file \"a\") (:file \"b\"))\n  :depends-on (\"dep1\" \"dep2\"))";
   g_file_set_contents(file, contents, -1, NULL);
 
   Asdf *asdf = asdf_new_from_file(file);

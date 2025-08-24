@@ -166,15 +166,29 @@ const gchar *node_get_name(const Node *node) {
   if (node->name)
     return node->name;
   g_assert(node->start_token && node->start_token->text);
-  const gchar *text = node->start_token->text;
   g_assert(node->type == LISP_AST_NODE_TYPE_STRING ||
           node->type == LISP_AST_NODE_TYPE_SYMBOL);
+  const gchar *text;
   gchar *name;
   if (node->type == LISP_AST_NODE_TYPE_STRING) {
+    text = node->start_token->text;
     g_assert(g_str_has_prefix(text, "\"") && g_str_has_suffix(text, "\""));
     name = g_strndup(text + 1, strlen(text) - 2);
   } else {
-    name = g_ascii_strup(text, -1);
+    const LispToken *tok = node->start_token;
+    if (node->children) {
+      for (guint i = 0; i < node->children->len; i++) {
+        const Node *child = g_array_index(node->children, Node*, i);
+        if (child->type == LISP_AST_NODE_TYPE_SYMBOL_NAME && child->start_token) {
+          tok = child->start_token;
+          break;
+        }
+      }
+    }
+    text = tok->text;
+    const gchar *colon = g_strrstr(text, ":");
+    const gchar *sym_name = colon ? colon + 1 : text;
+    name = g_ascii_strup(sym_name, -1);
   }
   ((Node*)node)->name = name;
   return name;

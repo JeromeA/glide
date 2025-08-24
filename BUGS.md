@@ -24,3 +24,12 @@ file. The viewer's model uses a parent node labelled "src" for components, but
 the selection handler still expected "components" and ignored selections. The
 handler now checks for the correct "src" label so selecting a file in the
 viewer updates the notebook.
+
+## ASDF components ignored when using :file
+
+ASDF systems that declared components with the keyword `:file` were ignored.
+`node_get_name` returned the full symbol including its package prefix, so
+comparisons against `file` failed. `node_get_name` now strips package
+delimiters and always returns the symbol name uppercased. The ASDF parser was
+updated to compare against upper case names, so `:file` and `file` components
+are handled identically.
