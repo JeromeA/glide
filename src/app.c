@@ -3,6 +3,7 @@
 #include "file_open.h"
 #include "file_new.h"
 #include "file_rename.h"
+#include "file_delete.h"
 #include "file_save.h"
 #include "project_new_wizard.h"
 #include "preferences_dialog.h"
@@ -128,6 +129,7 @@ app_activate (GApplication *app)
   GtkWidget *refactor_menu = gtk_menu_new();
   GtkWidget *refactor_item = gtk_menu_item_new_with_label("Refactor");
   GtkWidget *rename_item   = gtk_menu_item_new_with_label("Rename");
+  GtkWidget *delete_item   = gtk_menu_item_new_with_label("Delete");
 
   GtkWidget *project_menu  = gtk_menu_new();
   GtkWidget *project_item  = gtk_menu_item_new_with_label("Project");
@@ -160,6 +162,7 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_item), refactor_menu);
   gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), rename_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), delete_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), refactor_item);
 
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
@@ -170,6 +173,7 @@ app_activate (GApplication *app)
   g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
   g_signal_connect(exit_item, "activate", G_CALLBACK(quit_menu_item), self);
   g_signal_connect(rename_item, "activate", G_CALLBACK(file_rename), self);
+  g_signal_connect(delete_item, "activate", G_CALLBACK(file_delete), self);
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);

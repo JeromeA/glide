@@ -145,6 +145,28 @@ static void test_relative_path(void)
   g_free(tmpdir);
 }
 
+static void on_removed(Project * /*project*/, ProjectFile * /*file*/, gpointer user_data)
+{
+  gboolean *flag = user_data;
+  *flag = TRUE;
+}
+
+static void test_remove_file(void)
+{
+  Project *project = project_new();
+  TextProvider *provider = string_text_provider_new("");
+  ProjectFile *file = project_add_file(project, provider, NULL, "foo.lisp",
+      PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
+  guint before = project_get_file_count(project);
+  gboolean removed = FALSE;
+  project_set_file_removed_cb(project, on_removed, &removed);
+  project_remove_file(project, file);
+  g_assert_true(removed);
+  g_assert_cmpuint(project_get_file_count(project), ==, before - 1);
+  project_unref(project);
+}
+
 
 int main(int argc, char *argv[])
 {
@@ -155,5 +177,6 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/function_analysis", test_function_analysis);
   g_test_add_func("/project/index", test_index);
   g_test_add_func("/project/relative_path", test_relative_path);
+  g_test_add_func("/project/remove_file", test_remove_file);
   return g_test_run();
 }

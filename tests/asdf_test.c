@@ -66,11 +66,23 @@ static void test_rename(void)
   g_object_unref(asdf);
 }
 
+static void test_remove(void)
+{
+  Asdf *asdf = asdf_new();
+  asdf_add_component(asdf, "a");
+  asdf_add_component(asdf, "b");
+  asdf_remove_component(asdf, "a");
+  g_assert_cmpuint(asdf_get_component_count(asdf), ==, 1);
+  g_assert_cmpstr(asdf_get_component(asdf, 0), ==, "b");
+  g_object_unref(asdf);
+}
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/asdf/parse", test_parse);
   g_test_add_func("/asdf/save", test_save);
   g_test_add_func("/asdf/rename", test_rename);
+  g_test_add_func("/asdf/remove", test_remove);
   return g_test_run();
 }
