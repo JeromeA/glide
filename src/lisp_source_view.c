@@ -57,7 +57,7 @@ lisp_source_view_dispose (GObject *object)
   }
 
   g_clear_object (&self->buffer);
-  g_clear_object (&self->view);
+  self->view = NULL;
 
   G_OBJECT_CLASS (lisp_source_view_parent_class)->dispose (object);
 }
