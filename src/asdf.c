@@ -127,21 +127,6 @@ uint asdf_get_dependency_count(Asdf *self) {
   return self->depends_on->len;
 }
 
-static gchar *unquote(const gchar *text) {
-  gsize len = strlen(text);
-  if (len >= 2 && text[0] == '"' && text[len - 1] == '"')
-    return g_strndup(text + 1, len - 2);
-  return g_strdup(text);
-}
-
-static gchar *node_text(const gchar *src, const Node *node) {
-  if (!node || !node->start_token)
-    return NULL;
-  const LispToken *start = node->start_token;
-  const LispToken *end = node->end_token ? node->end_token : start;
-  return g_strndup(src + start->start_offset, end->end_offset - start->start_offset);
-}
-
 static void parse_file_contents(Asdf *self, const gchar *contents) {
   TextProvider *provider = string_text_provider_new(contents);
   LispLexer *lexer = lisp_lexer_new(provider);
@@ -161,7 +146,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
       continue;
     const Node *head = g_array_index(child->children, Node*, 0);
     if (head->type == LISP_AST_NODE_TYPE_SYMBOL &&
-        g_strcmp0(head->start_token->text, "defsystem") == 0) {
+        g_strcmp0(node_get_name(head), "DEFSYSTEM") == 0) {
       defsystem = child;
       break;
     }
@@ -175,13 +160,14 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
     const Node *val = g_array_index(defsystem->children, Node*, i + 1);
     if (key->type != LISP_AST_NODE_TYPE_SYMBOL)
       continue;
-    gchar *kw = node_text(contents, key);
-
-    if (g_strcmp0(kw, ":serial") == 0) {
-      if (val->type == LISP_AST_NODE_TYPE_SYMBOL || val->type == LISP_AST_NODE_TYPE_NUMBER)
-        self->serial = g_strcmp0(val->start_token->text, "t") == 0 ||
-          g_strcmp0(val->start_token->text, "1") == 0;
-    } else if (g_strcmp0(kw, ":components") == 0) {
+    const gchar *kw = node_get_name(key);
+    if (g_strcmp0(kw, "SERIAL") == 0) {
+      if (val->type == LISP_AST_NODE_TYPE_SYMBOL || val->type == LISP_AST_NODE_TYPE_NUMBER) {
+        const gchar *v = val->type == LISP_AST_NODE_TYPE_SYMBOL ?
+          node_get_name(val) : val->start_token->text;
+        self->serial = g_strcmp0(v, "T") == 0 || g_strcmp0(v, "1") == 0;
+      }
+    } else if (g_strcmp0(kw, "COMPONENTS") == 0) {
       if (val->type == LISP_AST_NODE_TYPE_LIST) {
         for (guint j = 0; j < val->children->len; j++) {
           const Node *comp = g_array_index(val->children, Node*, j);
@@ -190,24 +176,19 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
           const Node *sym = g_array_index(comp->children, Node*, 0);
           const Node *fname = g_array_index(comp->children, Node*, 1);
           if (sym->type == LISP_AST_NODE_TYPE_SYMBOL &&
-              g_strcmp0(sym->start_token->text, "file") == 0) {
-            gchar *f = unquote(fname->start_token->text);
-            asdf_add_component(self, f);
-            g_free(f);
+              g_strcmp0(node_get_name(sym), "FILE") == 0) {
+            asdf_add_component(self, node_get_name(fname));
           }
         }
       }
-    } else if (g_strcmp0(kw, ":depends-on") == 0) {
+    } else if (g_strcmp0(kw, "DEPENDS-ON") == 0) {
       if (val->type == LISP_AST_NODE_TYPE_LIST) {
         for (guint j = 0; j < val->children->len; j++) {
           const Node *dep = g_array_index(val->children, Node*, j);
-          gchar *d = unquote(dep->start_token->text);
-          asdf_add_dependency(self, d);
-          g_free(d);
+          asdf_add_dependency(self, node_get_name(dep));
         }
       }
     }
-    g_free(kw);
   }
 
 cleanup:
