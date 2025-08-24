@@ -28,7 +28,6 @@ STATIC gboolean app_maybe_save_all(App *self);
 STATIC gboolean app_close_project(App *self, gboolean forget_project);
 STATIC void     on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data);
 STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data);
-STATIC gboolean component_matches(const gchar *comp, const gchar *rel);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -343,21 +342,6 @@ app_get_current_file(App *self)
   return view ? lisp_source_view_get_file(view) : NULL;
 }
 
-STATIC gboolean
-component_matches(const gchar *comp, const gchar *rel)
-{
-  if (!comp || !rel)
-    return FALSE;
-  if (g_strcmp0(comp, rel) == 0)
-    return TRUE;
-  gchar *base = g_path_get_basename(rel);
-  gchar *dot = g_strrstr(base, ".");
-  if (dot)
-    *dot = '\0';
-  gboolean match = g_strcmp0(comp, base) == 0;
-  g_free(base);
-  return match;
-}
 
 STATIC void
 app_update_asdf_view(App *self)
@@ -372,7 +356,7 @@ app_update_asdf_view(App *self)
   Asdf *asdf = project_get_asdf(self->project);
   if (!asdf)
     return;
-  GtkWidget *view = asdf_view_new(asdf);
+  GtkWidget *view = asdf_view_new(asdf, self->project);
   GtkTreeSelection *sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   g_signal_connect(sel, "changed", G_CALLBACK(on_asdf_view_selection_changed), self);
   self->asdf_scrolled = gtk_scrolled_window_new(NULL, NULL);
@@ -408,29 +392,22 @@ on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data)
   GtkTreeIter iter;
   if (!gtk_tree_selection_get_selected(selection, &model, &iter))
     return;
-  GtkTreeIter parent;
-  if (!gtk_tree_model_iter_parent(model, &parent, &iter))
+  gint kind = 0;
+  gpointer obj = NULL;
+  gtk_tree_model_get(model, &iter,
+      ASDF_VIEW_COL_KIND, &kind,
+      ASDF_VIEW_COL_OBJECT, &obj,
+      -1);
+  if (kind != ASDF_VIEW_KIND_COMPONENT || !obj)
     return;
-  gchar *parent_text = NULL;
-  gtk_tree_model_get(model, &parent, 0, &parent_text, -1);
-  gboolean is_component = g_strcmp0(parent_text, "src") == 0;
-  g_free(parent_text);
-  if (!is_component)
-    return;
-  gchar *comp = NULL;
-  gtk_tree_model_get(model, &iter, 0, &comp, -1);
-  if (!comp)
-    return;
+  ProjectFile *file = obj;
   guint count = project_get_file_count(self->project);
   for (guint i = 0; i < count; i++) {
-    ProjectFile *file = project_get_file(self->project, i);
-    const gchar *rel = project_file_get_relative_path(file);
-    if (component_matches(comp, rel)) {
+    if (project_get_file(self->project, i) == file) {
       gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
       break;
     }
   }
-  g_free(comp);
 }
 
 STATIC void
