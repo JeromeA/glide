@@ -16,3 +16,11 @@ The application crashed when restoring the previously opened file at startup.
 `GtkTextView`. Since `LispSourceView` is a `GtkScrolledWindow` containing the
 actual `GtkSourceView`, the invalid cast triggered a GLib critical and
 terminated the program.
+
+## ASDF viewer no longer selected files
+
+Clicking a filename in the ASDF viewer stopped switching the notebook to that
+file. The viewer's model uses a parent node labelled "src" for components, but
+the selection handler still expected "components" and ignored selections. The
+handler now checks for the correct "src" label so selecting a file in the
+viewer updates the notebook.

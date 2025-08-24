@@ -413,7 +413,7 @@ on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data)
     return;
   gchar *parent_text = NULL;
   gtk_tree_model_get(model, &parent, 0, &parent_text, -1);
-  gboolean is_component = g_strcmp0(parent_text, "components") == 0;
+  gboolean is_component = g_strcmp0(parent_text, "src") == 0;
   g_free(parent_text);
   if (!is_component)
     return;
