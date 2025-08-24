@@ -117,7 +117,8 @@ app_activate (GApplication *app)
       G_CALLBACK(on_notebook_switch_page), self);
 
   LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
-  g_signal_connect (view, "key-press-event", G_CALLBACK (on_key_press), self);
+  g_signal_connect (lisp_source_view_get_view(view), "key-press-event",
+      G_CALLBACK (on_key_press), self);
 
   /* Menu bar ------------------------------------------------------ */
   GtkWidget *menu_bar      = gtk_menu_bar_new ();
@@ -323,7 +324,8 @@ app_connect_view(App *self, LispSourceView *view)
 {
   g_return_if_fail(GLIDE_IS_APP(self));
   g_return_if_fail(LISP_IS_SOURCE_VIEW(view));
-  g_signal_connect(view, "key-press-event", G_CALLBACK(on_key_press), self);
+  g_signal_connect(lisp_source_view_get_view(view), "key-press-event",
+      G_CALLBACK(on_key_press), self);
 }
 
 STATIC ProjectFile *
@@ -435,10 +437,7 @@ on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*pag
     return;
   if (!page)
     return;
-  GtkWidget *child = gtk_bin_get_child(GTK_BIN(page));
-  if (!child)
-    return;
-  ProjectFile *file = lisp_source_view_get_file(LISP_SOURCE_VIEW(child));
+  ProjectFile *file = lisp_source_view_get_file(LISP_SOURCE_VIEW(page));
   if (!file)
     return;
   const gchar *rel = project_file_get_relative_path(file);
@@ -510,8 +509,7 @@ app_maybe_save_all(App *self)
   gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
   gboolean modified = FALSE;
   for (gint i = 0; i < pages; i++) {
-    GtkWidget *child = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
-    GtkWidget *view = child ? gtk_bin_get_child(GTK_BIN(child)) : NULL;
+    GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
     GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(lisp_source_view_get_buffer(LISP_SOURCE_VIEW(view))) : NULL;
     if (buffer && gtk_text_buffer_get_modified(buffer)) {
       modified = TRUE;
