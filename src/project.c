@@ -79,6 +79,25 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
   return file;
 }
 
+void project_remove_file(Project *self, ProjectFile *file) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(file != NULL);
+  for (guint i = 0; i < self->files->len; i++) {
+    if (g_ptr_array_index(self->files, i) == file) {
+      project_file_removed(self, file);
+      g_ptr_array_remove_index(self->files, i);
+      break;
+    }
+  }
+  project_index_clear(self);
+  for (guint i = 0; i < self->files->len; i++) {
+    ProjectFile *f = g_ptr_array_index(self->files, i);
+    const Node *a = lisp_parser_get_ast(project_file_get_parser(f));
+    if (a)
+      project_index_walk(self, a);
+  }
+}
+
 ProjectFile *project_create_scratch(Project *self) {
   g_return_val_if_fail(self != NULL, NULL);
   g_debug("project_create_scratch");

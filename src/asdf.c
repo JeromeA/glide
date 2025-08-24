@@ -87,6 +87,17 @@ uint asdf_get_component_count(Asdf *self) {
   return self->components->len;
 }
 
+void asdf_remove_component(Asdf *self, const gchar *file) {
+  g_return_if_fail(GLIDE_IS_ASDF(self));
+  for (guint i = 0; i < self->components->len; i++) {
+    gchar *comp = g_ptr_array_index(self->components, i);
+    if (g_strcmp0(comp, file) == 0) {
+      g_ptr_array_remove_index(self->components, i);
+      break;
+    }
+  }
+}
+
 void asdf_rename_component(Asdf *self, const gchar *old_file, const gchar *new_file) {
   g_return_if_fail(GLIDE_IS_ASDF(self));
   for (guint i = 0; i < self->components->len; i++) {

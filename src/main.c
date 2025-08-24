@@ -9,6 +9,7 @@
 #include "file_open.c"
 #include "file_new.c"
 #include "file_rename.c"
+#include "file_delete.c"
 #include "project_new_wizard.c"
 #include "file_save.c"
 #include "gtk_text_provider.c"
