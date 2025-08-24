@@ -60,24 +60,23 @@ asdf_view_populate_store(AsdfView *self)
   g_free(basename);
 
   gtk_tree_store_append(self->store, &iter, &root);
-  gchar *text = g_strdup_printf("serial %s", asdf_get_serial(self->asdf) ? "t" : "nil");
-  gtk_tree_store_set(self->store, &iter, COL_TEXT, text, -1);
-  g_free(text);
-
-  gtk_tree_store_append(self->store, &iter, &root);
-  gtk_tree_store_set(self->store, &iter, COL_TEXT, "depends-on", -1);
-  for (guint i = 0; i < asdf_get_dependency_count(self->asdf); i++) {
-    const gchar *dep = asdf_get_dependency(self->asdf, i);
-    gtk_tree_store_append(self->store, &child, &iter);
-    gtk_tree_store_set(self->store, &child, COL_TEXT, dep, -1);
-  }
-
-  gtk_tree_store_append(self->store, &iter, &root);
-  gtk_tree_store_set(self->store, &iter, COL_TEXT, "components", -1);
+  gtk_tree_store_set(self->store, &iter, COL_TEXT, "src", -1);
   for (guint i = 0; i < asdf_get_component_count(self->asdf); i++) {
     const gchar *comp = asdf_get_component(self->asdf, i);
     gtk_tree_store_append(self->store, &child, &iter);
     gtk_tree_store_set(self->store, &child, COL_TEXT, comp, -1);
+  }
+
+  gtk_tree_store_append(self->store, &iter, &root);
+  gtk_tree_store_set(self->store, &iter, COL_TEXT, "libraries", -1);
+  gtk_tree_store_append(self->store, &child, &iter);
+  gtk_tree_store_set(self->store, &child, COL_TEXT, "COMMON-LISP", -1);
+  for (guint i = 0; i < asdf_get_dependency_count(self->asdf); i++) {
+    const gchar *dep = asdf_get_dependency(self->asdf, i);
+    if (g_strcmp0(dep, "COMMON-LISP") != 0) {
+      gtk_tree_store_append(self->store, &child, &iter);
+      gtk_tree_store_set(self->store, &child, COL_TEXT, dep, -1);
+    }
   }
 
   gtk_tree_view_expand_all(GTK_TREE_VIEW(self));
@@ -122,9 +121,9 @@ get_selected_component(AsdfView *self)
     return NULL;
   gchar *parent_text = NULL;
   gtk_tree_model_get(model, &parent, COL_TEXT, &parent_text, -1);
-  gboolean is_component = g_strcmp0(parent_text, "components") == 0;
+  gboolean is_src = g_strcmp0(parent_text, "src") == 0;
   g_free(parent_text);
-  if (!is_component)
+  if (!is_src)
     return NULL;
   gchar *comp = NULL;
   gtk_tree_model_get(model, &iter, COL_TEXT, &comp, -1);
@@ -153,9 +152,9 @@ asdf_view_select_file(AsdfView *self, const gchar *file)
   do {
     gchar *text = NULL;
     gtk_tree_model_get(model, &iter, COL_TEXT, &text, -1);
-    gboolean is_components = g_strcmp0(text, "components") == 0;
+    gboolean is_src = g_strcmp0(text, "src") == 0;
     g_free(text);
-    if (is_components) {
+    if (is_src) {
       if (gtk_tree_model_iter_children(model, &child, &iter)) {
         do {
           gchar *comp = NULL;
