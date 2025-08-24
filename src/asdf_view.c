@@ -1,14 +1,14 @@
 #include "asdf_view.h"
+#include "project_file.h"
 
 struct _AsdfView {
   GtkTreeView parent_instance;
   Asdf *asdf;
+  Project *project;
   GtkTreeStore *store;
 };
 
 G_DEFINE_TYPE(AsdfView, asdf_view, GTK_TYPE_TREE_VIEW)
-
-enum { COL_TEXT, ASDF_VIEW_N_COLS };
 
 static void asdf_view_populate_store(AsdfView *self);
 static gboolean filename_matches(const gchar *component, const gchar *file);
@@ -20,12 +20,14 @@ asdf_view_init(AsdfView *self)
   GtkCellRenderer *renderer;
 
   self->asdf = NULL;
-  self->store = gtk_tree_store_new(ASDF_VIEW_N_COLS, G_TYPE_STRING);
+  self->project = NULL;
+  self->store = gtk_tree_store_new(ASDF_VIEW_N_COLS,
+      G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
 
   renderer = gtk_cell_renderer_text_new();
   gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(self), -1, NULL,
-      renderer, "text", COL_TEXT, NULL);
+      renderer, "text", ASDF_VIEW_COL_TEXT, NULL);
   gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
 }
 
@@ -34,6 +36,7 @@ asdf_view_dispose(GObject *object)
 {
   AsdfView *self = ASDF_VIEW(object);
   g_clear_object(&self->asdf);
+  g_clear_pointer(&self->project, project_unref);
   g_clear_object(&self->store);
   G_OBJECT_CLASS(asdf_view_parent_class)->dispose(object);
 }
@@ -56,26 +59,61 @@ asdf_view_populate_store(AsdfView *self)
   gtk_tree_store_clear(self->store);
 
   gtk_tree_store_append(self->store, &root, NULL);
-  gtk_tree_store_set(self->store, &root, COL_TEXT, basename, -1);
+  gtk_tree_store_set(self->store, &root,
+      ASDF_VIEW_COL_TEXT, basename,
+      ASDF_VIEW_COL_KIND, ASDF_VIEW_KIND_ROOT,
+      ASDF_VIEW_COL_OBJECT, self->project,
+      -1);
   g_free(basename);
 
   gtk_tree_store_append(self->store, &iter, &root);
-  gtk_tree_store_set(self->store, &iter, COL_TEXT, "src", -1);
+  gtk_tree_store_set(self->store, &iter,
+      ASDF_VIEW_COL_TEXT, "src",
+      ASDF_VIEW_COL_KIND, ASDF_VIEW_KIND_SRC,
+      ASDF_VIEW_COL_OBJECT, self->project,
+      -1);
   for (guint i = 0; i < asdf_get_component_count(self->asdf); i++) {
     const gchar *comp = asdf_get_component(self->asdf, i);
+    ProjectFile *pf = NULL;
+    if (self->project) {
+      for (guint j = 0; j < project_get_file_count(self->project); j++) {
+        ProjectFile *f = project_get_file(self->project, j);
+        const gchar *rel = project_file_get_relative_path(f);
+        if (filename_matches(comp, rel)) {
+          pf = f;
+          break;
+        }
+      }
+    }
     gtk_tree_store_append(self->store, &child, &iter);
-    gtk_tree_store_set(self->store, &child, COL_TEXT, comp, -1);
+    gtk_tree_store_set(self->store, &child,
+        ASDF_VIEW_COL_TEXT, comp,
+        ASDF_VIEW_COL_KIND, ASDF_VIEW_KIND_COMPONENT,
+        ASDF_VIEW_COL_OBJECT, pf,
+        -1);
   }
 
   gtk_tree_store_append(self->store, &iter, &root);
-  gtk_tree_store_set(self->store, &iter, COL_TEXT, "libraries", -1);
+  gtk_tree_store_set(self->store, &iter,
+      ASDF_VIEW_COL_TEXT, "libraries",
+      ASDF_VIEW_COL_KIND, ASDF_VIEW_KIND_LIBRARIES,
+      ASDF_VIEW_COL_OBJECT, NULL,
+      -1);
   gtk_tree_store_append(self->store, &child, &iter);
-  gtk_tree_store_set(self->store, &child, COL_TEXT, "COMMON-LISP", -1);
+  gtk_tree_store_set(self->store, &child,
+      ASDF_VIEW_COL_TEXT, "COMMON-LISP",
+      ASDF_VIEW_COL_KIND, ASDF_VIEW_KIND_LIBRARY,
+      ASDF_VIEW_COL_OBJECT, "COMMON-LISP",
+      -1);
   for (guint i = 0; i < asdf_get_dependency_count(self->asdf); i++) {
     const gchar *dep = asdf_get_dependency(self->asdf, i);
     if (g_strcmp0(dep, "COMMON-LISP") != 0) {
       gtk_tree_store_append(self->store, &child, &iter);
-      gtk_tree_store_set(self->store, &child, COL_TEXT, dep, -1);
+      gtk_tree_store_set(self->store, &child,
+          ASDF_VIEW_COL_TEXT, dep,
+          ASDF_VIEW_COL_KIND, ASDF_VIEW_KIND_LIBRARY,
+          ASDF_VIEW_COL_OBJECT, dep,
+          -1);
     }
   }
 
@@ -83,11 +121,12 @@ asdf_view_populate_store(AsdfView *self)
 }
 
 GtkWidget *
-asdf_view_new(Asdf *asdf)
+asdf_view_new(Asdf *asdf, Project *project)
 {
   g_return_val_if_fail(asdf != NULL, NULL);
   AsdfView *self = g_object_new(ASDF_VIEW_TYPE, NULL);
   self->asdf = g_object_ref(asdf);
+  self->project = project ? project_ref(project) : NULL;
   asdf_view_populate_store(self);
   return GTK_WIDGET(self);
 }
@@ -116,17 +155,12 @@ get_selected_component(AsdfView *self)
   GtkTreeIter iter;
   if (!gtk_tree_selection_get_selected(selection, &model, &iter))
     return NULL;
-  GtkTreeIter parent;
-  if (!gtk_tree_model_iter_parent(model, &parent, &iter))
-    return NULL;
-  gchar *parent_text = NULL;
-  gtk_tree_model_get(model, &parent, COL_TEXT, &parent_text, -1);
-  gboolean is_src = g_strcmp0(parent_text, "src") == 0;
-  g_free(parent_text);
-  if (!is_src)
+  gint kind = 0;
+  gtk_tree_model_get(model, &iter, ASDF_VIEW_COL_KIND, &kind, -1);
+  if (kind != ASDF_VIEW_KIND_COMPONENT)
     return NULL;
   gchar *comp = NULL;
-  gtk_tree_model_get(model, &iter, COL_TEXT, &comp, -1);
+  gtk_tree_model_get(model, &iter, ASDF_VIEW_COL_TEXT, &comp, -1);
   return comp;
 }
 
@@ -150,15 +184,13 @@ asdf_view_select_file(AsdfView *self, const gchar *file)
   if (!gtk_tree_model_iter_children(model, &iter, &root))
     return;
   do {
-    gchar *text = NULL;
-    gtk_tree_model_get(model, &iter, COL_TEXT, &text, -1);
-    gboolean is_src = g_strcmp0(text, "src") == 0;
-    g_free(text);
-    if (is_src) {
+    gint kind = 0;
+    gtk_tree_model_get(model, &iter, ASDF_VIEW_COL_KIND, &kind, -1);
+    if (kind == ASDF_VIEW_KIND_SRC) {
       if (gtk_tree_model_iter_children(model, &child, &iter)) {
         do {
           gchar *comp = NULL;
-          gtk_tree_model_get(model, &child, COL_TEXT, &comp, -1);
+          gtk_tree_model_get(model, &child, ASDF_VIEW_COL_TEXT, &comp, -1);
           if (filename_matches(comp, file)) {
             GtkTreeSelection *sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(self));
             GtkTreePath *path = gtk_tree_model_get_path(model, &child);
