@@ -14,6 +14,8 @@ struct _Project {
   GHashTable *package_uses;
   ProjectFileLoadedCb file_loaded_cb;
   gpointer file_loaded_data;
+  ProjectFileRemovedCb file_removed_cb;
+  gpointer file_removed_data;
   Asdf *asdf; /* owned, nullable */
   gchar *path;
   gint refcnt;
@@ -170,8 +172,13 @@ void project_clear(Project *self) {
   g_return_if_fail(self != NULL);
   g_debug("project_clear");
   project_index_clear(self);
-  if (self->files)
+  if (self->files) {
+    for (guint i = 0; i < self->files->len; i++) {
+      ProjectFile *file = g_ptr_array_index(self->files, i);
+      project_file_removed(self, file);
+    }
     g_ptr_array_set_size(self->files, 0);
+  }
   self->next_scratch_id = 0;
   project_set_asdf(self, NULL);
 }
@@ -236,4 +243,17 @@ void project_file_loaded(Project *self, ProjectFile *file) {
   g_return_if_fail(file != NULL);
   if (self->file_loaded_cb)
     self->file_loaded_cb(self, file, self->file_loaded_data);
+}
+
+void project_set_file_removed_cb(Project *self, ProjectFileRemovedCb cb, gpointer user_data) {
+  g_return_if_fail(self != NULL);
+  self->file_removed_cb = cb;
+  self->file_removed_data = user_data;
+}
+
+void project_file_removed(Project *self, ProjectFile *file) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(file != NULL);
+  if (self->file_removed_cb)
+    self->file_removed_cb(self, file, self->file_removed_data);
 }

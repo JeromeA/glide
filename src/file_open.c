@@ -49,7 +49,6 @@ gboolean file_open_path(App *app, const gchar *filename) {
   Project *project = app_get_project(app);
   LispSourceNotebook *notebook = app_get_notebook(app);
   project_clear(project);
-  lisp_source_notebook_clear(notebook);
 
   gboolean is_asdf = g_str_has_suffix(filename, ".asd");
   if (is_asdf) {
