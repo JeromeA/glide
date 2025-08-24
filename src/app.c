@@ -541,9 +541,7 @@ app_close_project(App *self, gboolean forget_project)
   if (!app_maybe_save_all(self))
     return FALSE;
   Project *project = app_get_project(self);
-  LispSourceNotebook *notebook = app_get_notebook(self);
   project_clear(project);
-  lisp_source_notebook_clear(notebook);
   Preferences *prefs = app_get_preferences(self);
   if (prefs && forget_project) {
     preferences_set_project_file(prefs, NULL);
