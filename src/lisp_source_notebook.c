@@ -55,17 +55,6 @@ lisp_source_notebook_new(Project *project)
   return GTK_WIDGET(self);
 }
 
-static GtkWidget *
-create_scrolled_view(LispSourceNotebook *self, ProjectFile *file)
-{
-  GtkWidget *view = lisp_source_view_new_for_file(self->project, file);
-  GtkWidget *scrolled = gtk_scrolled_window_new(NULL, NULL);
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled),
-      GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  gtk_container_add(GTK_CONTAINER(scrolled), view);
-  return scrolled;
-}
-
 static void
 on_file_loaded(Project * /*project*/, ProjectFile *file, gpointer user_data)
 {
@@ -80,10 +69,10 @@ lisp_source_notebook_add_file(LispSourceNotebook *self, ProjectFile *file)
   g_return_val_if_fail(LISP_IS_SOURCE_NOTEBOOK(self), -1);
   g_return_val_if_fail(file != NULL, -1);
 
-  GtkWidget *scrolled = create_scrolled_view(self, file);
+  GtkWidget *view = lisp_source_view_new_for_file(self->project, file);
   const gchar *path = project_file_get_relative_path(file);
   GtkWidget *label = gtk_label_new(path ? path : "untitled");
-  gint page = gtk_notebook_append_page(GTK_NOTEBOOK(self), scrolled, label);
+  gint page = gtk_notebook_append_page(GTK_NOTEBOOK(self), view, label);
   gtk_widget_show_all(gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page));
   return page;
 }
@@ -102,10 +91,9 @@ lisp_source_notebook_get_current_view(LispSourceNotebook *self)
 {
   g_return_val_if_fail(LISP_IS_SOURCE_NOTEBOOK(self), NULL);
   gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(self));
-  GtkWidget *scrolled = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page);
-  if (!scrolled)
+  GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page);
+  if (!view)
     return NULL;
-  GtkWidget *view = gtk_bin_get_child(GTK_BIN(scrolled));
   return LISP_SOURCE_VIEW(view);
 }
 

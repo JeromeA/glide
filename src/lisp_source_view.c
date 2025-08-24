@@ -4,14 +4,15 @@
 
 struct _LispSourceView
 {
-  GtkSourceView parent_instance;
+  GtkScrolledWindow parent_instance;
 
+  GtkSourceView *view;
   GtkSourceBuffer *buffer;
   Project *project;
   ProjectFile *file;
 };
 
-G_DEFINE_TYPE (LispSourceView, lisp_source_view, GTK_SOURCE_TYPE_VIEW)
+G_DEFINE_TYPE (LispSourceView, lisp_source_view, GTK_TYPE_SCROLLED_WINDOW)
 
 // Forward declaration for the callback
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
@@ -22,8 +23,12 @@ lisp_source_view_init (LispSourceView *self)
   GtkSourceLanguageManager *lm = gtk_source_language_manager_get_default ();
   GtkSourceLanguage *lang = gtk_source_language_manager_get_language (lm, "commonlisp");
   self->buffer = gtk_source_buffer_new_with_language (lang);
-  gtk_text_view_set_buffer (GTK_TEXT_VIEW (self), GTK_TEXT_BUFFER (self->buffer));
-  gtk_source_view_set_show_line_numbers (GTK_SOURCE_VIEW (self), TRUE);
+  self->view = GTK_SOURCE_VIEW (gtk_source_view_new ());
+  gtk_text_view_set_buffer (GTK_TEXT_VIEW (self->view), GTK_TEXT_BUFFER (self->buffer));
+  gtk_source_view_set_show_line_numbers (self->view, TRUE);
+  gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (self),
+      GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_container_add (GTK_CONTAINER (self), GTK_WIDGET (self->view));
 
   self->project = NULL;
   self->file = NULL;
@@ -47,15 +52,12 @@ lisp_source_view_dispose (GObject *object)
     g_signal_handlers_disconnect_by_data (self->buffer, self);
 
   if (self->project) {
-    project_unref(self->project);
+    project_unref (self->project);
     self->project = NULL;
   }
-  
-  // Buffer is a GObject, gtk_text_view_set_buffer increments its ref count.
-  // It will be unref'd when GtkTextView is disposed, or we can g_clear_object it.
-  // The original code used g_clear_object, which is fine.
-  g_clear_object (&self->buffer);
 
+  g_clear_object (&self->buffer);
+  g_clear_object (&self->view);
 
   G_OBJECT_CLASS (lisp_source_view_parent_class)->dispose (object);
 }
@@ -77,21 +79,21 @@ lisp_source_view_new_for_file (Project *project, ProjectFile *file)
   self->project = project_ref(project);
   self->file = file;
 
-  TextProvider *existing = project_file_get_provider(self->file);
+  TextProvider *existing = project_file_get_provider (self->file);
   if (existing) {
     gsize len = text_provider_get_length(existing);
     gchar *text = text_provider_get_text(existing, 0, len);
-    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(self->buffer), text, -1);
+    gtk_text_buffer_set_text (GTK_TEXT_BUFFER (self->buffer), text, -1);
     g_free(text);
   }
 
-  TextProvider *provider = gtk_text_provider_new(GTK_TEXT_BUFFER(self->buffer));
-  project_file_set_provider(self->file, provider, GTK_TEXT_BUFFER(self->buffer));
-  text_provider_unref(provider);
-  project_file_changed(self->project, self->file);
-  gtk_text_buffer_set_modified(GTK_TEXT_BUFFER(self->buffer), FALSE);
-  g_signal_connect(self->buffer, "changed", G_CALLBACK(on_buffer_changed), self);
-  return GTK_WIDGET(self);
+  TextProvider *provider = gtk_text_provider_new (GTK_TEXT_BUFFER (self->buffer));
+  project_file_set_provider (self->file, provider, GTK_TEXT_BUFFER (self->buffer));
+  text_provider_unref (provider);
+  project_file_changed (self->project, self->file);
+  gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
+  g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);
+  return GTK_WIDGET (self);
 }
 
 
@@ -107,4 +109,11 @@ lisp_source_view_get_file(LispSourceView *self)
 {
   g_return_val_if_fail(LISP_IS_SOURCE_VIEW(self), NULL);
   return self->file;
+}
+
+GtkWidget *
+lisp_source_view_get_view (LispSourceView *self)
+{
+  g_return_val_if_fail (LISP_IS_SOURCE_VIEW (self), NULL);
+  return GTK_WIDGET (self->view);
 }
