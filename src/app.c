@@ -196,11 +196,14 @@ app_activate (GApplication *app)
             gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
             LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
             if (view) {
-              GtkTextBuffer *buffer = GTK_TEXT_BUFFER(lisp_source_view_get_buffer(view));
+              GtkWidget *text_view = lisp_source_view_get_view(view);
+              GtkTextBuffer *buffer =
+                  GTK_TEXT_BUFFER(lisp_source_view_get_buffer(view));
               GtkTextIter iter;
               gtk_text_buffer_get_iter_at_offset(buffer, &iter, pos);
               gtk_text_buffer_place_cursor(buffer, &iter);
-              gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(view), &iter, 0.0, FALSE, 0, 0);
+              gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(text_view), &iter,
+                  0.0, FALSE, 0, 0);
               app_connect_view(self, view);
             }
             break;
@@ -213,7 +216,7 @@ app_activate (GApplication *app)
   gtk_widget_show_all(self->window);
   LispSourceView *current_view = lisp_source_notebook_get_current_view(self->notebook);
   if (current_view)
-    gtk_widget_grab_focus(GTK_WIDGET(current_view));
+    gtk_widget_grab_focus(lisp_source_view_get_view(current_view));
 }
 
 static void
