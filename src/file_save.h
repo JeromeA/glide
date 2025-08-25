@@ -1,5 +1,8 @@
 #pragma once
 
-void file_save(GtkWidget *, gpointer data);
-void file_save_all(GtkWidget *, gpointer data);
+typedef struct _Project Project;
+typedef struct _ProjectFile ProjectFile;
+
+void file_save(ProjectFile *file);
+void file_save_all(Project *project);
 
