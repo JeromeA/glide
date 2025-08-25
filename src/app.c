@@ -127,6 +127,8 @@ app_activate (GApplication *app)
 
   GtkWidget *refactor_menu = gtk_menu_new();
   GtkWidget *refactor_item = gtk_menu_item_new_with_label("Refactor");
+  GtkWidget *refactor_file_menu = gtk_menu_new();
+  GtkWidget *refactor_file_item = gtk_menu_item_new_with_label("File");
   GtkWidget *rename_item   = gtk_menu_item_new_with_label("Rename");
   GtkWidget *delete_item   = gtk_menu_item_new_with_label("Delete");
 
@@ -160,8 +162,10 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exit_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_item), refactor_menu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), rename_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), delete_item);
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_file_item), refactor_file_menu);
+  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_file_menu), rename_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_file_menu), delete_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), refactor_file_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), refactor_item);
 
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
