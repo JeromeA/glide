@@ -27,9 +27,8 @@ int main(void) {
 
   Node *node = g_new0(Node, 1);
   g_atomic_int_set(&node->ref, 1);
-  node_set_package_def(node, package, "COMMON-LISP-USER");
+  node_set_sd_type(node, SDT_PACKAGE_DEF, "COMMON-LISP-USER");
   assert(node_is(node, SDT_PACKAGE_DEF));
-  assert(node->package == package);
   assert(g_strcmp0(node->package_context, "COMMON-LISP-USER") == 0);
 
   node_unref(node);
