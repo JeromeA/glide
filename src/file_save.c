@@ -90,21 +90,6 @@ void file_save(GtkWidget *, gpointer data) {
   g_free(chosen_filename);
 }
 
-void file_saveas(GtkWidget *widget, gpointer data) {
-  App *app = (App *) data;
-  ProjectFile *file = lisp_source_view_get_file(app_get_source_view(app));
-  gchar *old_filename = g_strdup(project_file_get_path(file));
-  project_file_set_path(file, NULL);
-
-  file_save(widget, app);
-
-  const char *new_filename = project_file_get_path(file);
-  if (!new_filename) {
-    project_file_set_path(file, old_filename);
-  }
-  g_free(old_filename);
-}
-
 void file_save_all(GtkWidget * /*widget*/, gpointer data) {
   App *app = (App *) data;
   LispSourceNotebook *notebook = app_get_notebook(app);
