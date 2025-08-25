@@ -5,13 +5,13 @@
 #include <glib/gstdio.h>
 #include <string.h>
 
-static void test_default_scratch(void)
+static void test_default_file(void)
 {
   Project *project = project_new();
   g_assert_cmpuint(project_get_file_count(project), ==, 1);
   ProjectFile *file = project_get_file(project, 0);
-  g_assert_cmpint(project_file_get_state(file), ==, PROJECT_FILE_SCRATCH);
-  g_assert_cmpstr(project_file_get_path(file), ==, "scratch00");
+  g_assert_cmpint(project_file_get_state(file), ==, PROJECT_FILE_LIVE);
+  g_assert_cmpstr(project_file_get_path(file), ==, "unnamed.lisp");
   project_unref(project);
 }
 
@@ -19,7 +19,7 @@ static void test_parse_on_change(void)
 {
   Project *project = project_new();
   TextProvider *provider = string_text_provider_new("(a)");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_SCRATCH);
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
   LispParser *parser = project_file_get_parser(file);
@@ -79,7 +79,7 @@ static void test_function_analysis(void)
 {
   Project *project = project_new();
   TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_SCRATCH);
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
   LispParser *parser = project_file_get_parser(file);
@@ -100,7 +100,7 @@ static void test_index(void)
   Project *project = project_new();
   TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL,
-      PROJECT_FILE_SCRATCH);
+      PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
   LispParser *parser = project_file_get_parser(file);
@@ -171,7 +171,7 @@ static void test_remove_file(void)
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
-  g_test_add_func("/project/default_scratch", test_default_scratch);
+  g_test_add_func("/project/default_file", test_default_file);
   g_test_add_func("/project/parse_on_change", test_parse_on_change);
   g_test_add_func("/project/file_load", test_file_load);
   g_test_add_func("/project/function_analysis", test_function_analysis);

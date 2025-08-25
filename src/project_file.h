@@ -10,8 +10,7 @@ typedef struct _Project Project;
 
 typedef enum {
   PROJECT_FILE_DORMANT,
-  PROJECT_FILE_LIVE,
-  PROJECT_FILE_SCRATCH
+  PROJECT_FILE_LIVE
 } ProjectFileState;
 
 typedef struct _ProjectFile ProjectFile;
