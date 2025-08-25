@@ -5,7 +5,6 @@
 
 struct _Project {
   GPtrArray *files; /* ProjectFile* */
-  guint next_scratch_id;
   GHashTable *function_defs; /* name -> GPtrArray* Node* */
   GHashTable *function_uses;
   GHashTable *variable_defs;
@@ -21,7 +20,6 @@ struct _Project {
   gint refcnt;
 };
 
-ProjectFile *project_create_scratch(Project *self);
 static void project_index_clear(Project *self);
 static void project_index_node(Project *self, const Node *node);
 static void project_index_walk(Project *self, const Node *node);
@@ -31,7 +29,6 @@ static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
   self->refcnt = 1;
   self->files = g_ptr_array_new_with_free_func((GDestroyNotify)project_file_free);
-  self->next_scratch_id = 0;
   self->function_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->function_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->variable_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
@@ -61,7 +58,9 @@ static void project_free(Project *self) {
 Project *project_new(void) {
   g_debug("project_new");
   Project *self = project_init();
-  project_create_scratch(self);
+  TextProvider *provider = string_text_provider_new("");
+  project_add_file(self, provider, NULL, "unnamed.lisp", PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
   return self;
 }
 
@@ -96,18 +95,6 @@ void project_remove_file(Project *self, ProjectFile *file) {
     if (a)
       project_index_walk(self, a);
   }
-}
-
-ProjectFile *project_create_scratch(Project *self) {
-  g_return_val_if_fail(self != NULL, NULL);
-  g_debug("project_create_scratch");
-  gchar name[12];
-  g_snprintf(name, sizeof(name), "scratch%02u", self->next_scratch_id++);
-  TextProvider *provider = string_text_provider_new("");
-  ProjectFile *file = project_add_file(self, provider, NULL, name,
-      PROJECT_FILE_SCRATCH);
-  text_provider_unref(provider);
-  return file;
 }
 
 guint project_get_file_count(Project *self) {
@@ -198,7 +185,6 @@ void project_clear(Project *self) {
     }
     g_ptr_array_set_size(self->files, 0);
   }
-  self->next_scratch_id = 0;
   project_set_asdf(self, NULL);
 }
 

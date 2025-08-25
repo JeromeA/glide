@@ -16,12 +16,12 @@ void file_save(GtkWidget *, gpointer data) {
       lisp_source_view_get_buffer(app_get_source_view(app));
   ProjectFile *file = lisp_source_view_get_file(app_get_source_view(app));
   const gchar *filename = project_file_get_path(file);
-  gboolean scratch = project_file_get_state(file) == PROJECT_FILE_SCRATCH;
+  gboolean unnamed = filename && g_strcmp0(filename, "unnamed.lisp") == 0;
 
   gchar *chosen_filename = NULL;
 
   // Check if we already have a filename
-  if (!filename || scratch) {
+  if (!filename || unnamed) {
     // We do not have a known filename -> use a "Save As" dialog
     GtkWidget *dialog = gtk_file_chooser_dialog_new(
         "Save File",

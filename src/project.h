@@ -17,7 +17,6 @@ Project       *project_ref(Project *self);
 void           project_unref(Project *self);
 void           project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer user_data);
 void           project_set_file_removed_cb(Project *self, ProjectFileRemovedCb cb, gpointer user_data);
-ProjectFile   *project_create_scratch(Project *self);
 ProjectFile   *project_get_file(Project *self, guint index);
 guint          project_get_file_count(Project *self);
 ProjectFile   *project_add_file(Project *self, TextProvider *provider,
