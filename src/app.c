@@ -28,6 +28,7 @@ STATIC gboolean app_maybe_save_all(App *self);
 STATIC gboolean app_close_project(App *self, gboolean forget_project);
 STATIC void     on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data);
 STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data);
+STATIC void     on_save_all(GtkWidget * /*item*/, gpointer data);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -171,7 +172,7 @@ app_activate (GApplication *app)
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
   g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
   g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
-  g_signal_connect(saveall_item, "activate", G_CALLBACK(file_save_all), self);
+  g_signal_connect(saveall_item, "activate", G_CALLBACK(on_save_all), self);
   g_signal_connect(closeproj_item, "activate", G_CALLBACK(close_project_menu_item), self);
   g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
   g_signal_connect(exit_item, "activate", G_CALLBACK(quit_menu_item), self);
@@ -466,6 +467,13 @@ on_recent_project_activate(GtkWidget *item, gpointer data)
     file_open_path(self, path);
 }
 
+STATIC void
+on_save_all(GtkWidget * /*item*/, gpointer data)
+{
+  App *self = GLIDE_APP(data);
+  file_save_all(app_get_project(self));
+}
+
 
 STATIC Preferences *
 app_get_preferences (App *self)
@@ -517,7 +525,7 @@ app_maybe_save_all(App *self)
   if (res == GTK_RESPONSE_CANCEL)
     return FALSE;
   if (res == GTK_RESPONSE_ACCEPT)
-    file_save_all(NULL, self);
+    file_save_all(app_get_project(self));
   return TRUE;
 }
 

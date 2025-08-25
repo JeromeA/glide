@@ -35,7 +35,7 @@ static gboolean save_if_modified(App *app) {
     if (res == GTK_RESPONSE_CANCEL)
       return FALSE;
     if (res == GTK_RESPONSE_ACCEPT)
-      file_save(NULL, app);
+      file_save(file);
   }
   return TRUE;
 }
