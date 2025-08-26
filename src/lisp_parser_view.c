@@ -2,8 +2,7 @@
 #include "gtk_text_provider.h"
 #include "project.h"
 
-struct _LispParserView
-{
+struct _LispParserView {
   GtkTreeView parent_instance;
   ProjectFile *file;
   GtkTreeStore *store;
@@ -63,10 +62,8 @@ lisp_parser_view_class_init(LispParserViewClass *klass)
 }
 
 static const gchar *
-node_type_to_string(LispAstNodeType type)
-{
-  switch(type)
-  {
+node_type_to_string(LispAstNodeType type) {
+  switch(type) {
     case LISP_AST_NODE_TYPE_NUMBER: return "Number";
     case LISP_AST_NODE_TYPE_SYMBOL: return "Symbol";
     case LISP_AST_NODE_TYPE_SYMBOL_PACKAGE: return "SymbolPackage";
@@ -79,18 +76,32 @@ node_type_to_string(LispAstNodeType type)
 }
 
 static void
-add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent)
-{
+add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent) {
   GtkTreeIter iter;
   const gchar *type = node_type_to_string(node->type);
   const gchar *start_text = node->start_token ? node->start_token->text : "";
   gchar *text;
   gchar *info = NULL;
 
-  if (node->end_token && node->end_token != node->start_token)
-    text = g_strdup_printf("%s ... %s", start_text, node->end_token->text);
-  else
+  if (node->end_token && node->end_token != node->start_token) {
+    TextProvider *provider = project_file_get_provider(self->file);
+    gsize start = node->start_token->start_offset;
+    gsize end = node->end_token->end_offset;
+    gchar *full = text_provider_get_text(provider, start, end);
+    gsize len = g_utf8_strlen(full, -1);
+    if (len < 10) {
+      text = full;
+    } else if (len > 100) {
+      gchar *head = g_utf8_substring(full, 0, 9);
+      text = g_strconcat(head, "\xE2\x80\xA6", NULL);
+      g_free(head);
+      g_free(full);
+    } else {
+      text = full;
+    }
+  } else {
     text = g_strdup(start_text);
+  }
 
   if (node->sd_type)
     info = node_to_string(node);
@@ -104,10 +115,8 @@ add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent)
   g_free(text);
   g_free(info);
 
-  if (node->children)
-  {
-    for (guint i = 0; i < node->children->len; i++)
-    {
+  if (node->children) {
+    for (guint i = 0; i < node->children->len; i++) {
       Node *child = g_array_index(node->children, Node*, i);
       add_ast_node(self, child, &iter);
     }
@@ -115,18 +124,19 @@ add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent)
 }
 
 static void
-parser_view_populate_store(LispParserView *self)
-{
+parser_view_populate_store(LispParserView *self) {
   if (!self->file)
     return;
 
   gtk_tree_store_clear(self->store);
   LispParser *parser = project_file_get_parser(self->file);
   const Node *ast = lisp_parser_get_ast(parser);
-  if (ast)
+  if (ast) {
     add_ast_node(self, ast, NULL);
-
-  gtk_tree_view_expand_all(GTK_TREE_VIEW(self));
+    GtkTreePath *path = gtk_tree_path_new_from_indices(0, -1);
+    gtk_tree_view_expand_row(GTK_TREE_VIEW(self), path, FALSE);
+    gtk_tree_path_free(path);
+  }
 }
 
 static void
