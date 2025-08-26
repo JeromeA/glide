@@ -4,17 +4,6 @@
 
 typedef struct Package Package;
 
-struct Package {
-  gint ref;
-  gchar *name;
-  gchar *description;
-  GHashTable *nicknames;
-  GHashTable *uses;
-  GHashTable *exports;
-  GHashTable *shadows;
-  GHashTable *import_from; /* symbol -> package */
-};
-
 Package *package_new(const gchar *name);
 Package *package_ref(Package *package);
 void package_unref(Package *package);
@@ -24,4 +13,12 @@ void package_add_use(Package *package, const gchar *use);
 void package_add_export(Package *package, const gchar *symbol);
 void package_add_shadow(Package *package, const gchar *symbol);
 void package_add_import_from(Package *package, const gchar *symbol, const gchar *from);
+
+const gchar *package_get_name(const Package *package);
+const gchar *package_get_description(const Package *package);
+GHashTable *package_get_nicknames(const Package *package);
+GHashTable *package_get_uses(const Package *package);
+GHashTable *package_get_exports(const Package *package);
+GHashTable *package_get_shadows(const Package *package);
+GHashTable *package_get_import_from(const Package *package);
 

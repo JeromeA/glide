@@ -1,5 +1,16 @@
 #include "package.h"
 
+struct Package {
+  gint ref;
+  gchar *name;
+  gchar *description;
+  GHashTable *nicknames;
+  GHashTable *uses;
+  GHashTable *exports;
+  GHashTable *shadows;
+  GHashTable *import_from; /* symbol -> package */
+};
+
 Package *package_new(const gchar *name) {
   Package *package = g_new0(Package, 1);
   g_atomic_int_set(&package->ref, 1);
@@ -70,4 +81,32 @@ void package_add_shadow(Package *package, const gchar *symbol) {
 void package_add_import_from(Package *package, const gchar *symbol, const gchar *from) {
   if (!package || !symbol || !from) return;
   g_hash_table_insert(package->import_from, g_strdup(symbol), g_strdup(from));
+}
+
+const gchar *package_get_name(const Package *package) {
+  return package ? package->name : NULL;
+}
+
+const gchar *package_get_description(const Package *package) {
+  return package ? package->description : NULL;
+}
+
+GHashTable *package_get_nicknames(const Package *package) {
+  return package ? package->nicknames : NULL;
+}
+
+GHashTable *package_get_uses(const Package *package) {
+  return package ? package->uses : NULL;
+}
+
+GHashTable *package_get_exports(const Package *package) {
+  return package ? package->exports : NULL;
+}
+
+GHashTable *package_get_shadows(const Package *package) {
+  return package ? package->shadows : NULL;
+}
+
+GHashTable *package_get_import_from(const Package *package) {
+  return package ? package->import_from : NULL;
 }
