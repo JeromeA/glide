@@ -7,6 +7,7 @@
 struct _Asdf {
   GObject parent_instance;
   gchar *filename;
+  gchar *description;
   gboolean serial;
   GPtrArray *components; /* gchar* */
   GPtrArray *depends_on; /* gchar* */
@@ -23,6 +24,7 @@ static void asdf_class_init(AsdfClass *klass) {
 
 static void asdf_init(Asdf *self) {
   self->filename = NULL;
+  self->description = NULL;
   self->serial = FALSE;
   self->components = g_ptr_array_new_with_free_func(g_free);
   self->depends_on = g_ptr_array_new_with_free_func(g_free);
@@ -31,6 +33,7 @@ static void asdf_init(Asdf *self) {
 static void asdf_finalize(GObject *object) {
   Asdf *self = GLIDE_ASDF(object);
   g_free(self->filename);
+  g_free(self->description);
   if (self->components)
     g_ptr_array_free(self->components, TRUE);
   if (self->depends_on)
@@ -58,6 +61,17 @@ Asdf *asdf_new_from_file(const gchar *filename) {
 const gchar *asdf_get_filename(Asdf *self) {
   g_return_val_if_fail(GLIDE_IS_ASDF(self), NULL);
   return self->filename;
+}
+
+void asdf_set_description(Asdf *self, const gchar *description) {
+  g_return_if_fail(GLIDE_IS_ASDF(self));
+  g_free(self->description);
+  self->description = g_strdup(description);
+}
+
+const gchar *asdf_get_description(Asdf *self) {
+  g_return_val_if_fail(GLIDE_IS_ASDF(self), NULL);
+  return self->description;
 }
 
 void asdf_set_serial(Asdf *self, gboolean serial) {
@@ -161,7 +175,10 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
     if (key->type != LISP_AST_NODE_TYPE_SYMBOL)
       continue;
     const gchar *kw = node_get_name(key);
-    if (g_strcmp0(kw, "SERIAL") == 0) {
+    if (g_strcmp0(kw, "DESCRIPTION") == 0) {
+      if (val->type == LISP_AST_NODE_TYPE_STRING)
+        asdf_set_description(self, node_get_name(val));
+    } else if (g_strcmp0(kw, "SERIAL") == 0) {
       if (val->type == LISP_AST_NODE_TYPE_SYMBOL || val->type == LISP_AST_NODE_TYPE_NUMBER) {
         const gchar *v = val->type == LISP_AST_NODE_TYPE_SYMBOL ?
           node_get_name(val) : val->start_token->text;
@@ -213,12 +230,14 @@ char *asdf_to_string(Asdf *self) {
   gchar *name = get_system_name(self);
   g_string_append_printf(out, "(defsystem \"%s\"\n", name);
   g_free(name);
+  if (self->description)
+    g_string_append_printf(out, "  :description \"%s\"\n", self->description);
   g_string_append_printf(out, "  :serial %s\n", self->serial ? "t" : "nil");
   if (self->components->len > 0) {
     g_string_append(out, "  :components (");
     for (guint i = 0; i < self->components->len; i++) {
       const gchar *comp = g_ptr_array_index(self->components, i);
-      g_string_append_printf(out, "(file \"%s\")", comp);
+      g_string_append_printf(out, "(:file \"%s\")", comp);
       if (i + 1 < self->components->len)
         g_string_append(out, " ");
     }
