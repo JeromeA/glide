@@ -33,3 +33,13 @@ comparisons against `file` failed. `node_get_name` now strips package
 delimiters and always returns the symbol name uppercased. The ASDF parser was
 updated to compare against upper case names, so `:file` and `file` components
 are handled identically.
+
+## Extend selection stuck on atoms
+
+`Ctrl-w` extended the selection to the current symbol but further presses did
+not expand to enclosing forms when invoked in the middle of an atom. The AST
+contains intermediate nodes whose parents share the same range, so the
+selection algorithm climbed only one level and returned the same bounds. The
+search now skips parents with identical ranges and therefore reaches the
+correct enclosing expression. Debug logging was also added to help diagnose
+future issues.
