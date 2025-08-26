@@ -101,7 +101,7 @@ on_key_press(GtkWidget * /*widget*/,
   if ((event->keyval == GDK_KEY_Return) &&
       (event->state  & GDK_MOD1_MASK))      /* Alt+Enter */
   {
-    on_evaluate(self);
+    on_evaluate(NULL, self);
     return TRUE;                  /* stop further propagation */
   }
   if ((event->keyval == GDK_KEY_p || event->keyval == GDK_KEY_P) &&
