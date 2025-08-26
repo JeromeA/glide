@@ -2,5 +2,7 @@
 
 #include "node.h"
 
-void analyse_ast(Node *root);
+typedef struct _Project Project;
+
+void analyse_ast(Project *project, Node *root);
 

@@ -1,8 +1,9 @@
 #include "analyser.h"
 #include "node.h"
+#include "defpackage.h"
 #include <string.h>
 
-static void analyse_node(Node *node, gchar **context) {
+static void analyse_node(Project *project, Node *node, gchar **context) {
   if (!node)
     return;
 
@@ -25,6 +26,9 @@ static void analyse_node(Node *node, gchar **context) {
               g_free(*context);
               *context = g_strdup(pkg_name);
             }
+          } else if (strcmp(name, "DEFPACKAGE") == 0) {
+            analyse_defpackage(project, node, *context);
+            return;
           }
         }
       }
@@ -33,14 +37,14 @@ static void analyse_node(Node *node, gchar **context) {
       Node *child = g_array_index(node->children, Node*, i);
       if (i > 0 && child->type == LISP_AST_NODE_TYPE_SYMBOL && !child->sd_type)
         node_set_sd_type(child, SDT_VAR_USE, *context);
-      analyse_node(child, context);
+      analyse_node(project, child, context);
     }
   }
 }
 
-void analyse_ast(Node *root) {
+void analyse_ast(Project *project, Node *root) {
   gchar *context = g_strdup("COMMON-LISP-USER");
-  analyse_node(root, &context);
+  analyse_node(project, root, &context);
   g_free(context);
 }
 

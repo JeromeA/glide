@@ -11,6 +11,7 @@ struct _Project {
   GHashTable *variable_uses;
   GHashTable *package_defs;
   GHashTable *package_uses;
+  GHashTable *packages; /* name -> Package* */
   ProjectFileLoadedCb file_loaded_cb;
   gpointer file_loaded_data;
   ProjectFileRemovedCb file_removed_cb;
@@ -35,6 +36,7 @@ static Project *project_init(void) {
   self->variable_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
+  self->packages = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)package_unref);
   self->asdf = NULL;
   self->path = NULL;
   return self;
@@ -48,6 +50,7 @@ static void project_free(Project *self) {
   g_clear_pointer(&self->variable_uses, g_hash_table_unref);
   g_clear_pointer(&self->package_defs, g_hash_table_unref);
   g_clear_pointer(&self->package_uses, g_hash_table_unref);
+  g_clear_pointer(&self->packages, g_hash_table_unref);
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
   g_clear_object(&self->asdf);
@@ -128,15 +131,12 @@ static void project_index_clear(Project *self) {
   for (guint t = 0; t < G_N_ELEMENTS(tables); t++)
     if (tables[t])
       g_hash_table_remove_all(tables[t]);
+  if (self->packages)
+    g_hash_table_remove_all(self->packages);
 }
 
-void project_index_add(Project *self, Node *node) {
-  g_return_if_fail(self != NULL);
-  if (!node) return;
-  const gchar *name = node_get_name(node);
-  if (!name) return;
-  GHashTable *table = project_index_table(self, node->sd_type);
-  if (!table) return;
+static void project_index_add_to(GHashTable *table, const gchar *name, Node *node) {
+  if (!table || !name || !node) return;
   GPtrArray *arr = g_hash_table_lookup(table, name);
   if (!arr) {
     arr = g_ptr_array_new_with_free_func((GDestroyNotify)node_unref);
@@ -145,9 +145,32 @@ void project_index_add(Project *self, Node *node) {
   g_ptr_array_add(arr, node_ref(node));
 }
 
+void project_index_add(Project *self, Node *node) {
+  if (!self || !node || !node->sd_type)
+    return;
+  GHashTable *table = project_index_table(self, node->sd_type);
+  if (!table) return;
+  const gchar *name = node_get_name(node);
+  project_index_add_to(table, name, node);
+}
+
 GHashTable *project_get_index(Project *self, StringDesignatorType sd_type) {
   g_return_val_if_fail(self != NULL, NULL);
   return project_index_table(self, sd_type);
+}
+
+void project_add_package(Project *self, Package *package) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(package != NULL);
+  const gchar *name = package_get_name(package);
+  if (!name) return;
+  g_hash_table_replace(self->packages, g_strdup(name), package_ref(package));
+}
+
+Package *project_get_package(Project *self, const gchar *name) {
+  g_return_val_if_fail(self != NULL, NULL);
+  g_return_val_if_fail(name != NULL, NULL);
+  return g_hash_table_lookup(self->packages, name);
 }
 
 void project_set_asdf(Project *self, Asdf *asdf) {
@@ -185,6 +208,7 @@ void project_clear(Project *self) {
     }
     g_ptr_array_set_size(self->files, 0);
   }
+  g_hash_table_remove_all(self->packages);
   project_set_asdf(self, NULL);
 }
 
@@ -215,7 +239,7 @@ void project_file_changed(Project *self, ProjectFile *file) {
   lisp_parser_parse(parser, tokens);
   const Node *ast = lisp_parser_get_ast(parser);
   if (ast)
-    analyse_ast((Node*)ast);
+    analyse_ast(self, (Node*)ast);
   for (guint i = 0; i < self->files->len; i++) {
     ProjectFile *f = g_ptr_array_index(self->files, i);
     const Node *a = lisp_parser_get_ast(project_file_get_parser(f));
@@ -262,3 +286,4 @@ void project_file_removed(Project *self, ProjectFile *file) {
   if (self->file_removed_cb)
     self->file_removed_cb(self, file, self->file_removed_data);
 }
+
