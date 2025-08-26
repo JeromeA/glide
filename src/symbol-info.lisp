@@ -1,7 +1,3 @@
-(defpackage :glide
-  (:use :cl)
-  (:export :package-symbols))
-
 (in-package :glide)
 
 (defun package-symbols (package-name)
