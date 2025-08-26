@@ -25,6 +25,7 @@ SOURCES += \
   analyse.c \
   analyse_defpackage.c \
   analyse_defun.c \
+  function.c \
   package.c \
   package_common_lisp_user.c \
   package_common_lisp.c \

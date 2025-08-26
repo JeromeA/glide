@@ -7,6 +7,7 @@ typedef struct _GtkTextBuffer GtkTextBuffer;
 #include "node.h"
 #include "asdf.h"
 #include "package.h"
+#include "function.h"
 
 typedef struct _Project Project;
 
@@ -35,4 +36,6 @@ Asdf          *project_get_asdf(Project *self);
 void           project_clear(Project *self);
 const gchar   *project_get_path(Project *self);
 void           project_set_path(Project *self, const gchar *path);
+void           project_add_function(Project *self, Function *function);
+Function      *project_get_function(Project *self, const gchar *name);
 

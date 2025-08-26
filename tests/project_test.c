@@ -127,6 +127,23 @@ static void test_index(void)
   project_unref(project);
 }
 
+static void test_functions_table(void)
+{
+  Project *project = project_new();
+  TextProvider *provider = string_text_provider_new("(defun foo () \"doc\")");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
+  project_file_changed(project, file);
+  Function *fn = project_get_function(project, "FOO");
+  g_assert_nonnull(fn);
+  const gchar *doc = function_get_doc_string(fn);
+  g_assert_nonnull(doc);
+  g_assert_cmpstr(doc, ==, "doc");
+  g_assert_cmpstr(function_get_name(fn), ==, "FOO");
+  g_assert_cmpstr(function_get_package(fn), ==, "COMMON-LISP-USER");
+  project_unref(project);
+}
+
 static void test_relative_path(void)
 {
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
@@ -176,6 +193,7 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/file_load", test_file_load);
   g_test_add_func("/project/function_analysis", test_function_analysis);
   g_test_add_func("/project/index", test_index);
+  g_test_add_func("/project/functions_table", test_functions_table);
   g_test_add_func("/project/relative_path", test_relative_path);
   g_test_add_func("/project/remove_file", test_remove_file);
   return g_test_run();
