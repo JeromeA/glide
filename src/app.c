@@ -52,10 +52,13 @@ static void
 on_show_parser(App *self)
 {
   GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_title(GTK_WINDOW(win), "Parser View");
   LispSourceView *current = lisp_source_notebook_get_current_view(self->notebook);
   ProjectFile *file = lisp_source_view_get_file(current);
   GtkWidget *view = lisp_parser_view_new(file);
-  gtk_container_add(GTK_CONTAINER(win), view);
+  GtkWidget *scrolled = gtk_scrolled_window_new(NULL, NULL);
+  gtk_container_add(GTK_CONTAINER(scrolled), view);
+  gtk_container_add(GTK_CONTAINER(win), scrolled);
   gtk_widget_show_all(win);
 }
 
@@ -102,8 +105,9 @@ app_activate (GApplication *app)
   /*--------------------------------------------------------------*
    *  Build the UI (this is almost a verbatim move from app.c)    *
    *--------------------------------------------------------------*/
-  self->window = gtk_application_window_new (GTK_APPLICATION (app));
-  gtk_window_set_default_size (GTK_WINDOW (self->window), 800, 600);
+  self->window = gtk_application_window_new(GTK_APPLICATION(app));
+  gtk_window_set_title(GTK_WINDOW(self->window), "Glide");
+  gtk_window_set_default_size(GTK_WINDOW(self->window), 800, 600);
   g_signal_connect (self->window, "delete-event",
                     G_CALLBACK (quit_delete_event), self);
 
