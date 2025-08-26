@@ -23,6 +23,7 @@ SOURCES += \
   lisp_lexer.c \
   lisp_parser.c \
   analyser.c \
+  defpackage.c \
   package.c \
   package_common_lisp_user.c \
   package_common_lisp.c \

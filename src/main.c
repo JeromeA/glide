@@ -2,6 +2,7 @@
 #ifdef INLINE
 #define STATIC static
 #include "analyser.c"
+#include "defpackage.c"
 #include "app.c"
 #include "asdf.c"
 #include "asdf_view.c"
