@@ -1,8 +1,9 @@
 
 #ifdef INLINE
 #define STATIC static
-#include "analyser.c"
-#include "defpackage.c"
+#include "analyse.c"
+#include "analyse_defpackage.c"
+#include "analyse_defun.c"
 #include "app.c"
 #include "asdf.c"
 #include "asdf_view.c"

@@ -22,13 +22,13 @@ swank_session_test: swank_session_test.c swank_session.c swank_process.c real_sw
 lisp_parser_test: lisp_parser_test.c lisp_lexer.c lisp_parser.c node.c package.c string_text_provider.c text_provider.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-project_test: project_test.c project.c project_file.c analyser.c defpackage.c node.c package.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c
+project_test: project_test.c project.c project_file.c analyse.c analyse_defpackage.c analyse_defun.c node.c package.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-asdf_test: asdf_test.c asdf.c string_text_provider.c text_provider.c lisp_lexer.c lisp_parser.c node.c package.c project.c project_file.c analyser.c defpackage.c
+asdf_test: asdf_test.c asdf.c string_text_provider.c text_provider.c lisp_lexer.c lisp_parser.c node.c package.c project.c project_file.c analyse.c analyse_defpackage.c analyse_defun.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-analyser_test: analyser_test.c analyser.c defpackage.c node.c package.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c project.c project_file.c
+analyser_test: analyser_test.c analyse.c analyse_defpackage.c analyse_defun.c node.c package.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c project.c project_file.c
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 package_test: package_test.c package.c package_common_lisp_user.c node.c
