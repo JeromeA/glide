@@ -180,6 +180,10 @@ app_activate (GApplication *app)
   GtkWidget *rename_item   = gtk_menu_item_new_with_label("Rename");
   GtkWidget *delete_item   = gtk_menu_item_new_with_label("Delete");
 
+  GtkWidget *run_menu      = gtk_menu_new();
+  GtkWidget *run_item      = gtk_menu_item_new_with_label("Run");
+  GtkWidget *eval_item     = gtk_menu_item_new_with_label("Eval toplevel");
+
   GtkWidget *project_menu  = gtk_menu_new();
   GtkWidget *project_item  = gtk_menu_item_new_with_label("Project");
   GtkWidget *proj_new_item = gtk_menu_item_new_with_label("New…");
@@ -220,6 +224,10 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), refactor_file_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), refactor_item);
 
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(run_item), run_menu);
+  gtk_menu_shell_append(GTK_MENU_SHELL(run_menu), eval_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), run_item);
+
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
   g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
   g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
@@ -231,6 +239,7 @@ app_activate (GApplication *app)
   g_signal_connect(delete_item, "activate", G_CALLBACK(file_delete), self);
   g_signal_connect(extend_item, "activate", G_CALLBACK(on_extend_selection), self);
   g_signal_connect(shrink_item, "activate", G_CALLBACK(on_shrink_selection), self);
+  g_signal_connect(eval_item, "activate", G_CALLBACK(on_evaluate), self);
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
