@@ -31,6 +31,7 @@ STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, 
 STATIC void     on_save_all(GtkWidget * /*item*/, gpointer data);
 STATIC void     on_extend_selection(GtkWidget * /*item*/, gpointer data);
 STATIC void     on_shrink_selection(GtkWidget * /*item*/, gpointer data);
+STATIC void     on_window_size_allocate(GtkWidget * /*widget*/, GtkAllocation *allocation, gpointer data);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -80,6 +81,14 @@ on_shrink_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
   LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
   if (view)
     lisp_source_view_shrink_selection(view);
+}
+
+STATIC void
+on_window_size_allocate(GtkWidget * /*widget*/, GtkAllocation *allocation, gpointer data)
+{
+  App *self = (App *) data;
+  preferences_set_window_width(self->preferences, allocation->width);
+  preferences_set_window_height(self->preferences, allocation->height);
 }
 
 static gboolean
@@ -145,9 +154,13 @@ app_activate (GApplication *app)
    *--------------------------------------------------------------*/
   self->window = gtk_application_window_new(GTK_APPLICATION(app));
   gtk_window_set_title(GTK_WINDOW(self->window), "Glide");
-  gtk_window_set_default_size(GTK_WINDOW(self->window), 800, 600);
+  gtk_window_set_default_size(GTK_WINDOW(self->window),
+      preferences_get_window_width(self->preferences),
+      preferences_get_window_height(self->preferences));
   g_signal_connect (self->window, "delete-event",
                     G_CALLBACK (quit_delete_event), self);
+  g_signal_connect(self->window, "size-allocate",
+      G_CALLBACK(on_window_size_allocate), self);
 
   /* Source views notebook */
   GtkWidget *notebook = lisp_source_notebook_new (self->project);
