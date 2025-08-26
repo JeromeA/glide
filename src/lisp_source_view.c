@@ -2,6 +2,11 @@
 #include "gtk_text_provider.h"
 #include "project.h"
 
+typedef struct {
+  gsize start;
+  gsize end;
+} SelectionRange;
+
 struct _LispSourceView
 {
   GtkScrolledWindow parent_instance;
@@ -10,6 +15,7 @@ struct _LispSourceView
   GtkSourceBuffer *buffer;
   Project *project;
   ProjectFile *file;
+  GArray *selection_stack;
 };
 
 G_DEFINE_TYPE (LispSourceView, lisp_source_view, GTK_TYPE_SCROLLED_WINDOW)
@@ -32,6 +38,7 @@ lisp_source_view_init (LispSourceView *self)
 
   self->project = NULL;
   self->file = NULL;
+  self->selection_stack = g_array_new (FALSE, FALSE, sizeof (SelectionRange));
 }
 
 // Callback for when the GtkTextBuffer changes
@@ -58,6 +65,10 @@ lisp_source_view_dispose (GObject *object)
 
   g_clear_object (&self->buffer);
   self->view = NULL;
+  if (self->selection_stack) {
+    g_array_free (self->selection_stack, TRUE);
+    self->selection_stack = NULL;
+  }
 
   G_OBJECT_CLASS (lisp_source_view_parent_class)->dispose (object);
 }
@@ -116,4 +127,119 @@ lisp_source_view_get_view (LispSourceView *self)
 {
   g_return_val_if_fail (LISP_IS_SOURCE_VIEW (self), NULL);
   return GTK_WIDGET (self->view);
+}
+
+static const Node *
+find_node_containing_range (const Node *node, gsize start, gsize end, gsize len)
+{
+  if (!node)
+    return NULL;
+  gsize node_start = node->start_token ? node->start_token->start_offset : 0;
+  gsize node_end = node->end_token ? node->end_token->end_offset : len;
+  if (start < node_start || end > node_end)
+    return NULL;
+  for (guint i = 0; node->children && i < node->children->len; i++) {
+    const Node *child = g_array_index (node->children, Node*, i);
+    const Node *found = find_node_containing_range (child, start, end, len);
+    if (found)
+      return found;
+  }
+  return node;
+}
+
+static gboolean
+find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
+    gsize start, gsize end, gsize *new_start, gsize *new_end)
+{
+  GtkTextIter end_iter;
+  gtk_text_buffer_get_end_iter (buffer, &end_iter);
+  gsize len = gtk_text_iter_get_offset (&end_iter);
+
+  LispParser *parser = project_file_get_parser (file);
+  const Node *ast = lisp_parser_get_ast (parser);
+  const Node *node = find_node_containing_range (ast, start, end, len);
+  if (!node)
+    return FALSE;
+  gsize node_start = node->start_token ? node->start_token->start_offset : 0;
+  gsize node_end = node->end_token ? node->end_token->end_offset : len;
+  if (node_start == start && node_end == end) {
+    const Node *parent = node->parent;
+    if (!parent) {
+      if (start == 0 && end == len)
+        return FALSE;
+      *new_start = 0;
+      *new_end = len;
+      return TRUE;
+    }
+    node = parent;
+    node_start = node->start_token ? node->start_token->start_offset : 0;
+    node_end = node->end_token ? node->end_token->end_offset : len;
+  }
+  *new_start = node_start;
+  *new_end = node_end;
+  return TRUE;
+}
+
+static void select_range (GtkTextBuffer *buffer, gsize start, gsize end)
+{
+  GtkTextIter it_start;
+  GtkTextIter it_end;
+  gtk_text_buffer_get_iter_at_offset (buffer, &it_start, start);
+  gtk_text_buffer_get_iter_at_offset (buffer, &it_end, end);
+  gtk_text_buffer_select_range (buffer, &it_start, &it_end);
+}
+
+void
+lisp_source_view_extend_selection (LispSourceView *self)
+{
+  g_return_if_fail (LISP_IS_SOURCE_VIEW (self));
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  GtkTextIter it_start;
+  GtkTextIter it_end;
+  if (!gtk_text_buffer_get_selection_bounds (buffer, &it_start, &it_end)) {
+    GtkTextMark *mark = gtk_text_buffer_get_insert (buffer);
+    gtk_text_buffer_get_iter_at_mark (buffer, &it_start, mark);
+    it_end = it_start;
+  }
+  gsize start = gtk_text_iter_get_offset (&it_start);
+  gsize end = gtk_text_iter_get_offset (&it_end);
+
+  if (self->selection_stack->len == 0) {
+    SelectionRange original = { start, end };
+    g_array_append_val (self->selection_stack, original);
+  }
+
+  gsize new_start = start;
+  gsize new_end = end;
+  if (!find_parent_range (buffer, self->file, start, end, &new_start, &new_end)) {
+    SelectionRange orig = g_array_index (self->selection_stack, SelectionRange, 0);
+    select_range (buffer, orig.start, orig.end);
+    g_array_set_size (self->selection_stack, 0);
+    return;
+  }
+
+  SelectionRange new_range = { new_start, new_end };
+  g_array_append_val (self->selection_stack, new_range);
+  select_range (buffer, new_start, new_end);
+}
+
+void
+lisp_source_view_shrink_selection (LispSourceView *self)
+{
+  g_return_if_fail (LISP_IS_SOURCE_VIEW (self));
+  if (!self->selection_stack || self->selection_stack->len == 0)
+    return;
+
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  if (self->selection_stack->len <= 1) {
+    SelectionRange orig = g_array_index (self->selection_stack, SelectionRange, 0);
+    select_range (buffer, orig.start, orig.end);
+    g_array_set_size (self->selection_stack, 0);
+    return;
+  }
+
+  g_array_remove_index (self->selection_stack, self->selection_stack->len - 1);
+  SelectionRange prev = g_array_index (self->selection_stack, SelectionRange,
+      self->selection_stack->len - 1);
+  select_range (buffer, prev.start, prev.end);
 }

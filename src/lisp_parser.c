@@ -62,8 +62,10 @@ void lisp_parser_parse(LispParser *parser, GArray *tokens) {
       continue;
     }
     Node *expr = parse_expression(tokens, &position);
-    if (expr)
+    if (expr) {
+      expr->parent = parser->ast;
       g_array_append_val(parser->ast->children, expr);
+    }
   }
 }
 
@@ -85,6 +87,7 @@ static Node *parse_symbol(GArray *tokens, guint *position) {
       pkg->start_token = token;
       pkg->end_token = token;
       g_array_append_val(sym->children, pkg);
+      pkg->parent = sym;
       (*position)++;
       const LispToken *sep_tok = &g_array_index(tokens, LispToken, *position);
       Node *sep = g_new0(Node, 1);
@@ -93,6 +96,7 @@ static Node *parse_symbol(GArray *tokens, guint *position) {
       sep->start_token = sep_tok;
       sep->end_token = sep_tok;
       g_array_append_val(sym->children, sep);
+      sep->parent = sym;
       sym->end_token = sep_tok;
       (*position)++;
       if (*position < n_tokens) {
@@ -104,6 +108,7 @@ static Node *parse_symbol(GArray *tokens, guint *position) {
           name->start_token = name_tok;
           name->end_token = name_tok;
           g_array_append_val(sym->children, name);
+          name->parent = sym;
           sym->end_token = name_tok;
           (*position)++;
         }
@@ -115,6 +120,7 @@ static Node *parse_symbol(GArray *tokens, guint *position) {
       name->start_token = token;
       name->end_token = token;
       g_array_append_val(sym->children, name);
+      name->parent = sym;
       sym->end_token = token;
       (*position)++;
     }
@@ -125,6 +131,7 @@ static Node *parse_symbol(GArray *tokens, guint *position) {
     sep->start_token = token;
     sep->end_token = token;
     g_array_append_val(sym->children, sep);
+    sep->parent = sym;
     sym->end_token = token;
     (*position)++;
     if (*position < n_tokens) {
@@ -136,6 +143,7 @@ static Node *parse_symbol(GArray *tokens, guint *position) {
         name->start_token = name_tok;
         name->end_token = name_tok;
         g_array_append_val(sym->children, name);
+        name->parent = sym;
         sym->end_token = name_tok;
         (*position)++;
       }
@@ -181,8 +189,10 @@ static Node *parse_expression(GArray *tokens, guint *position) {
         continue;
       }
       Node *child_expr = parse_expression(tokens, position);
-      if (child_expr)
+      if (child_expr) {
+        child_expr->parent = list_node;
         g_array_append_val(list_node->children, child_expr);
+      }
     }
     list_node->end_token = NULL;
     return list_node;
