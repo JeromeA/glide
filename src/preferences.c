@@ -9,6 +9,8 @@ struct _Preferences {
   guint16  swank_port;
   gchar   *project_file;
   gchar   *project_dir;
+  gint     window_width;
+  gint     window_height;
   gint     asdf_view_width;
   gchar   *last_file;
   gint     cursor_position;
@@ -44,6 +46,14 @@ static void preferences_load(Preferences *self) {
       preferences_set_project_dir(self, proj_dir);
       g_free(proj_dir);
     }
+
+    gint win_w = g_key_file_get_integer(key_file, "General", "window_width", NULL);
+    if (win_w)
+      preferences_set_window_width(self, win_w);
+
+    gint win_h = g_key_file_get_integer(key_file, "General", "window_height", NULL);
+    if (win_h)
+      preferences_set_window_height(self, win_h);
 
     gint width = g_key_file_get_integer(key_file, "General", "asdf_view_width", NULL);
     if (width)
@@ -89,6 +99,8 @@ static void preferences_save(Preferences *self) {
     g_key_file_set_string(key_file, "General", "project_file", self->project_file);
   if (self->project_dir)
     g_key_file_set_string(key_file, "General", "project_dir", self->project_dir);
+  g_key_file_set_integer(key_file, "General", "window_width", self->window_width);
+  g_key_file_set_integer(key_file, "General", "window_height", self->window_height);
   g_key_file_set_integer(key_file, "General", "asdf_view_width", self->asdf_view_width);
   if (self->last_file)
     g_key_file_set_string(key_file, "General", "last_file", self->last_file);
@@ -133,6 +145,8 @@ preferences_new(const gchar *config_dir)
   self->refcnt = 1;
   self->filename = g_build_filename(config_dir, "glide", "preferences.ini", NULL);
   self->project_dir = g_strdup("~/lisp");
+  self->window_width = 800;
+  self->window_height = 600;
   self->asdf_view_width = 200;
   self->cursor_position = 0;
   preferences_load(self);
@@ -194,6 +208,28 @@ gint preferences_get_asdf_view_width(Preferences *self) {
 void preferences_set_asdf_view_width(Preferences *self, gint width) {
   if (self->asdf_view_width != width) {
     self->asdf_view_width = width;
+    preferences_save(self);
+  }
+}
+
+gint preferences_get_window_width(Preferences *self) {
+  return self->window_width;
+}
+
+void preferences_set_window_width(Preferences *self, gint width) {
+  if (self->window_width != width) {
+    self->window_width = width;
+    preferences_save(self);
+  }
+}
+
+gint preferences_get_window_height(Preferences *self) {
+  return self->window_height;
+}
+
+void preferences_set_window_height(Preferences *self, gint height) {
+  if (self->window_height != height) {
+    self->window_height = height;
     preferences_save(self);
   }
 }
