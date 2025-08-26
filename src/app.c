@@ -365,7 +365,7 @@ app_update_asdf_view(App *self)
   Asdf *asdf = project_get_asdf(self->project);
   if (!asdf)
     return;
-  GtkWidget *view = asdf_view_new(asdf, self->project);
+  GtkWidget *view = asdf_view_new(asdf, self);
   GtkTreeSelection *sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
   g_signal_connect(sel, "changed", G_CALLBACK(on_asdf_view_selection_changed), self);
   self->asdf_scrolled = gtk_scrolled_window_new(NULL, NULL);

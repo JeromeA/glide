@@ -2,7 +2,8 @@
 
 #include <gtk/gtk.h>
 #include "asdf.h"
-#include "project.h"
+
+typedef struct _App App;
 
 G_BEGIN_DECLS
 
@@ -24,7 +25,7 @@ typedef enum {
   ASDF_VIEW_KIND_LIBRARY
 } AsdfViewKind;
 
-GtkWidget *asdf_view_new(Asdf *asdf, Project *project);
+GtkWidget *asdf_view_new(Asdf *asdf, App *app);
 void asdf_view_select_file(AsdfView *self, const gchar *file);
 
 G_END_DECLS

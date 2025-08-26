@@ -1,10 +1,15 @@
 #include "asdf_view.h"
 #include "project_file.h"
+#include "app.h"
+#include "file_new.h"
+#include "file_delete.h"
+#include "file_rename.h"
 
 struct _AsdfView {
   GtkTreeView parent_instance;
   Asdf *asdf;
   Project *project;
+  App *app;
   GtkTreeStore *store;
 };
 
@@ -13,6 +18,7 @@ G_DEFINE_TYPE(AsdfView, asdf_view, GTK_TYPE_TREE_VIEW)
 static void asdf_view_populate_store(AsdfView *self);
 static gboolean filename_matches(const gchar *component, const gchar *file);
 static gchar *get_selected_component(AsdfView *self);
+static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data);
 
 static void
 asdf_view_init(AsdfView *self)
@@ -21,6 +27,7 @@ asdf_view_init(AsdfView *self)
 
   self->asdf = NULL;
   self->project = NULL;
+  self->app = NULL;
   self->store = gtk_tree_store_new(ASDF_VIEW_N_COLS,
       G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
@@ -29,6 +36,8 @@ asdf_view_init(AsdfView *self)
   gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(self), -1, NULL,
       renderer, "text", ASDF_VIEW_COL_TEXT, NULL);
   gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
+  g_signal_connect(self, "button-press-event",
+      G_CALLBACK(on_button_press), self);
 }
 
 static void
@@ -37,6 +46,7 @@ asdf_view_dispose(GObject *object)
   AsdfView *self = ASDF_VIEW(object);
   g_clear_object(&self->asdf);
   g_clear_pointer(&self->project, project_unref);
+  g_clear_object(&self->app);
   g_clear_object(&self->store);
   G_OBJECT_CLASS(asdf_view_parent_class)->dispose(object);
 }
@@ -121,14 +131,59 @@ asdf_view_populate_store(AsdfView *self)
 }
 
 GtkWidget *
-asdf_view_new(Asdf *asdf, Project *project)
+asdf_view_new(Asdf *asdf, App *app)
 {
   g_return_val_if_fail(asdf != NULL, NULL);
   AsdfView *self = g_object_new(ASDF_VIEW_TYPE, NULL);
   self->asdf = g_object_ref(asdf);
-  self->project = project ? project_ref(project) : NULL;
+  self->app = app ? g_object_ref(app) : NULL;
+  self->project = app ? project_ref(app_get_project(app)) : NULL;
   asdf_view_populate_store(self);
   return GTK_WIDGET(self);
+}
+
+static gboolean
+on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
+{
+  AsdfView *self = ASDF_VIEW(data);
+  if (event->type == GDK_BUTTON_PRESS && event->button == GDK_BUTTON_SECONDARY) {
+    GtkTreePath *path = NULL;
+    if (gtk_tree_view_get_path_at_pos(GTK_TREE_VIEW(widget), event->x, event->y,
+        &path, NULL, NULL, NULL)) {
+      GtkTreeSelection *sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(widget));
+      gtk_tree_selection_select_path(sel, path);
+      GtkTreeIter iter;
+      GtkTreeModel *model = gtk_tree_view_get_model(GTK_TREE_VIEW(widget));
+      if (gtk_tree_model_get_iter(model, &iter, path)) {
+        gint kind = 0;
+        gtk_tree_model_get(model, &iter, ASDF_VIEW_COL_KIND, &kind, -1);
+        GtkWidget *menu = NULL;
+        if (kind == ASDF_VIEW_KIND_COMPONENT) {
+          menu = gtk_menu_new();
+          GtkWidget *rename = gtk_menu_item_new_with_label("Rename file");
+          g_signal_connect(rename, "activate", G_CALLBACK(file_rename), self->app);
+          gtk_menu_shell_append(GTK_MENU_SHELL(menu), rename);
+          GtkWidget *del = gtk_menu_item_new_with_label("Delete file");
+          g_signal_connect(del, "activate", G_CALLBACK(file_delete), self->app);
+          gtk_menu_shell_append(GTK_MENU_SHELL(menu), del);
+        } else if (kind == ASDF_VIEW_KIND_ROOT || kind == ASDF_VIEW_KIND_SRC) {
+          menu = gtk_menu_new();
+          GtkWidget *add = gtk_menu_item_new_with_label("Add file");
+          g_signal_connect(add, "activate", G_CALLBACK(file_new), self->app);
+          gtk_menu_shell_append(GTK_MENU_SHELL(menu), add);
+        }
+        gtk_tree_path_free(path);
+        if (menu) {
+          gtk_widget_show_all(menu);
+          gtk_menu_popup_at_pointer(GTK_MENU(menu), (GdkEvent *) event);
+          return TRUE;
+        }
+        return FALSE;
+      }
+      gtk_tree_path_free(path);
+    }
+  }
+  return GTK_WIDGET_CLASS(asdf_view_parent_class)->button_press_event(widget, event);
 }
 
 static gboolean
