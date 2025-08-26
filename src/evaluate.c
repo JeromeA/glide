@@ -5,21 +5,24 @@
  * remote execution.
  */
 
+#include <gtk/gtk.h>
+#include <gtksourceview/gtksource.h>
+
 #include "swank_session.h"
 #include "interaction.h"
 #include "evaluate.h"
 #include "lisp_source_view.h"
-
-#include <gtk/gtk.h>
-#include <gtksourceview/gtksource.h>
+#include "app.h"
 
 /* ------------------------------------------------------------------------- */
 /* Callback triggered when the user requests evaluation of the current form. */
 /* ------------------------------------------------------------------------- */
 void
-on_evaluate(App *self)
+on_evaluate(GtkWidget * /*item*/, gpointer data) /* actually App* */
 {
+  App *self = (App *) data;
   g_debug("Evaluate.on_evaluate");
+  g_return_if_fail(GLIDE_IS_APP(self));
   GtkSourceBuffer *source_buffer =
       lisp_source_view_get_buffer(app_get_source_view(self));
   GtkTextMark *insert_mark = gtk_text_buffer_get_insert(GTK_TEXT_BUFFER(source_buffer));

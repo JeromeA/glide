@@ -1,7 +1,5 @@
 #pragma once
 
-#include "app.h"
-
 void
-on_evaluate(App *self);
+on_evaluate(GtkWidget * /*item*/, gpointer data);
 

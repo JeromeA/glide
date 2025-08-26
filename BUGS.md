@@ -43,3 +43,11 @@ selection algorithm climbed only one level and returned the same bounds. The
 search now skips parents with identical ranges and therefore reaches the
 correct enclosing expression. Debug logging was also added to help diagnose
 future issues.
+
+## Crash when evaluating from the Run menu
+
+Selecting "Run > Eval toplevel" triggered a GLib critical and terminated the
+program. The "activate" signal for the menu item invoked `on_evaluate` with the
+menu item as the first argument, but the handler expected only an `App*`. The
+function now uses the standard `GtkWidget *, gpointer` signature and verifies
+the `App` instance before evaluating the current form.
