@@ -1,6 +1,6 @@
 #include "project.h"
 #include "string_text_provider.h"
-#include "analyser.h"
+#include "analyse.h"
 #include <glib-object.h>
 
 struct _Project {

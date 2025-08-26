@@ -1,9 +1,10 @@
-#include "analyser.h"
+#include "analyse.h"
 #include "node.h"
-#include "defpackage.h"
+#include "analyse_defpackage.h"
+#include "analyse_defun.h"
 #include <string.h>
 
-static void analyse_node(Project *project, Node *node, gchar **context) {
+void analyse_node(Project *project, Node *node, gchar **context) {
   if (!node)
     return;
 
@@ -15,10 +16,9 @@ static void analyse_node(Project *project, Node *node, gchar **context) {
         if (name) {
           if (!first->sd_type)
             node_set_sd_type(first, SDT_FUNCTION_USE, *context);
-          if (strcmp(name, "DEFUN") == 0 && node->children->len > 1) {
-            Node *fn_name = g_array_index(node->children, Node*, 1);
-            if (fn_name->type == LISP_AST_NODE_TYPE_SYMBOL && !fn_name->sd_type)
-              node_set_sd_type(fn_name, SDT_FUNCTION_DEF, *context);
+          if (strcmp(name, "DEFUN") == 0) {
+            analyse_defun(project, node, context);
+            return;
           } else if (strcmp(name, "IN-PACKAGE") == 0 && node->children->len > 1) {
             Node *pkg_node = g_array_index(node->children, Node*, 1);
             const gchar *pkg_name = node_get_name(pkg_node);
