@@ -12,6 +12,7 @@ struct _Project {
   GHashTable *package_defs;
   GHashTable *package_uses;
   GHashTable *packages; /* name -> Package* */
+  GHashTable *functions; /* name -> Function* */
   ProjectFileLoadedCb file_loaded_cb;
   gpointer file_loaded_data;
   ProjectFileRemovedCb file_removed_cb;
@@ -37,6 +38,7 @@ static Project *project_init(void) {
   self->package_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->packages = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)package_unref);
+  self->functions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)function_unref);
   self->asdf = NULL;
   self->path = NULL;
   return self;
@@ -51,6 +53,7 @@ static void project_free(Project *self) {
   g_clear_pointer(&self->package_defs, g_hash_table_unref);
   g_clear_pointer(&self->package_uses, g_hash_table_unref);
   g_clear_pointer(&self->packages, g_hash_table_unref);
+  g_clear_pointer(&self->functions, g_hash_table_unref);
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
   g_clear_object(&self->asdf);
@@ -133,6 +136,8 @@ static void project_index_clear(Project *self) {
       g_hash_table_remove_all(tables[t]);
   if (self->packages)
     g_hash_table_remove_all(self->packages);
+  if (self->functions)
+    g_hash_table_remove_all(self->functions);
 }
 
 static void project_index_add_to(GHashTable *table, const gchar *name, Node *node) {
@@ -165,6 +170,20 @@ void project_add_package(Project *self, Package *package) {
   const gchar *name = package_get_name(package);
   if (!name) return;
   g_hash_table_replace(self->packages, g_strdup(name), package_ref(package));
+}
+
+void project_add_function(Project *self, Function *function) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(function != NULL);
+  const gchar *name = function_get_name(function);
+  if (!name) return;
+  g_hash_table_replace(self->functions, g_strdup(name), function_ref(function));
+}
+
+Function *project_get_function(Project *self, const gchar *name) {
+  g_return_val_if_fail(self != NULL, NULL);
+  g_return_val_if_fail(name != NULL, NULL);
+  return g_hash_table_lookup(self->functions, name);
 }
 
 Package *project_get_package(Project *self, const gchar *name) {
@@ -209,6 +228,7 @@ void project_clear(Project *self) {
     g_ptr_array_set_size(self->files, 0);
   }
   g_hash_table_remove_all(self->packages);
+  g_hash_table_remove_all(self->functions);
   project_set_asdf(self, NULL);
 }
 

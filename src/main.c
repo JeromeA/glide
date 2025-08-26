@@ -8,6 +8,7 @@
 #include "asdf.c"
 #include "asdf_view.c"
 #include "evaluate.c"
+#include "function.c"
 #include "file_open.c"
 #include "file_new.c"
 #include "file_rename.c"

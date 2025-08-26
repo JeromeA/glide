@@ -1,5 +1,6 @@
 #include "analyse_defun.h"
 #include "analyse.h"
+#include "function.h"
 
 void analyse_defun(Project *project, Node *expr, gchar **context) {
   if (!expr || !expr->children || expr->children->len < 3)
@@ -18,7 +19,20 @@ void analyse_defun(Project *project, Node *expr, gchar **context) {
     }
   }
 
-  for (guint i = 3; i < expr->children->len; i++) {
+  Node *doc_node = NULL;
+  if (expr->children->len > 3) {
+    Node *maybe_doc = g_array_index(expr->children, Node*, 3);
+    if (maybe_doc->type == LISP_AST_NODE_TYPE_STRING)
+      doc_node = maybe_doc;
+  }
+  Function *function = function_new(name_node, args,
+      doc_node ? node_get_name(doc_node) : NULL, NULL,
+      FUNCTION_KIND_FUNCTION, node_get_name(name_node), *context);
+  project_add_function(project, function);
+  function_unref(function);
+
+  guint start = doc_node ? 4 : 3;
+  for (guint i = start; i < expr->children->len; i++) {
     Node *child = g_array_index(expr->children, Node*, i);
     analyse_node(project, child, context);
   }
