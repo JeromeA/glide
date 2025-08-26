@@ -12,18 +12,18 @@ int main(void) {
   package_add_shadow(package, "BAR");
   package_add_import_from(package, "BAZ", "OTHER");
 
-  assert(g_strcmp0(package->name, "CL-USER") == 0);
-  assert(g_strcmp0(package->description, "desc") == 0);
-  assert(g_hash_table_contains(package->nicknames, "USER"));
-  assert(g_hash_table_contains(package->uses, "COMMON-LISP"));
-  assert(g_hash_table_contains(package->exports, "FOO"));
-  assert(g_hash_table_contains(package->shadows, "BAR"));
-  assert(g_strcmp0(g_hash_table_lookup(package->import_from, "BAZ"), "OTHER") == 0);
+  assert(g_strcmp0(package_get_name(package), "CL-USER") == 0);
+  assert(g_strcmp0(package_get_description(package), "desc") == 0);
+  assert(g_hash_table_contains(package_get_nicknames(package), "USER"));
+  assert(g_hash_table_contains(package_get_uses(package), "COMMON-LISP"));
+  assert(g_hash_table_contains(package_get_exports(package), "FOO"));
+  assert(g_hash_table_contains(package_get_shadows(package), "BAR"));
+  assert(g_strcmp0(g_hash_table_lookup(package_get_import_from(package), "BAZ"), "OTHER") == 0);
 
   Package *user = package_common_lisp_user_get_instance();
-  assert(g_strcmp0(user->name, "COMMON-LISP-USER") == 0);
-  assert(g_hash_table_contains(user->nicknames, "CL-USER"));
-  assert(g_hash_table_contains(user->uses, "COMMON-LISP"));
+  assert(g_strcmp0(package_get_name(user), "COMMON-LISP-USER") == 0);
+  assert(g_hash_table_contains(package_get_nicknames(user), "CL-USER"));
+  assert(g_hash_table_contains(package_get_uses(user), "COMMON-LISP"));
 
   Node *node = g_new0(Node, 1);
   g_atomic_int_set(&node->ref, 1);

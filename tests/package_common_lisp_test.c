@@ -11,15 +11,15 @@ static void test_singleton(void) {
 
 static void test_exports(void) {
   Package *p = package_common_lisp_get_instance();
-  g_assert_true(g_hash_table_contains(p->exports, "CAR"));
-  g_assert_true(g_hash_table_contains(p->exports, "*PRINT-LEVEL*"));
-  g_assert_true(g_hash_table_contains(p->exports, "&REST"));
+  g_assert_true(g_hash_table_contains(package_get_exports(p), "CAR"));
+  g_assert_true(g_hash_table_contains(package_get_exports(p), "*PRINT-LEVEL*"));
+  g_assert_true(g_hash_table_contains(package_get_exports(p), "&REST"));
   package_unref(p);
 }
 
 static void test_nickname(void) {
   Package *p = package_common_lisp_get_instance();
-  g_assert_true(g_hash_table_contains(p->nicknames, "CL"));
+  g_assert_true(g_hash_table_contains(package_get_nicknames(p), "CL"));
   package_unref(p);
 }
 
