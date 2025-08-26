@@ -29,6 +29,8 @@ STATIC gboolean app_close_project(App *self, gboolean forget_project);
 STATIC void     on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data);
 STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data);
 STATIC void     on_save_all(GtkWidget * /*item*/, gpointer data);
+STATIC void     on_extend_selection(GtkWidget * /*item*/, gpointer data);
+STATIC void     on_shrink_selection(GtkWidget * /*item*/, gpointer data);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -62,6 +64,24 @@ on_show_parser(App *self)
   gtk_widget_show_all(win);
 }
 
+STATIC void
+on_extend_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
+{
+  App *self = (App *) data;
+  LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
+  if (view)
+    lisp_source_view_extend_selection(view);
+}
+
+STATIC void
+on_shrink_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
+{
+  App *self = (App *) data;
+  LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
+  if (view)
+    lisp_source_view_shrink_selection(view);
+}
+
 static gboolean
 on_key_press(GtkWidget * /*widget*/,
     GdkEventKey *event,
@@ -79,6 +99,24 @@ on_key_press(GtkWidget * /*widget*/,
       (event->state & GDK_MOD1_MASK))        /* Alt+P */
   {
     on_show_parser(self);
+    return TRUE;
+  }
+  if ((event->keyval == GDK_KEY_w || event->keyval == GDK_KEY_W) &&
+      ((event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) ==
+       (GDK_CONTROL_MASK | GDK_SHIFT_MASK)))
+  {
+    LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
+    if (view)
+      lisp_source_view_shrink_selection(view);
+    return TRUE;
+  }
+  if ((event->keyval == GDK_KEY_w || event->keyval == GDK_KEY_W) &&
+      ((event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) ==
+       GDK_CONTROL_MASK))
+  {
+    LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
+    if (view)
+      lisp_source_view_extend_selection(view);
     return TRUE;
   }
   if ((event->keyval == GDK_KEY_F6) &&
@@ -130,6 +168,11 @@ app_activate (GApplication *app)
   GtkWidget *file_menu     = gtk_menu_new();
   GtkWidget *file_item     = gtk_menu_item_new_with_label("File");
 
+  GtkWidget *edit_menu     = gtk_menu_new();
+  GtkWidget *edit_item     = gtk_menu_item_new_with_label("Edit");
+  GtkWidget *extend_item   = gtk_menu_item_new_with_label("Extend selection");
+  GtkWidget *shrink_item   = gtk_menu_item_new_with_label("Shrink selection");
+
   GtkWidget *refactor_menu = gtk_menu_new();
   GtkWidget *refactor_item = gtk_menu_item_new_with_label("Refactor");
   GtkWidget *refactor_file_menu = gtk_menu_new();
@@ -166,6 +209,10 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exit_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit_item), edit_menu);
+  gtk_menu_shell_append(GTK_MENU_SHELL(edit_menu), extend_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(edit_menu), shrink_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), edit_item);
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_item), refactor_menu);
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_file_item), refactor_file_menu);
   gtk_menu_shell_append(GTK_MENU_SHELL(refactor_file_menu), rename_item);
@@ -182,6 +229,8 @@ app_activate (GApplication *app)
   g_signal_connect(exit_item, "activate", G_CALLBACK(quit_menu_item), self);
   g_signal_connect(rename_item, "activate", G_CALLBACK(file_rename), self);
   g_signal_connect(delete_item, "activate", G_CALLBACK(file_delete), self);
+  g_signal_connect(extend_item, "activate", G_CALLBACK(on_extend_selection), self);
+  g_signal_connect(shrink_item, "activate", G_CALLBACK(on_shrink_selection), self);
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);

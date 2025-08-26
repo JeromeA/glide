@@ -30,6 +30,7 @@ struct Node {
   LispAstNodeType type;
   const LispToken *start_token;
   const LispToken *end_token;
+  Node *parent;
   GArray *children; /* Node* */
 
   StringDesignatorType sd_type;
