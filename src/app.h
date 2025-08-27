@@ -5,7 +5,7 @@
 #include "preferences.h"
 #include "swank_session.h"
 #include "project.h"
-#include "lisp_source_view.h"
+#include "editor.h"
 #include "lisp_source_notebook.h"
 #include "status_service.h"
 
@@ -19,10 +19,10 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE(App, app, GLIDE, APP, GtkApplication)
 
 STATIC App *app_new (Preferences *prefs, SwankSession *swank, Project *project, StatusService *status_service);
-STATIC LispSourceView *app_get_source_view(App *self);
+STATIC Editor *app_get_editor(App *self);
 STATIC LispSourceNotebook *app_get_notebook(App *self);
 STATIC Project *app_get_project(App *self);
-STATIC void app_connect_view(App *self, LispSourceView *view);
+STATIC void app_connect_editor(App *self, Editor *editor);
 STATIC ProjectFile *app_get_current_file(App *self);
 STATIC void app_update_asdf_view(App *self);
 STATIC void app_update_recent_menu(App *self);

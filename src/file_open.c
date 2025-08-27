@@ -8,7 +8,7 @@
 #include "syscalls.h"
 #include "file_open.h"
 #include "app.h"
-#include "lisp_source_view.h"
+#include "editor.h"
 #include "lisp_source_notebook.h"
 #include "project.h"
 #include "string_text_provider.h"
@@ -89,9 +89,9 @@ gboolean file_open_path(App *app, const gchar *filename) {
   preferences_add_recent_project(prefs, filename);
   app_update_recent_menu(app);
 
-  LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
+  Editor *view = lisp_source_notebook_get_current_editor(notebook);
   if (view)
-    app_connect_view(app, view);
+    app_connect_editor(app, view);
   app_update_asdf_view(app);
   return TRUE;
 }

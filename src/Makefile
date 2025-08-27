@@ -22,7 +22,7 @@ SOURCES += \
   menu_bar.c \
   app.c \
   lisp_source_notebook.c \
-  lisp_source_view.c \
+  editor.c \
   lisp_lexer.c \
   lisp_parser.c \
   analyse.c \

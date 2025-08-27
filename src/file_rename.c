@@ -2,7 +2,7 @@
 #include <glib/gstdio.h>
 #include "file_rename.h"
 #include "app.h"
-#include "lisp_source_view.h"
+#include "editor.h"
 #include "project.h"
 #include "project_file.h"
 #include "asdf.h"

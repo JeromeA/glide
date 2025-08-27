@@ -5,7 +5,7 @@
 #include "project.h"
 #include "string_text_provider.h"
 #include "lisp_source_notebook.h"
-#include "lisp_source_view.h"
+#include "editor.h"
 #include "project_file.h"
 #include "asdf.h"
 #include "file_utilities.h"
@@ -36,9 +36,9 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
       text_provider_unref(provider);
       if (file) {
         project_file_load(file);
-        LispSourceView *view = lisp_source_notebook_get_current_view(app_get_notebook(app));
+        Editor *view = lisp_source_notebook_get_current_editor(app_get_notebook(app));
         if (view)
-          app_connect_view(app, view);
+          app_connect_editor(app, view);
         Asdf *asdf = project_get_asdf(project);
         if (asdf) {
           const gchar *rel = project_file_get_relative_path(file);

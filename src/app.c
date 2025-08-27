@@ -2,7 +2,7 @@
 #include "app.h"
 #include "file_open.h"
 #include "interactions_view.h"
-#include "lisp_source_view.h"
+#include "editor.h"
 #include "lisp_source_notebook.h"
 #include "project.h"
 #include "project_file.h"
@@ -79,8 +79,8 @@ app_activate (GApplication *app)
   g_signal_connect(self->notebook, "switch-page",
       G_CALLBACK(on_notebook_switch_page), self);
 
-  LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
-  g_signal_connect (lisp_source_view_get_view(view), "key-press-event",
+  Editor *view = lisp_source_notebook_get_current_editor(self->notebook);
+  g_signal_connect (editor_get_view(view), "key-press-event",
       G_CALLBACK (on_key_press), self);
 
   GtkWidget *menu_bar = menu_bar_new(self);
@@ -108,17 +108,17 @@ app_activate (GApplication *app)
           ProjectFile *pf = project_get_file(project, i);
           if (g_strcmp0(project_file_get_path(pf), last) == 0) {
             gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
-            LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
+            Editor *view = lisp_source_notebook_get_current_editor(self->notebook);
             if (view) {
-              GtkWidget *text_view = lisp_source_view_get_view(view);
+              GtkWidget *text_view = editor_get_view(view);
               GtkTextBuffer *buffer =
-                  GTK_TEXT_BUFFER(lisp_source_view_get_buffer(view));
+                  GTK_TEXT_BUFFER(editor_get_buffer(view));
               GtkTextIter iter;
               gtk_text_buffer_get_iter_at_offset(buffer, &iter, pos);
               gtk_text_buffer_place_cursor(buffer, &iter);
               gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(text_view), &iter,
                   0.0, FALSE, 0, 0);
-              app_connect_view(self, view);
+                app_connect_editor(self, view);
             }
             break;
           }
@@ -128,9 +128,9 @@ app_activate (GApplication *app)
   }
   app_update_recent_menu(self);
   gtk_widget_show_all(self->window);
-  LispSourceView *current_view = lisp_source_notebook_get_current_view(self->notebook);
+  Editor *current_view = lisp_source_notebook_get_current_editor(self->notebook);
   if (current_view)
-    gtk_widget_grab_focus(lisp_source_view_get_view(current_view));
+    gtk_widget_grab_focus(editor_get_view(current_view));
 }
 
 static void
@@ -212,14 +212,14 @@ app_new (Preferences *prefs, SwankSession *swank, Project *project, StatusServic
 }
 
 
-STATIC LispSourceView *
-app_get_source_view(App *self)
+STATIC Editor *
+app_get_editor(App *self)
 {
-  g_debug("App.get_source_view");
+  g_debug("App.get_editor");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   if (!self->notebook)
     return NULL;
-  return lisp_source_notebook_get_current_view(self->notebook);
+  return lisp_source_notebook_get_current_editor(self->notebook);
 }
 
 STATIC LispSourceNotebook *
@@ -237,11 +237,11 @@ app_get_project(App *self)
 }
 
 STATIC void
-app_connect_view(App *self, LispSourceView *view)
+app_connect_editor(App *self, Editor *editor)
 {
   g_return_if_fail(GLIDE_IS_APP(self));
-  g_return_if_fail(LISP_IS_SOURCE_VIEW(view));
-  g_signal_connect(lisp_source_view_get_view(view), "key-press-event",
+  g_return_if_fail(GLIDE_IS_EDITOR(editor));
+  g_signal_connect(editor_get_view(editor), "key-press-event",
       G_CALLBACK(on_key_press), self);
 }
 
@@ -249,8 +249,8 @@ STATIC ProjectFile *
 app_get_current_file(App *self)
 {
   g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
-  LispSourceView *view = app_get_source_view(self);
-  return view ? lisp_source_view_get_file(view) : NULL;
+  Editor *view = app_get_editor(self);
+  return view ? editor_get_file(view) : NULL;
 }
 
 
@@ -332,7 +332,7 @@ on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*pag
     return;
   if (!page)
     return;
-  ProjectFile *file = lisp_source_view_get_file(LISP_SOURCE_VIEW(page));
+  ProjectFile *file = editor_get_file(GLIDE_EDITOR(page));
   if (!file)
     return;
   const gchar *rel = project_file_get_relative_path(file);

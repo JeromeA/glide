@@ -10,7 +10,7 @@
 #include "swank_session.h"
 #include "interaction.h"
 #include "evaluate.h"
-#include "lisp_source_view.h"
+#include "editor.h"
 #include "app.h"
 
 /* ------------------------------------------------------------------------- */
@@ -22,8 +22,8 @@ on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
   App *self = (App *) data;
   g_debug("Evaluate.on_evaluate_toplevel");
   g_return_if_fail(GLIDE_IS_APP(self));
-  LispSourceView *view = app_get_source_view(self);
-  GtkSourceBuffer *source_buffer = lisp_source_view_get_buffer(view);
+  Editor *view = app_get_editor(self);
+  GtkSourceBuffer *source_buffer = editor_get_buffer(view);
   GtkTextMark *insert_mark =
       gtk_text_buffer_get_insert(GTK_TEXT_BUFFER(source_buffer));
   GtkTextIter cursor_iter;
@@ -33,7 +33,7 @@ on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
 
   gsize start_offset;
   gsize end_offset;
-  if (!lisp_source_view_get_toplevel_range(view, offset, &start_offset,
+  if (!editor_get_toplevel_range(view, offset, &start_offset,
       &end_offset)) {
     g_debug("Evaluate.on_evaluate_toplevel: nothing to evaluate");
     return;
@@ -72,8 +72,8 @@ on_evaluate_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
   App *self = (App *) data;
   g_debug("Evaluate.on_evaluate_selection");
   g_return_if_fail(GLIDE_IS_APP(self));
-  LispSourceView *view = app_get_source_view(self);
-  GtkSourceBuffer *source_buffer = lisp_source_view_get_buffer(view);
+  Editor *view = app_get_editor(self);
+  GtkSourceBuffer *source_buffer = editor_get_buffer(view);
   GtkTextIter start_iter;
   GtkTextIter end_iter;
   if (!gtk_text_buffer_get_selection_bounds(GTK_TEXT_BUFFER(source_buffer),

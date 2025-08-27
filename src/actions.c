@@ -6,7 +6,7 @@
 #include "lisp_parser_view.h"
 #include "project_file.h"
 #include "lisp_source_notebook.h"
-#include "lisp_source_view.h"
+#include "editor.h"
 
 static gboolean app_maybe_save_all(App *self);
 
@@ -16,8 +16,8 @@ on_show_parser(App *self)
   GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(win), "Parser View");
   LispSourceNotebook *notebook = app_get_notebook(self);
-  LispSourceView *current = lisp_source_notebook_get_current_view(notebook);
-  ProjectFile *file = lisp_source_view_get_file(current);
+  Editor *current = lisp_source_notebook_get_current_editor(notebook);
+  ProjectFile *file = editor_get_file(current);
   GtkWidget *view = lisp_parser_view_new(file);
   GtkWidget *scrolled = gtk_scrolled_window_new(NULL, NULL);
   gtk_container_add(GTK_CONTAINER(scrolled), view);
@@ -30,9 +30,9 @@ on_extend_selection(GtkWidget * /*item*/, gpointer data)
 {
   App *self = GLIDE_APP(data);
   LispSourceNotebook *notebook = app_get_notebook(self);
-  LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
+  Editor *view = lisp_source_notebook_get_current_editor(notebook);
   if (view)
-    lisp_source_view_extend_selection(view);
+    editor_extend_selection(view);
 }
 
 void
@@ -40,9 +40,9 @@ on_shrink_selection(GtkWidget * /*item*/, gpointer data)
 {
   App *self = GLIDE_APP(data);
   LispSourceNotebook *notebook = app_get_notebook(self);
-  LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
+  Editor *view = lisp_source_notebook_get_current_editor(notebook);
   if (view)
-    lisp_source_view_shrink_selection(view);
+    editor_shrink_selection(view);
 }
 
 void
@@ -92,9 +92,9 @@ on_key_press(GtkWidget * /*widget*/, GdkEventKey *event, gpointer user_data)
       (event->state & GDK_MOD1_MASK))
   {
     LispSourceNotebook *notebook = app_get_notebook(self);
-    LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
+    Editor *view = lisp_source_notebook_get_current_editor(notebook);
     GtkTextBuffer *buffer = view ?
-        GTK_TEXT_BUFFER(lisp_source_view_get_buffer(view)) : NULL;
+        GTK_TEXT_BUFFER(editor_get_buffer(view)) : NULL;
     GtkTextIter it_start;
     GtkTextIter it_end;
     if (buffer && gtk_text_buffer_get_selection_bounds(buffer,
@@ -115,9 +115,9 @@ on_key_press(GtkWidget * /*widget*/, GdkEventKey *event, gpointer user_data)
        (GDK_CONTROL_MASK | GDK_SHIFT_MASK)))
   {
     LispSourceNotebook *notebook = app_get_notebook(self);
-    LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
+    Editor *view = lisp_source_notebook_get_current_editor(notebook);
     if (view)
-      lisp_source_view_shrink_selection(view);
+      editor_shrink_selection(view);
     return TRUE;
   }
   if ((event->keyval == GDK_KEY_w || event->keyval == GDK_KEY_W) &&
@@ -125,9 +125,9 @@ on_key_press(GtkWidget * /*widget*/, GdkEventKey *event, gpointer user_data)
        GDK_CONTROL_MASK))
   {
     LispSourceNotebook *notebook = app_get_notebook(self);
-    LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
+    Editor *view = lisp_source_notebook_get_current_editor(notebook);
     if (view)
-      lisp_source_view_extend_selection(view);
+      editor_extend_selection(view);
     return TRUE;
   }
   if ((event->keyval == GDK_KEY_F6) &&
@@ -149,7 +149,7 @@ app_maybe_save_all(App *self)
   gboolean modified = FALSE;
   for (gint i = 0; i < pages; i++) {
     GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
-    GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(lisp_source_view_get_buffer(LISP_SOURCE_VIEW(view))) : NULL;
+    GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(editor_get_buffer(GLIDE_EDITOR(view))) : NULL;
     if (buffer && gtk_text_buffer_get_modified(buffer)) {
       modified = TRUE;
       break;

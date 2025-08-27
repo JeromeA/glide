@@ -24,7 +24,7 @@
 #include "lisp_parser.c"
 #include "lisp_parser_view.c"
 #include "lisp_source_notebook.c"
-#include "lisp_source_view.c"
+#include "editor.c"
 #include "node.c"
 #include "package.c"
 #include "package_common_lisp.c"
