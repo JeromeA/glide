@@ -28,7 +28,7 @@
       (format *real-standard-output* "(error ~S)~%" (princ-to-string e)))))
 
 (defun start-server ()
-  (loop for line = (read-line *standard-input* nil :eof)
-        until (eq line :eof)
-        do (glide-eval line)))
+  (loop for form = (read *standard-input* nil :eof)
+        until (eq form :eof)
+        do (cl:eval form)))
 

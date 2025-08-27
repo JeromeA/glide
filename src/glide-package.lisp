@@ -1,4 +1,6 @@
 (defpackage :glide
   (:use :cl)
   (:export :package-symbols
-           :package-info))
+           :package-info
+           :glide-eval
+           :start-server))
