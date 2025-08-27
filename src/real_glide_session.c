@@ -120,6 +120,7 @@ static void real_glide_session_destroy(GlideSession *session) {
 void real_glide_session_on_message(GString *msg, gpointer user_data) {
   RealGlideSession *self = user_data ? (RealGlideSession*)user_data : NULL;
   const char *str = msg->str;
+  g_debug("RealGlideSession.on_message %s", str);
   g_mutex_lock(&self->lock);
   Interaction *interaction = self->current;
   if (!interaction) {
@@ -159,8 +160,10 @@ void real_glide_session_on_message(GString *msg, gpointer user_data) {
       gpointer done_cb_data = interaction->done_cb_data;
       self->current = NULL;
       g_mutex_unlock(&self->lock);
-      if (updated_cb)
+      if (updated_cb) {
+        g_debug("RealGlideSession.on_message invoking updated_cb");
         updated_cb((GlideSession*)self, interaction, updated_cb_data);
+      }
       if (done_cb)
         done_cb(interaction, done_cb_data);
       g_mutex_lock(&self->lock);
@@ -179,8 +182,10 @@ void real_glide_session_on_message(GString *msg, gpointer user_data) {
       gpointer done_cb_data = interaction->done_cb_data;
       self->current = NULL;
       g_mutex_unlock(&self->lock);
-      if (updated_cb)
+      if (updated_cb) {
+        g_debug("RealGlideSession.on_message invoking updated_cb");
         updated_cb((GlideSession*)self, interaction, updated_cb_data);
+      }
       if (done_cb)
         done_cb(interaction, done_cb_data);
       g_mutex_lock(&self->lock);
