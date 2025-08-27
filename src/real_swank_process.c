@@ -109,6 +109,10 @@ static void start_swank(RealSwankProcess *self) {
   process_write(self->proc, ql_cmd, -1);
   read_until(self, "(\"SB-INTROSPECT\" \"SB-CLTL2\")");
   read_until(self, "* ");
+  const char *dbg_cmd = "(setf swank:*global-debugger* nil)\n";
+  g_debug("RealSwankProcess.start_swank send:%s", dbg_cmd);
+  process_write(self->proc, dbg_cmd, -1);
+  read_until(self, "* ");
   char create_cmd[128];
   g_snprintf(create_cmd, sizeof(create_cmd),
       "(swank:create-server :port %d :dont-close t)\n", self->port);
