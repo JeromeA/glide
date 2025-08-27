@@ -83,7 +83,7 @@ static gpointer real_swank_session_thread(gpointer data) {
       added_cb((SwankSession*)self, interaction, added_cb_data);
     gchar *escaped = escape_string(interaction->expression);
     gchar *rpc = g_strdup_printf(
-        "(:emacs-rex (let ((*debugger-hook* nil)) (swank-repl:listener-eval \"%s\\n\")) :cl-user t %u)",
+        "(:emacs-rex (let ((*debugger-hook* nil)) (swank:eval-and-grab-output \"%s\\n\")) :cl-user t %u)",
         escaped, interaction->tag);
     GString *payload = g_string_new(rpc);
     g_free(escaped);
@@ -183,7 +183,7 @@ static void real_swank_session_destroy(SwankSession *session) {
 
 void real_swank_session_on_message(GString *msg, gpointer user_data) {
   RealSwankSession *self = user_data ? (RealSwankSession*)user_data : NULL;
-  g_debug_80("RealSwankSession.on_message msg:", msg->str);
+  g_debug_160("RealSwankSession.on_message msg:", msg->str);
   const char *str = msg->str;
   if (g_str_has_prefix(str, "(:return (:ok (\"\" \"")) {
     const char *res_start = str + strlen("(:return (:ok (\"\" \"");
