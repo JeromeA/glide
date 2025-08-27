@@ -1,0 +1,22 @@
+#pragma once
+
+#include "lisp_parser.h"
+#include "project.h"
+#include <gtk/gtk.h>
+#include <gtksourceview/gtksource.h>
+
+G_BEGIN_DECLS
+
+#define EDITOR_TYPE (editor_get_type ())
+G_DECLARE_FINAL_TYPE (Editor, editor, GLIDE, EDITOR, GtkScrolledWindow)
+
+GtkWidget      *editor_new_for_file (Project *project, ProjectFile *file);
+GtkSourceBuffer *editor_get_buffer (Editor *self);
+ProjectFile    *editor_get_file (Editor *self);
+GtkWidget      *editor_get_view (Editor *self);
+gboolean        editor_get_toplevel_range (Editor *self,
+                    gsize offset, gsize *start, gsize *end);
+void            editor_extend_selection (Editor *self);
+void            editor_shrink_selection (Editor *self);
+
+G_END_DECLS

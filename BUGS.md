@@ -5,15 +5,15 @@ mistakes in the future. A typical entry includes what the goal was, what went wr
 
 ## Crash while clearing the project at startup
 
-The application crashed on startup because `lisp_source_view_dispose` explicitly unreferenced its `GtkSourceView` child
+The application crashed on startup because `editor_dispose` explicitly unreferenced its `GtkSourceView` child
 widget. The `GtkScrolledWindow` parent already disposes of its children, so unreferencing the view again left GTK trying
 to dispose an already finalized object, triggering the GLib critical `instance with invalid (NULL) class pointer`.
 
 ## Crash when restoring last file at startup
 
 The application crashed when restoring the previously opened file at startup. 
-`app_activate` tried to scroll the view by casting a `LispSourceView` to 
-`GtkTextView`. Since `LispSourceView` is a `GtkScrolledWindow` containing the
+`app_activate` tried to scroll the view by casting an `Editor` to
+`GtkTextView`. Since `Editor` is a `GtkScrolledWindow` containing the
 actual `GtkSourceView`, the invalid cast triggered a GLib critical and
 terminated the program.
 
@@ -64,7 +64,7 @@ keeping swank quiet.
 Using the "Run > Eval toplevel" action evaluated the first form in the buffer
 regardless of the cursor position. The search for the surrounding form scanned
 backward for parentheses and stopped at the buffer start when invoked at the
-beginning of a line. Evaluation now asks `LispSourceView` for the enclosing
+beginning of a line. Evaluation now asks `Editor` for the enclosing
 top‑level range, which is shared with the selection expansion logic, so the
 correct expression is sent to swank.
 

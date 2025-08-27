@@ -73,7 +73,7 @@ on_file_removed(Project * /*project*/, ProjectFile *file, gpointer user_data)
   gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(self));
   for (gint i = 0; i < pages; i++) {
     GtkWidget *page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), i);
-    ProjectFile *pf = lisp_source_view_get_file(LISP_SOURCE_VIEW(page));
+    ProjectFile *pf = editor_get_file(GLIDE_EDITOR(page));
     if (pf == file) {
       gtk_notebook_remove_page(GTK_NOTEBOOK(self), i);
       break;
@@ -87,7 +87,7 @@ lisp_source_notebook_add_file(LispSourceNotebook *self, ProjectFile *file)
   g_return_val_if_fail(LISP_IS_SOURCE_NOTEBOOK(self), -1);
   g_return_val_if_fail(file != NULL, -1);
 
-  GtkWidget *view = lisp_source_view_new_for_file(self->project, file);
+  GtkWidget *view = editor_new_for_file(self->project, file);
   const gchar *path = project_file_get_relative_path(file);
   GtkWidget *label = gtk_label_new(path ? path : "untitled");
   gint page = gtk_notebook_append_page(GTK_NOTEBOOK(self), view, label);
@@ -104,14 +104,14 @@ lisp_source_notebook_clear(LispSourceNotebook *self)
     gtk_notebook_remove_page(GTK_NOTEBOOK(self), 0);
 }
 
-LispSourceView *
-lisp_source_notebook_get_current_view(LispSourceNotebook *self)
+Editor *
+lisp_source_notebook_get_current_editor(LispSourceNotebook *self)
 {
   g_return_val_if_fail(LISP_IS_SOURCE_NOTEBOOK(self), NULL);
   gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(self));
   GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page);
   if (!view)
     return NULL;
-  return LISP_SOURCE_VIEW(view);
+  return GLIDE_EDITOR(view);
 }
 

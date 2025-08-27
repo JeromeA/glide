@@ -10,12 +10,12 @@ App *-- StatusBar
 App *-- StatusService
 StatusBar *-- StatusService
 
-GtkSourceView <|-- LispSourceView
-LispSourceView *-- GtkSourceBuffer
-LispSourceView --> Project
-LispSourceView --> ProjectFile
+GtkSourceView <|-- Editor
+Editor *-- GtkSourceBuffer
+Editor --> Project
+Editor --> ProjectFile
 GtkNotebook <|-- LispSourceNotebook
-LispSourceNotebook "1" o-- "*" LispSourceView
+LispSourceNotebook "1" o-- "*" Editor
 
 Project "1" o-- "*" ProjectFile
 

@@ -1,4 +1,4 @@
-#include "lisp_source_view.h"
+#include "editor.h"
 #include "gtk_text_provider.h"
 #include "project.h"
 
@@ -7,7 +7,7 @@ typedef struct {
   gsize end;
 } SelectionRange;
 
-struct _LispSourceView
+struct _Editor
 {
   GtkScrolledWindow parent_instance;
 
@@ -18,13 +18,13 @@ struct _LispSourceView
   GArray *selection_stack;
 };
 
-G_DEFINE_TYPE (LispSourceView, lisp_source_view, GTK_TYPE_SCROLLED_WINDOW)
+G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
 
 // Forward declaration for the callback
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
 
 static void
-lisp_source_view_init (LispSourceView *self)
+editor_init (Editor *self)
 {
   GtkSourceLanguageManager *lm = gtk_source_language_manager_get_default ();
   GtkSourceLanguage *lang = gtk_source_language_manager_get_language (lm, "commonlisp");
@@ -32,6 +32,7 @@ lisp_source_view_init (LispSourceView *self)
   self->view = GTK_SOURCE_VIEW (gtk_source_view_new ());
   gtk_text_view_set_buffer (GTK_TEXT_VIEW (self->view), GTK_TEXT_BUFFER (self->buffer));
   gtk_source_view_set_show_line_numbers (self->view, TRUE);
+  gtk_text_view_set_monospace (GTK_TEXT_VIEW (self->view), TRUE);
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (self),
       GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   gtk_container_add (GTK_CONTAINER (self), GTK_WIDGET (self->view));
@@ -45,15 +46,15 @@ lisp_source_view_init (LispSourceView *self)
 static void
 on_buffer_changed (GtkTextBuffer * /*buffer*/, gpointer user_data)
 {
-  LispSourceView *self = LISP_SOURCE_VIEW (user_data);
+  Editor *self = GLIDE_EDITOR (user_data);
   if (self && self->project && self->file)
     project_file_changed(self->project, self->file);
 }
 
 static void
-lisp_source_view_dispose (GObject *object)
+editor_dispose (GObject *object)
 {
-  LispSourceView *self = LISP_SOURCE_VIEW (object);
+  Editor *self = GLIDE_EDITOR (object);
 
   if (self->buffer)
     g_signal_handlers_disconnect_by_data (self->buffer, self);
@@ -70,23 +71,23 @@ lisp_source_view_dispose (GObject *object)
     self->selection_stack = NULL;
   }
 
-  G_OBJECT_CLASS (lisp_source_view_parent_class)->dispose (object);
+  G_OBJECT_CLASS (editor_parent_class)->dispose (object);
 }
 
 static void
-lisp_source_view_class_init (LispSourceViewClass *klass)
+editor_class_init (EditorClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
-  object_class->dispose = lisp_source_view_dispose;
+  object_class->dispose = editor_dispose;
 }
 
 GtkWidget *
-lisp_source_view_new_for_file (Project *project, ProjectFile *file)
+editor_new_for_file (Project *project, ProjectFile *file)
 {
   g_return_val_if_fail(project != NULL, NULL);
   g_return_val_if_fail(file != NULL, NULL);
 
-  LispSourceView *self = g_object_new (LISP_TYPE_SOURCE_VIEW, NULL);
+  Editor *self = g_object_new (EDITOR_TYPE, NULL);
   self->project = project_ref(project);
   self->file = file;
 
@@ -109,23 +110,23 @@ lisp_source_view_new_for_file (Project *project, ProjectFile *file)
 
 
 GtkSourceBuffer *
-lisp_source_view_get_buffer (LispSourceView *self)
+editor_get_buffer (Editor *self)
 {
-  g_return_val_if_fail (LISP_IS_SOURCE_VIEW (self), NULL);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
   return self->buffer;
 }
 
 ProjectFile *
-lisp_source_view_get_file(LispSourceView *self)
+editor_get_file(Editor *self)
 {
-  g_return_val_if_fail(LISP_IS_SOURCE_VIEW(self), NULL);
+  g_return_val_if_fail(GLIDE_IS_EDITOR(self), NULL);
   return self->file;
 }
 
 GtkWidget *
-lisp_source_view_get_view (LispSourceView *self)
+editor_get_view (Editor *self)
 {
-  g_return_val_if_fail (LISP_IS_SOURCE_VIEW (self), NULL);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
   return GTK_WIDGET (self->view);
 }
 
@@ -133,10 +134,10 @@ static gboolean find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
     gsize start, gsize end, gsize *new_start, gsize *new_end);
 
 gboolean
-lisp_source_view_get_toplevel_range (LispSourceView *self, gsize offset,
+editor_get_toplevel_range (Editor *self, gsize offset,
     gsize *start, gsize *end)
 {
-  g_return_val_if_fail (LISP_IS_SOURCE_VIEW (self), FALSE);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
   g_return_val_if_fail (start != NULL, FALSE);
   g_return_val_if_fail (end != NULL, FALSE);
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
@@ -243,9 +244,9 @@ static void select_range (GtkTextBuffer *buffer, gsize start, gsize end)
 }
 
 void
-lisp_source_view_extend_selection (LispSourceView *self)
+editor_extend_selection (Editor *self)
 {
-  g_return_if_fail (LISP_IS_SOURCE_VIEW (self));
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
   GtkTextIter it_start;
   GtkTextIter it_end;
@@ -282,9 +283,9 @@ lisp_source_view_extend_selection (LispSourceView *self)
 }
 
 void
-lisp_source_view_shrink_selection (LispSourceView *self)
+editor_shrink_selection (Editor *self)
 {
-  g_return_if_fail (LISP_IS_SOURCE_VIEW (self));
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
   if (!self->selection_stack || self->selection_stack->len == 0)
     return;
 
