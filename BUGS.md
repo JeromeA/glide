@@ -55,8 +55,9 @@ the `App` instance before evaluating the current form.
 ## Swank debug mode left enabled
 
 Evaluating expressions kept `swank:*swank-debug-p*` set to `t`, so swank printed
-verbose debugging information during normal evaluations. The evaluation code now
-invokes `:emacs-rex` with the debug flag set to `nil`, keeping swank quiet.
+verbose debugging information during normal evaluations. The swank process now
+evaluates `(setf swank:*global-debugger* nil)` before starting the server,
+keeping swank quiet.
 
 ## Eval toplevel always picked first expression
 
