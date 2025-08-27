@@ -83,7 +83,7 @@ static gpointer real_swank_session_thread(gpointer data) {
       added_cb((SwankSession*)self, interaction, added_cb_data);
     gchar *escaped = escape_string(interaction->expression);
     gchar *rpc = g_strdup_printf(
-        "(:emacs-rex (let ((*debugger-hook* nil)) (swank:eval-and-grab-output \"%s\\n\")) :cl-user t %u)",
+        "(:emacs-rex (swank:eval-and-grab-output \"(let ((*debugger-hook* nil)) %s)\\n\") :cl-user t %u)",
         escaped, interaction->tag);
     GString *payload = g_string_new(rpc);
     g_free(escaped);

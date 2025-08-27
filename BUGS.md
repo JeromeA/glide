@@ -74,3 +74,10 @@ Disabling swank's global debugger was not enough to prevent the debugger from
 grabbing control. The swank process now let-binds `*debugger-hook*` to `nil`
 when evaluating forms and sends them in the `CL-USER` package, so evaluations
 no longer drop into the debugger unexpectedly.
+
+## Debugger hook bound outside evaluated form
+
+`*debugger-hook*` was `let`-bound around `swank:eval-and-grab-output`, leaving
+the evaluated form itself unprotected. Errors inside the form still invoked the
+debugger. The binding is now wrapped around the expression passed to swank so
+evaluations run with the debugger hook disabled.
