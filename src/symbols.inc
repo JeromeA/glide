@@ -69,6 +69,7 @@ S(gtk_dialog_get_content_area, RETURN, GtkWidget *, (GtkDialog *dialog), (dialog
 S(gtk_dialog_run, RETURN, gint, (GtkDialog *dialog), (dialog))
 S(gtk_file_chooser_get_filename, RETURN, gchar *, (GtkFileChooser *chooser), (chooser))
 S(gtk_file_chooser_set_do_overwrite_confirmation, VOID, void, (GtkFileChooser *chooser, gboolean do_overwrite_confirmation), (chooser, do_overwrite_confirmation))
+S(gtk_file_chooser_set_current_folder, RETURN, gboolean, (GtkFileChooser *chooser, const gchar *filename), (chooser, filename))
 S(gtk_frame_new, RETURN, GtkWidget *, (const gchar *label), (label))
 S(gtk_grid_attach, VOID, void, (GtkGrid *grid, GtkWidget *child, gint left, gint top, gint width, gint height), (grid, child, left, top, width, height))
 S(gtk_grid_new, RETURN, GtkWidget *, (void), ())

@@ -2,6 +2,7 @@
 #include "project_file.h"
 #include "app.h"
 #include "file_new.h"
+#include "file_add.h"
 #include "file_delete.h"
 #include "file_rename.h"
 
@@ -168,8 +169,11 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
           gtk_menu_shell_append(GTK_MENU_SHELL(menu), del);
         } else if (kind == ASDF_VIEW_KIND_ROOT || kind == ASDF_VIEW_KIND_SRC) {
           menu = gtk_menu_new();
+          GtkWidget *newf = gtk_menu_item_new_with_label("New file");
+          g_signal_connect(newf, "activate", G_CALLBACK(file_new), self->app);
+          gtk_menu_shell_append(GTK_MENU_SHELL(menu), newf);
           GtkWidget *add = gtk_menu_item_new_with_label("Add file");
-          g_signal_connect(add, "activate", G_CALLBACK(file_new), self->app);
+          g_signal_connect(add, "activate", G_CALLBACK(file_add), self->app);
           gtk_menu_shell_append(GTK_MENU_SHELL(menu), add);
         }
         gtk_tree_path_free(path);

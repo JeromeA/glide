@@ -2,6 +2,7 @@
 #include "app.h"
 #include "file_open.h"
 #include "file_new.h"
+#include "file_add.h"
 #include "file_rename.h"
 #include "file_delete.h"
 #include "file_save.h"
@@ -206,6 +207,7 @@ app_activate (GApplication *app)
   self->recent_menu = recent_menu;
 
   GtkWidget *newfile_item  = gtk_menu_item_new_with_label("New file");
+  GtkWidget *addfile_item  = gtk_menu_item_new_with_label("Add file");
   GtkWidget *saveall_item  = gtk_menu_item_new_with_label("Save all");
   GtkWidget *closeproj_item = gtk_menu_item_new_with_label("Close project");
   GtkWidget *settings_item = gtk_menu_item_new_with_label("Settings…");
@@ -219,6 +221,7 @@ app_activate (GApplication *app)
   gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_recent_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), project_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), newfile_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), addfile_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), saveall_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), closeproj_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
@@ -244,6 +247,7 @@ app_activate (GApplication *app)
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
   g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
   g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
+  g_signal_connect(addfile_item, "activate", G_CALLBACK(file_add), self);
   g_signal_connect(saveall_item, "activate", G_CALLBACK(on_save_all), self);
   g_signal_connect(closeproj_item, "activate", G_CALLBACK(close_project_menu_item), self);
   g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
