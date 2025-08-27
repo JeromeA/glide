@@ -57,3 +57,12 @@ the `App` instance before evaluating the current form.
 Evaluating expressions kept `swank:*swank-debug-p*` set to `t`, so swank printed
 verbose debugging information during normal evaluations. The evaluation code now
 invokes `:emacs-rex` with the debug flag set to `nil`, keeping swank quiet.
+
+## Eval toplevel always picked first expression
+
+Using the "Run > Eval toplevel" action evaluated the first form in the buffer
+regardless of the cursor position. The search for the surrounding form scanned
+backward for parentheses and stopped at the buffer start when invoked at the
+beginning of a line. Evaluation now asks `LispSourceView` for the enclosing
+top‑level range, which is shared with the selection expansion logic, so the
+correct expression is sent to swank.

@@ -129,6 +129,45 @@ lisp_source_view_get_view (LispSourceView *self)
   return GTK_WIDGET (self->view);
 }
 
+static gboolean find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
+    gsize start, gsize end, gsize *new_start, gsize *new_end);
+
+gboolean
+lisp_source_view_get_toplevel_range (LispSourceView *self, gsize offset,
+    gsize *start, gsize *end)
+{
+  g_return_val_if_fail (LISP_IS_SOURCE_VIEW (self), FALSE);
+  g_return_val_if_fail (start != NULL, FALSE);
+  g_return_val_if_fail (end != NULL, FALSE);
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
+  if (!self->file)
+    return FALSE;
+
+  GtkTextIter end_iter;
+  gtk_text_buffer_get_end_iter(buffer, &end_iter);
+  gsize len = gtk_text_iter_get_offset(&end_iter);
+
+  gsize cur_start = offset;
+  gsize cur_end = offset;
+  gsize new_start;
+  gsize new_end;
+
+  while (find_parent_range(buffer, self->file, cur_start, cur_end,
+      &new_start, &new_end)) {
+    if (new_start == 0 && new_end == len)
+      break;
+    cur_start = new_start;
+    cur_end = new_end;
+  }
+
+  if (cur_start == offset && cur_end == offset)
+    return FALSE;
+
+  *start = cur_start;
+  *end = cur_end;
+  return TRUE;
+}
+
 static const Node *
 find_node_containing_range (const Node *node, gsize start, gsize end, gsize len)
 {
