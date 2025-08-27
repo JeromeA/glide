@@ -31,6 +31,7 @@ STATIC SwankSession *app_get_swank(App *self);
 STATIC void app_on_quit(App *self);
 STATIC void app_quit(App *self);
 STATIC StatusService *app_get_status_service(App *self);
+void app_set_recent_menu(App *self, GtkWidget *menu);
 
 G_END_DECLS
 
