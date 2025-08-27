@@ -11,6 +11,7 @@
 #include "function.c"
 #include "file_open.c"
 #include "file_new.c"
+#include "file_add.c"
 #include "file_rename.c"
 #include "file_delete.c"
 #include "project_new_wizard.c"
