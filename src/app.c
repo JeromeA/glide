@@ -1,37 +1,21 @@
 #include "includes.h"
 #include "app.h"
 #include "file_open.h"
-#include "file_new.h"
-#include "file_add.h"
-#include "file_rename.h"
-#include "file_delete.h"
-#include "file_save.h"
-#include "project_new_wizard.h"
-#include "preferences_dialog.h"
-#include "evaluate.h"
 #include "interactions_view.h"
 #include "lisp_source_view.h"
 #include "lisp_source_notebook.h"
-#include "lisp_parser_view.h"
 #include "project.h"
 #include "project_file.h"
 #include "status_bar.h"
 #include "asdf_view.h"
+#include "menu_bar.h"
+#include "actions.h"
 
 /* Signal handlers */
-STATIC gboolean quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data);
-STATIC void     quit_menu_item   (GtkWidget * /*item*/,   gpointer data);
-STATIC void     close_project_menu_item(GtkWidget * /*item*/, gpointer data);
 STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, gpointer data);
 STATIC void     app_update_recent_menu(App *self);
-STATIC void     on_recent_project_activate(GtkWidget *item, gpointer data);
-STATIC gboolean app_maybe_save_all(App *self);
-STATIC gboolean app_close_project(App *self, gboolean forget_project);
 STATIC void     on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data);
 STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data);
-STATIC void     on_save_all(GtkWidget * /*item*/, gpointer data);
-STATIC void     on_extend_selection(GtkWidget * /*item*/, gpointer data);
-STATIC void     on_shrink_selection(GtkWidget * /*item*/, gpointer data);
 STATIC void     on_window_size_allocate(GtkWidget * /*widget*/, GtkAllocation *allocation, gpointer data);
 
 /* === Instance structure ================================================= */
@@ -52,90 +36,12 @@ struct _App
   GtkWidget      *recent_menu;
 };
 
-static void
-on_show_parser(App *self)
-{
-  GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_title(GTK_WINDOW(win), "Parser View");
-  LispSourceView *current = lisp_source_notebook_get_current_view(self->notebook);
-  ProjectFile *file = lisp_source_view_get_file(current);
-  GtkWidget *view = lisp_parser_view_new(file);
-  GtkWidget *scrolled = gtk_scrolled_window_new(NULL, NULL);
-  gtk_container_add(GTK_CONTAINER(scrolled), view);
-  gtk_container_add(GTK_CONTAINER(win), scrolled);
-  gtk_widget_show_all(win);
-}
-
-STATIC void
-on_extend_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
-{
-  App *self = (App *) data;
-  LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
-  if (view)
-    lisp_source_view_extend_selection(view);
-}
-
-STATIC void
-on_shrink_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
-{
-  App *self = (App *) data;
-  LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
-  if (view)
-    lisp_source_view_shrink_selection(view);
-}
-
 STATIC void
 on_window_size_allocate(GtkWidget * /*widget*/, GtkAllocation *allocation, gpointer data)
 {
   App *self = (App *) data;
   preferences_set_window_width(self->preferences, allocation->width);
   preferences_set_window_height(self->preferences, allocation->height);
-}
-
-static gboolean
-on_key_press(GtkWidget * /*widget*/,
-    GdkEventKey *event,
-    gpointer     user_data)   /* actually App* */
-{
-  App *self = (App *) user_data;
-
-  if ((event->keyval == GDK_KEY_Return) &&
-      (event->state  & GDK_MOD1_MASK))      /* Alt+Enter */
-  {
-    on_evaluate(NULL, self);
-    return TRUE;                  /* stop further propagation */
-  }
-  if ((event->keyval == GDK_KEY_p || event->keyval == GDK_KEY_P) &&
-      (event->state & GDK_MOD1_MASK))        /* Alt+P */
-  {
-    on_show_parser(self);
-    return TRUE;
-  }
-  if ((event->keyval == GDK_KEY_w || event->keyval == GDK_KEY_W) &&
-      ((event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) ==
-       (GDK_CONTROL_MASK | GDK_SHIFT_MASK)))
-  {
-    LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
-    if (view)
-      lisp_source_view_shrink_selection(view);
-    return TRUE;
-  }
-  if ((event->keyval == GDK_KEY_w || event->keyval == GDK_KEY_W) &&
-      ((event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) ==
-       GDK_CONTROL_MASK))
-  {
-    LispSourceView *view = lisp_source_notebook_get_current_view(self->notebook);
-    if (view)
-      lisp_source_view_extend_selection(view);
-    return TRUE;
-  }
-  if ((event->keyval == GDK_KEY_F6) &&
-      (event->state & GDK_SHIFT_MASK))       /* Shift+F6 */
-  {
-    file_rename(NULL, self);
-    return TRUE;
-  }
-  return FALSE;
 }
 
 
@@ -158,8 +64,8 @@ app_activate (GApplication *app)
   gtk_window_set_default_size(GTK_WINDOW(self->window),
       preferences_get_window_width(self->preferences),
       preferences_get_window_height(self->preferences));
-  g_signal_connect (self->window, "delete-event",
-                    G_CALLBACK (quit_delete_event), self);
+  g_signal_connect(self->window, "delete-event",
+      G_CALLBACK(on_quit_delete_event), self);
   g_signal_connect(self->window, "size-allocate",
       G_CALLBACK(on_window_size_allocate), self);
 
@@ -177,86 +83,7 @@ app_activate (GApplication *app)
   g_signal_connect (lisp_source_view_get_view(view), "key-press-event",
       G_CALLBACK (on_key_press), self);
 
-  /* Menu bar ------------------------------------------------------ */
-  GtkWidget *menu_bar      = gtk_menu_bar_new ();
-  GtkWidget *file_menu     = gtk_menu_new();
-  GtkWidget *file_item     = gtk_menu_item_new_with_label("File");
-
-  GtkWidget *edit_menu     = gtk_menu_new();
-  GtkWidget *edit_item     = gtk_menu_item_new_with_label("Edit");
-  GtkWidget *extend_item   = gtk_menu_item_new_with_label("Extend selection");
-  GtkWidget *shrink_item   = gtk_menu_item_new_with_label("Shrink selection");
-
-  GtkWidget *refactor_menu = gtk_menu_new();
-  GtkWidget *refactor_item = gtk_menu_item_new_with_label("Refactor");
-  GtkWidget *refactor_file_menu = gtk_menu_new();
-  GtkWidget *refactor_file_item = gtk_menu_item_new_with_label("File");
-  GtkWidget *rename_item   = gtk_menu_item_new_with_label("Rename");
-  GtkWidget *delete_item   = gtk_menu_item_new_with_label("Delete");
-
-  GtkWidget *run_menu      = gtk_menu_new();
-  GtkWidget *run_item      = gtk_menu_item_new_with_label("Run");
-  GtkWidget *eval_item     = gtk_menu_item_new_with_label("Eval toplevel");
-
-  GtkWidget *project_menu  = gtk_menu_new();
-  GtkWidget *project_item  = gtk_menu_item_new_with_label("Project");
-  GtkWidget *proj_new_item = gtk_menu_item_new_with_label("New…");
-  GtkWidget *proj_open_item = gtk_menu_item_new_with_label("Open…");
-  GtkWidget *proj_recent_item = gtk_menu_item_new_with_label("Recent");
-  GtkWidget *recent_menu   = gtk_menu_new();
-  self->recent_menu = recent_menu;
-
-  GtkWidget *newfile_item  = gtk_menu_item_new_with_label("New file");
-  GtkWidget *addfile_item  = gtk_menu_item_new_with_label("Add file");
-  GtkWidget *saveall_item  = gtk_menu_item_new_with_label("Save all");
-  GtkWidget *closeproj_item = gtk_menu_item_new_with_label("Close project");
-  GtkWidget *settings_item = gtk_menu_item_new_with_label("Settings…");
-  GtkWidget *exit_item     = gtk_menu_item_new_with_label("Exit");
-
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(file_item), file_menu);
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(project_item), project_menu);
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(proj_recent_item), recent_menu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_new_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_open_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(project_menu), proj_recent_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), project_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), newfile_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), addfile_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), saveall_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), closeproj_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), settings_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), gtk_separator_menu_item_new());
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exit_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), file_item);
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(edit_item), edit_menu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(edit_menu), extend_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(edit_menu), shrink_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), edit_item);
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_item), refactor_menu);
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(refactor_file_item), refactor_file_menu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_file_menu), rename_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_file_menu), delete_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(refactor_menu), refactor_file_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), refactor_item);
-
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(run_item), run_menu);
-  gtk_menu_shell_append(GTK_MENU_SHELL(run_menu), eval_item);
-  gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), run_item);
-
-  g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
-  g_signal_connect(proj_open_item, "activate", G_CALLBACK(file_open), self);
-  g_signal_connect(newfile_item, "activate", G_CALLBACK(file_new), self);
-  g_signal_connect(addfile_item, "activate", G_CALLBACK(file_add), self);
-  g_signal_connect(saveall_item, "activate", G_CALLBACK(on_save_all), self);
-  g_signal_connect(closeproj_item, "activate", G_CALLBACK(close_project_menu_item), self);
-  g_signal_connect(settings_item, "activate", G_CALLBACK(on_preferences), self);
-  g_signal_connect(exit_item, "activate", G_CALLBACK(quit_menu_item), self);
-  g_signal_connect(rename_item, "activate", G_CALLBACK(file_rename), self);
-  g_signal_connect(delete_item, "activate", G_CALLBACK(file_delete), self);
-  g_signal_connect(extend_item, "activate", G_CALLBACK(on_extend_selection), self);
-  g_signal_connect(shrink_item, "activate", G_CALLBACK(on_shrink_selection), self);
-  g_signal_connect(eval_item, "activate", G_CALLBACK(on_evaluate), self);
+  GtkWidget *menu_bar = menu_bar_new(self);
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
@@ -531,27 +358,12 @@ app_update_recent_menu(App *self)
     GtkWidget *item = gtk_menu_item_new_with_label(label);
     g_free(label);
     g_object_set_data_full(G_OBJECT(item), "project-path", g_strdup(path), g_free);
-    g_signal_connect(item, "activate", G_CALLBACK(on_recent_project_activate), self);
+    g_signal_connect(item, "activate", G_CALLBACK(on_recent_project), self);
     gtk_menu_shell_append(GTK_MENU_SHELL(self->recent_menu), item);
   }
   gtk_widget_show_all(self->recent_menu);
 }
 
-STATIC void
-on_recent_project_activate(GtkWidget *item, gpointer data)
-{
-  App *self = GLIDE_APP(data);
-  const gchar *path = g_object_get_data(G_OBJECT(item), "project-path");
-  if (path)
-    file_open_path(self, path);
-}
-
-STATIC void
-on_save_all(GtkWidget * /*item*/, gpointer data)
-{
-  App *self = GLIDE_APP(data);
-  file_save_all(app_get_project(self));
-}
 
 
 STATIC Preferences *
@@ -575,64 +387,13 @@ app_get_status_service (App *self)
   return self->status_service;
 }
 
-STATIC gboolean
-app_maybe_save_all(App *self)
+void
+app_set_recent_menu(App *self, GtkWidget *menu)
 {
-  LispSourceNotebook *notebook = app_get_notebook(self);
-  if (!notebook)
-    return TRUE;
-  gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
-  gboolean modified = FALSE;
-  for (gint i = 0; i < pages; i++) {
-    GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
-    GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(lisp_source_view_get_buffer(LISP_SOURCE_VIEW(view))) : NULL;
-    if (buffer && gtk_text_buffer_get_modified(buffer)) {
-      modified = TRUE;
-      break;
-    }
-  }
-  if (!modified)
-    return TRUE;
-  GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
-      GTK_MESSAGE_QUESTION, GTK_BUTTONS_NONE,
-      "Save changes to project?");
-  gtk_dialog_add_button(GTK_DIALOG(dialog), "_Cancel", GTK_RESPONSE_CANCEL);
-  gtk_dialog_add_button(GTK_DIALOG(dialog), "_Discard", GTK_RESPONSE_REJECT);
-  gtk_dialog_add_button(GTK_DIALOG(dialog), "_Save", GTK_RESPONSE_ACCEPT);
-  gint res = gtk_dialog_run(GTK_DIALOG(dialog));
-  gtk_widget_destroy(dialog);
-  if (res == GTK_RESPONSE_CANCEL)
-    return FALSE;
-  if (res == GTK_RESPONSE_ACCEPT)
-    file_save_all(app_get_project(self));
-  return TRUE;
+  g_return_if_fail(GLIDE_IS_APP(self));
+  self->recent_menu = menu;
 }
 
-STATIC gboolean
-app_close_project(App *self, gboolean forget_project)
-{
-  g_debug("App.close_project forget=%d", forget_project);
-  g_return_val_if_fail(GLIDE_IS_APP(self), FALSE);
-  if (!app_maybe_save_all(self))
-    return FALSE;
-  Project *project = app_get_project(self);
-  project_clear(project);
-  Preferences *prefs = app_get_preferences(self);
-  if (prefs && forget_project) {
-    preferences_set_project_file(prefs, NULL);
-    preferences_set_last_file(prefs, NULL);
-    preferences_set_cursor_position(prefs, 0);
-  }
-  app_update_asdf_view(self);
-  return TRUE;
-}
-
-STATIC void
-close_project_menu_item(GtkWidget * /*item*/, gpointer data)
-{
-  g_debug("App.close_project_menu_item");
-  app_close_project(GLIDE_APP(data), TRUE);
-}
 
 STATIC void
 app_quit (App *self)
@@ -666,17 +427,3 @@ app_on_quit (App *self)
   app_quit (self);
 }
 
-STATIC gboolean
-quit_delete_event (GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data)
-{
-  g_debug("App.quit_delete_event");
-  app_on_quit (GLIDE_APP (data));
-  return TRUE;
-}
-
-STATIC void
-quit_menu_item (GtkWidget * /*item*/, gpointer data)
-{
-  g_debug("App.quit_menu_item");
-  app_on_quit (GLIDE_APP (data));
-}

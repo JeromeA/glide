@@ -18,6 +18,8 @@ SOURCES += \
   swank_session.c \
   evaluate.c \
   interactions_view.c \
+  actions.c \
+  menu_bar.c \
   app.c \
   lisp_source_notebook.c \
   lisp_source_view.c \
