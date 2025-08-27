@@ -87,3 +87,11 @@ evaluations run with the debugger hook disabled.
 `glide-eval` expected a parsed form but the server sent it expressions as
 strings, leading to evaluation failures. The function now reads the string into
 an s-expression before evaluating it.
+
+## Interaction results sometimes missing
+
+Evaluations occasionally displayed only the entered expression with no result.
+`InteractionsView` created rows only when the "added" signal arrived, but the
+backend could return a result before the row was created. The "updated"
+handler now ensures the row exists and updates it, so results are always shown.
+Debug logging was added to `RealGlideSession` to help trace message handling.

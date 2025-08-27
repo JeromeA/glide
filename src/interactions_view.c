@@ -89,6 +89,26 @@ interaction_row_update(InteractionRow *row, Interaction *interaction)
     gtk_box_reorder_child(GTK_BOX(row->box), row->result, -1);
 }
 
+static InteractionRow *
+interaction_row_ensure(InteractionsView *self, Interaction *interaction)
+{
+  InteractionRow *row = g_hash_table_lookup(self->rows, interaction);
+  if (!row) {
+    g_debug("InteractionsView.interaction_row_ensure creating row for %s", interaction->expression);
+    row = g_new0(InteractionRow, 1);
+    row->frame = gtk_frame_new(NULL);
+    gtk_widget_set_margin_start(row->frame, 5);
+    gtk_widget_set_margin_end(row->frame, 5);
+    gtk_widget_set_margin_top(row->frame, 5);
+    gtk_widget_set_margin_bottom(row->frame, 5);
+    row->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
+    gtk_container_add(GTK_CONTAINER(row->frame), row->box);
+    g_hash_table_insert(self->rows, interaction, row);
+    gtk_box_pack_start(GTK_BOX(self), row->frame, FALSE, FALSE, 0);
+  }
+  return row;
+}
+
 static gboolean
 dispatch_interaction_added(gpointer data)
 {
@@ -98,17 +118,8 @@ dispatch_interaction_added(gpointer data)
   g_debug("InteractionsView.on_interaction_added %s", interaction->expression);
   if (interaction->type != INTERACTION_USER)
     goto out;
-  InteractionRow *row = g_new0(InteractionRow, 1);
-  row->frame = gtk_frame_new(NULL);
-  gtk_widget_set_margin_start(row->frame, 5);
-  gtk_widget_set_margin_end(row->frame, 5);
-  gtk_widget_set_margin_top(row->frame, 5);
-  gtk_widget_set_margin_bottom(row->frame, 5);
-  row->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
-  gtk_container_add(GTK_CONTAINER(row->frame), row->box);
+  InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
-  g_hash_table_insert(self->rows, interaction, row);
-  gtk_box_pack_start(GTK_BOX(self), row->frame, FALSE, FALSE, 0);
   gtk_widget_show_all(row->frame);
 out:
   g_object_unref(self);
@@ -125,11 +136,7 @@ dispatch_interaction_updated(gpointer data)
   g_debug("InteractionsView.on_interaction_updated %s", interaction->expression);
   if (interaction->type != INTERACTION_USER)
     goto out;
-  InteractionRow *row = g_hash_table_lookup(self->rows, interaction);
-  if (!row) {
-    g_debug("InteractionsView.on_interaction_updated row not found for %s", interaction->expression);
-    goto out;
-  }
+  InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
 out:
