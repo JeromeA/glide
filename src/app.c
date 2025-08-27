@@ -27,7 +27,7 @@ struct _App
   GtkWidget      *window;
   LispSourceNotebook *notebook;
   Preferences    *preferences;
-  SwankSession   *swank;
+  GlideSession   *glide;
   Project        *project;
   StatusBar      *statusbar;
   StatusService  *status_service;
@@ -85,7 +85,7 @@ app_activate (GApplication *app)
 
   GtkWidget *menu_bar = menu_bar_new(self);
 
-  GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->swank));
+  GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->glide));
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
   gtk_paned_pack1(GTK_PANED(paned), self->notebook_paned, TRUE, TRUE);
   gtk_paned_pack2(GTK_PANED(paned), interactions, FALSE, TRUE);
@@ -160,7 +160,7 @@ app_dispose (GObject *object)
     preferences_unref(self->preferences);
     self->preferences = NULL;
   }
-  g_clear_pointer(&self->swank, swank_session_unref);
+  g_clear_pointer(&self->glide, glide_session_unref);
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
 }
 
@@ -182,7 +182,7 @@ app_init (App *self)
   g_debug("App.init");
   /* Everything that needs only the *instance* goes here */
   self->preferences = NULL;
-  self->swank = NULL;
+  self->glide = NULL;
   self->project = NULL;
   self->notebook = NULL;
   self->statusbar = NULL;
@@ -193,10 +193,10 @@ app_init (App *self)
 }
 
 STATIC App *
-app_new (Preferences *prefs, SwankSession *swank, Project *project, StatusService *status_service)
+app_new (Preferences *prefs, GlideSession *glide, Project *project, StatusService *status_service)
 {
   g_debug("App.new");
-  g_return_val_if_fail (swank, NULL);
+  g_return_val_if_fail (glide, NULL);
 
   App *self = g_object_new (GLIDE_TYPE,
       /* GtkApplication properties */
@@ -205,7 +205,7 @@ app_new (Preferences *prefs, SwankSession *swank, Project *project, StatusServic
       NULL);
 
   self->preferences    = preferences_ref(prefs);
-  self->swank          = swank_session_ref(swank);
+  self->glide          = glide_session_ref(glide);
   self->project        = project_ref(project);
   self->status_service = status_service;
   return self;
@@ -373,11 +373,11 @@ app_get_preferences (App *self)
   return self->preferences;
 }
 
-STATIC SwankSession *
-app_get_swank (App *self)
+STATIC GlideSession *
+app_get_glide (App *self)
 {
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  return self->swank;
+  return self->glide;
 }
 
 STATIC StatusService *

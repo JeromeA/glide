@@ -12,7 +12,6 @@ test_defaults(void)
     gchar *file = g_build_filename(tmpdir, "glide", "preferences.ini", NULL);
 
     g_assert_null(preferences_get_sdk(prefs));
-    g_assert_cmpuint(preferences_get_swank_port(prefs), ==, 4005);
     g_assert_cmpstr(preferences_get_project_dir(prefs), ==, "~/lisp");
     g_assert_cmpint(preferences_get_asdf_view_width(prefs), ==, 200);
     g_assert_cmpint(preferences_get_window_width(prefs), ==, 800);

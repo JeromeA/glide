@@ -35,14 +35,14 @@
 #include "project_file.c"
 #include "project.c"
 #include "real_process.c"
-#include "real_swank_process.c"
-#include "real_swank_session.c"
+#include "real_glide_process.c"
+#include "real_glide_session.c"
 #include "reloc.c"
 #include "status_bar.c"
 #include "status_service.c"
 #include "string_text_provider.c"
-#include "swank_process.c"
-#include "swank_session.c"
+#include "glide_process.c"
+#include "glide_session.c"
 #include "text_provider.c"
 #undef g_debug
 #define g_debug(...) do { } while (0)
@@ -53,12 +53,11 @@
 #include "preferences.h"
 #include "process.h"
 #include "real_process.h"
-#include "real_swank_process.h"
-#include "real_swank_session.h"
-#include "swank_process.h"
-#include "swank_session.h"
+#include "real_glide_process.h"
+#include "real_glide_session.h"
+#include "glide_process.h"
+#include "glide_session.h"
 #include "project.h"
-#include "package_common_lisp.h"
 #include "status_service.h"
 
 int
@@ -71,17 +70,16 @@ main (int argc, char *argv[])
 
   const gchar *sdk_path = preferences_get_sdk (prefs);
   Process *proc = real_process_new (sdk_path);
-  SwankProcess *swank_proc = real_swank_process_new (proc, prefs);
+  GlideProcess *glide_proc = real_glide_process_new (proc);
   StatusService *status_service = status_service_new();
-  SwankSession *swank = real_swank_session_new (swank_proc, status_service);
-  package_common_lisp_set_swank_session(swank);
+  GlideSession *glide = real_glide_session_new (glide_proc, status_service);
   Project *project = project_new();
-  App *app     = app_new (prefs, swank, project, status_service);
+  App *app     = app_new (prefs, glide, project, status_service);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref(app);
-  swank_session_unref(swank);
-  swank_process_unref(swank_proc);
+  glide_session_unref(glide);
+  glide_process_unref(glide_proc);
   process_unref(proc);
   project_unref(project);
   status_service_free(status_service);

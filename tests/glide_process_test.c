@@ -1,4 +1,4 @@
-#include "real_swank_process.h"
+#include "real_glide_process.h"
 #include "process.h"
 #include <glib.h>
 #include <sys/socket.h>
@@ -45,26 +45,25 @@ static void test_send(void) {
   MockProcess *mp = mock_process_new();
   mp->fd = fds[0];
 
-  SwankProcess *sp = real_swank_process_new((Process*)mp, NULL);
-  real_swank_process_set_socket((RealSwankProcess*)sp, fds[0]);
+  GlideProcess *sp = real_glide_process_new((Process*)mp);
 
   GString *payload = g_string_new("hello");
-  swank_process_send(sp, payload);
+  glide_process_send(sp, payload);
   g_string_free(payload, TRUE);
 
   char buf[64];
   ssize_t n = read(fds[1], buf, sizeof(buf));
-  g_assert_cmpint(n, ==, 11);
+  g_assert_cmpint(n, ==, 5);
   buf[n] = '\0';
   g_assert_nonnull(strstr(buf, "hello"));
 
-  swank_process_unref(sp);
+  glide_process_unref(sp);
   process_unref((Process*)mp);
   close(fds[1]);
 }
 
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
-  g_test_add_func("/swank/send", test_send);
+  g_test_add_func("/glide/send", test_send);
   return g_test_run();
 }

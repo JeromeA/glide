@@ -6,7 +6,6 @@
 struct _Preferences {
   gchar   *filename;
   gchar   *sdk;
-  guint16  swank_port;
   gchar   *project_file;
   gchar   *project_dir;
   gint     window_width;
@@ -28,11 +27,6 @@ static void preferences_load(Preferences *self) {
       g_free(sdk);
     }
 
-    /* load swank port if present */
-    gint port = g_key_file_get_integer(key_file, "General", "swank_port", NULL);
-    if (port) {
-      self->swank_port = (guint16)port;
-    }
 
     char *proj = g_key_file_get_string(key_file, "General", "project_file", NULL);
     if (proj) {
@@ -94,7 +88,6 @@ static void preferences_save(Preferences *self) {
 
   if (self->sdk)
     g_key_file_set_string(key_file, "General", "sdk", self->sdk);
-  g_key_file_set_integer(key_file, "General", "swank_port", self->swank_port);
   if (self->project_file)
     g_key_file_set_string(key_file, "General", "project_file", self->project_file);
   if (self->project_dir)
@@ -141,7 +134,6 @@ Preferences *
 preferences_new(const gchar *config_dir)
 {
   Preferences *self = g_new0(Preferences, 1);
-  self->swank_port = 4005;
   self->refcnt = 1;
   self->filename = g_build_filename(config_dir, "glide", "preferences.ini", NULL);
   self->project_dir = g_strdup("~/lisp");
@@ -161,17 +153,6 @@ void preferences_set_sdk(Preferences *self, const gchar *new_sdk) {
   if (g_strcmp0(self->sdk, new_sdk) != 0) {
     g_free(self->sdk);
     self->sdk = g_strdup(new_sdk);
-    preferences_save(self);
-  }
-}
-
-guint16 preferences_get_swank_port(Preferences *self) {
-  return self->swank_port;
-}
-
-void preferences_set_swank_port(Preferences *self, guint16 new_port) {
-  if (self->swank_port != new_port) {
-    self->swank_port = new_port;
     preferences_save(self);
   }
 }

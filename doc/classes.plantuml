@@ -2,7 +2,7 @@
 
 GtkApplication <|-- App
 App *-- Project
-App *-- SwankSession
+App *-- GlideSession
 App *-- Window
 App *-- LispSourceNotebook
 App *-- Preferences
@@ -28,18 +28,17 @@ ProjectFile --> Project
 GtkBox <|-- InteractionsView
 GtkBox <|-- StatusBar
 InteractionsView "1" o-- "*" Interaction
-InteractionsView *-- SwankSession
+InteractionsView *-- GlideSession
 Interaction : expression
 Interaction : result
 Interaction : output
 Interaction : error
 Interaction : done_cb
-SwankSession : eval(Interaction)
-SwankSession : interactions
-SwankSession "1" --> "*" Interaction
-SwankSession *-- SwankProcess
-SwankProcess *-- Process
-SwankProcess : swank_fd
+GlideSession : eval(Interaction)
+GlideSession : interactions
+GlideSession "1" --> "*" Interaction
+GlideSession *-- GlideProcess
+GlideProcess *-- Process
 
 Process : pid
 Process : in_fd

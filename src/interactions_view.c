@@ -1,6 +1,6 @@
 #include "interactions_view.h"
 #include "interaction.h"
-#include "swank_session.h"
+#include "glide_session.h"
 
 #define CSS_CLASS_OUTPUT "interaction-output"
 #define CSS_CLASS_ERROR  "interaction-error"
@@ -17,7 +17,7 @@ typedef struct {
 
 struct _InteractionsView {
   GtkBox parent_instance;
-  SwankSession *session;
+  GlideSession *session;
   GHashTable *rows;
 };
 
@@ -31,8 +31,8 @@ typedef struct {
 static gboolean dispatch_interaction_added(gpointer data);
 static gboolean dispatch_interaction_updated(gpointer data);
 
-static void on_interaction_added(SwankSession *session, Interaction *interaction, gpointer user_data);
-static void on_interaction_updated(SwankSession *session, Interaction *interaction, gpointer user_data);
+static void on_interaction_added(GlideSession *session, Interaction *interaction, gpointer user_data);
+static void on_interaction_updated(GlideSession *session, Interaction *interaction, gpointer user_data);
 static void interaction_row_update(InteractionRow *row, Interaction *interaction);
 static void interaction_row_free(gpointer data);
 
@@ -144,9 +144,9 @@ interactions_view_finalize(GObject *obj)
   g_debug("InteractionsView.finalize");
   InteractionsView *self = GLIDE_INTERACTIONS_VIEW(obj);
   if (self->session) {
-    swank_session_set_interaction_added_cb(self->session, NULL, NULL);
-    swank_session_set_interaction_updated_cb(self->session, NULL, NULL);
-    swank_session_unref(self->session);
+    glide_session_set_interaction_added_cb(self->session, NULL, NULL);
+    glide_session_set_interaction_updated_cb(self->session, NULL, NULL);
+    glide_session_unref(self->session);
   }
   if (self->rows)
     g_hash_table_destroy(self->rows);
@@ -187,19 +187,19 @@ interactions_view_init(InteractionsView *self)
 }
 
 InteractionsView *
-interactions_view_new(SwankSession *session)
+interactions_view_new(GlideSession *session)
 {
   g_debug("InteractionsView.new");
   g_return_val_if_fail(session, NULL);
   InteractionsView *self = g_object_new(INTERACTIONS_VIEW_TYPE, NULL);
-  self->session = swank_session_ref(session);
-  swank_session_set_interaction_added_cb(self->session, on_interaction_added, self);
-  swank_session_set_interaction_updated_cb(self->session, on_interaction_updated, self);
+  self->session = glide_session_ref(session);
+  glide_session_set_interaction_added_cb(self->session, on_interaction_added, self);
+  glide_session_set_interaction_updated_cb(self->session, on_interaction_updated, self);
   return self;
 }
 
 static void
-on_interaction_added(SwankSession * /*session*/, Interaction *interaction, gpointer user_data)
+on_interaction_added(GlideSession * /*session*/, Interaction *interaction, gpointer user_data)
 {
   InteractionDispatch *d = g_new0(InteractionDispatch, 1);
   d->self = g_object_ref(GLIDE_INTERACTIONS_VIEW(user_data));
@@ -208,7 +208,7 @@ on_interaction_added(SwankSession * /*session*/, Interaction *interaction, gpoin
 }
 
 static void
-on_interaction_updated(SwankSession * /*session*/, Interaction *interaction, gpointer user_data)
+on_interaction_updated(GlideSession * /*session*/, Interaction *interaction, gpointer user_data)
 {
   InteractionDispatch *d = g_new0(InteractionDispatch, 1);
   d->self = g_object_ref(GLIDE_INTERACTIONS_VIEW(user_data));
