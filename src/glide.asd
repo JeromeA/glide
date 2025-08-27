@@ -1,7 +1,5 @@
-(asdf:defsystem "glide"
+(defsystem "glide"
   :description "List symbols of a given package"
-  :version "0.0.1"
   :serial t
-  :components ((:file "glide-package")
-               (:file "symbol-info")
-               (:file "package-info")))
+  :components ((:file "glide-package") (:file "symbol-info") (:file "package-info") (:file "t"))
+)

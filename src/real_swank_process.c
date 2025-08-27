@@ -30,7 +30,7 @@ static gpointer swank_reader_thread(gpointer data) {
     ssize_t n = sys_read(self->swank_fd, buf, sizeof(buf));
     if (n > 0) {
       char *dbg = g_strndup(buf, n);
-      g_debug_40("RealSwankProcess.swank_reader_thread got:", dbg);
+      g_debug_80("RealSwankProcess.swank_reader_thread got:", dbg);
       g_free(dbg);
       g_mutex_lock(&self->swank_mutex);
       g_string_append_len(self->swank_data, buf, n);

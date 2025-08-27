@@ -183,7 +183,7 @@ static void real_swank_session_destroy(SwankSession *session) {
 
 void real_swank_session_on_message(GString *msg, gpointer user_data) {
   RealSwankSession *self = user_data ? (RealSwankSession*)user_data : NULL;
-  g_debug_40("RealSwankSession.on_message msg:", msg->str);
+  g_debug_80("RealSwankSession.on_message msg:", msg->str);
   const char *str = msg->str;
   if (g_str_has_prefix(str, "(:return (:ok (\"\" \"")) {
     const char *res_start = str + strlen("(:return (:ok (\"\" \"");
