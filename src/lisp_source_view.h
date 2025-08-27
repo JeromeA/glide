@@ -14,6 +14,8 @@ GtkWidget      *lisp_source_view_new_for_file (Project *project, ProjectFile *fi
 GtkSourceBuffer *lisp_source_view_get_buffer (LispSourceView *self);
 ProjectFile    *lisp_source_view_get_file (LispSourceView *self);
 GtkWidget      *lisp_source_view_get_view (LispSourceView *self);
+gboolean        lisp_source_view_get_toplevel_range (LispSourceView *self,
+                    gsize offset, gsize *start, gsize *end);
 void            lisp_source_view_extend_selection (LispSourceView *self);
 void            lisp_source_view_shrink_selection (LispSourceView *self);
 
