@@ -91,7 +91,17 @@ on_key_press(GtkWidget * /*widget*/, GdkEventKey *event, gpointer user_data)
   if ((event->keyval == GDK_KEY_Return) &&
       (event->state & GDK_MOD1_MASK))
   {
-    on_evaluate(NULL, self);
+    LispSourceNotebook *notebook = app_get_notebook(self);
+    LispSourceView *view = lisp_source_notebook_get_current_view(notebook);
+    GtkTextBuffer *buffer = view ?
+        GTK_TEXT_BUFFER(lisp_source_view_get_buffer(view)) : NULL;
+    GtkTextIter it_start;
+    GtkTextIter it_end;
+    if (buffer && gtk_text_buffer_get_selection_bounds(buffer,
+        &it_start, &it_end))
+      on_evaluate_selection(NULL, self);
+    else
+      on_evaluate_toplevel(NULL, self);
     return TRUE;
   }
   if ((event->keyval == GDK_KEY_p || event->keyval == GDK_KEY_P) &&

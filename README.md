@@ -24,7 +24,7 @@ Running `make` will build 4 binaries:
 * open and save, and associated menu entries.
 * persisted settings
 * a settings dialog
-* can evaluate current line of code with alt-enter.
+* can evaluate selection or top-level form with alt-enter.
 
 # Installation instructions
 

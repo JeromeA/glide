@@ -31,6 +31,7 @@ menu_bar_new(App *self)
   GtkWidget *run_menu      = gtk_menu_new();
   GtkWidget *run_item      = gtk_menu_item_new_with_label("Run");
   GtkWidget *eval_item     = gtk_menu_item_new_with_label("Eval toplevel");
+  GtkWidget *eval_sel_item = gtk_menu_item_new_with_label("Eval selection");
 
   GtkWidget *project_menu  = gtk_menu_new();
   GtkWidget *project_item  = gtk_menu_item_new_with_label("Project");
@@ -76,6 +77,7 @@ menu_bar_new(App *self)
 
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(run_item), run_menu);
   gtk_menu_shell_append(GTK_MENU_SHELL(run_menu), eval_item);
+  gtk_menu_shell_append(GTK_MENU_SHELL(run_menu), eval_sel_item);
   gtk_menu_shell_append(GTK_MENU_SHELL(menu_bar), run_item);
 
   g_signal_connect(proj_new_item, "activate", G_CALLBACK(project_new_wizard), self);
@@ -90,7 +92,8 @@ menu_bar_new(App *self)
   g_signal_connect(delete_item, "activate", G_CALLBACK(file_delete), self);
   g_signal_connect(extend_item, "activate", G_CALLBACK(on_extend_selection), self);
   g_signal_connect(shrink_item, "activate", G_CALLBACK(on_shrink_selection), self);
-  g_signal_connect(eval_item, "activate", G_CALLBACK(on_evaluate), self);
+  g_signal_connect(eval_item, "activate", G_CALLBACK(on_evaluate_toplevel), self);
+  g_signal_connect(eval_sel_item, "activate", G_CALLBACK(on_evaluate_selection), self);
 
   return menu_bar;
 }
