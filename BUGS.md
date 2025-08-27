@@ -51,3 +51,9 @@ program. The "activate" signal for the menu item invoked `on_evaluate` with the
 menu item as the first argument, but the handler expected only an `App*`. The
 function now uses the standard `GtkWidget *, gpointer` signature and verifies
 the `App` instance before evaluating the current form.
+
+## Swank debug mode left enabled
+
+Evaluating expressions kept `swank:*swank-debug-p*` set to `t`, so swank printed
+verbose debugging information during normal evaluations. The evaluation code now
+invokes `:emacs-rex` with the debug flag set to `nil`, keeping swank quiet.
