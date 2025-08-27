@@ -14,4 +14,4 @@
                                for home = (symbol-package sym)
                                unless (eq pkg home)
                                collect (list (symbol-name sym)
-                                             (package-name home))))))
+                                             (package-name home)))))))
