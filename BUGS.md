@@ -95,3 +95,13 @@ Evaluations occasionally displayed only the entered expression with no result.
 backend could return a result before the row was created. The "updated"
 handler now ensures the row exists and updates it, so results are always shown.
 Debug logging was added to `RealGlideSession` to help trace message handling.
+
+## Evaluation result hidden by startup prompt
+
+Selecting an expression sometimes displayed only the form with no result.
+SBCL prints a `*` prompt and its `NIL` result while loading Glide. Those
+startup lines arrived just before the first evaluation and confused the
+session, so the interaction row missed the real result. `RealGlideProcess`
+now waits for SBCL's initial prompt, ignores the `NIL` and second prompt from
+`(require :glide)`, and only then starts the server, so sessions receive the
+actual evaluation results.

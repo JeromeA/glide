@@ -1,5 +1,6 @@
 #include "real_glide_session.h"
 #include "util.h"
+#include <string.h>
 
 static gpointer real_glide_session_thread(gpointer data);
 static void real_glide_session_eval(GlideSession *session, Interaction *interaction);

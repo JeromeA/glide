@@ -187,6 +187,7 @@ static void test_interaction_done_callback(void)
   glide_process_unref((GlideProcess*)proc);
 }
 
+
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
