@@ -31,7 +31,7 @@ int main(void) {
 
   Node *foo_expr = g_array_index(ast->children, Node*, 1);
   Node *foo_name = g_array_index(foo_expr->children, Node*, 1);
-  g_assert_cmpstr(foo_name->package_context, ==, "COMMON-LISP-USER");
+  g_assert_cmpstr(foo_name->package_context, ==, "CL-USER");
 
   Node *bar_expr = g_array_index(ast->children, Node*, 3);
   Node *bar_name = g_array_index(bar_expr->children, Node*, 1);

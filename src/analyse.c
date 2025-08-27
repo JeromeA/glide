@@ -43,7 +43,7 @@ void analyse_node(Project *project, Node *node, gchar **context) {
 }
 
 void analyse_ast(Project *project, Node *root) {
-  gchar *context = g_strdup("COMMON-LISP-USER");
+  gchar *context = g_strdup("CL-USER");
   analyse_node(project, root, &context);
   g_free(context);
 }
