@@ -78,7 +78,7 @@ static void test_eval(void)
   interaction_clear(&interaction);
   g_assert_cmpint(interaction.tag, ==, 1);
   g_assert_cmpstr(mock_swank_process->last->str, ==,
-      "(:emacs-rex (swank:eval-and-grab-output \"(+ 1 2)\") \"COMMON-LISP-USER\" t 1)");
+      "(:emacs-rex (let ((*debugger-hook* nil)) (swank-repl:listener-eval \"(+ 1 2)\\n\")) :cl-user t 1)");
   g_assert_cmpint(mock_swank_process->start_count, ==, 1);
   swank_session_unref(sess);
   status_service_free(status_service);

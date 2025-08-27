@@ -67,3 +67,10 @@ backward for parentheses and stopped at the buffer start when invoked at the
 beginning of a line. Evaluation now asks `LispSourceView` for the enclosing
 top‑level range, which is shared with the selection expansion logic, so the
 correct expression is sent to swank.
+
+## Debugger still activated during evaluations
+
+Disabling swank's global debugger was not enough to prevent the debugger from
+grabbing control. The swank process now let-binds `*debugger-hook*` to `nil`
+when evaluating forms and sends them in the `CL-USER` package, so evaluations
+no longer drop into the debugger unexpectedly.

@@ -140,7 +140,7 @@ static void test_functions_table(void)
   g_assert_nonnull(doc);
   g_assert_cmpstr(doc, ==, "doc");
   g_assert_cmpstr(function_get_name(fn), ==, "FOO");
-  g_assert_cmpstr(function_get_package(fn), ==, "COMMON-LISP-USER");
+  g_assert_cmpstr(function_get_package(fn), ==, "CL-USER");
   project_unref(project);
 }
 
