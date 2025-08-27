@@ -81,3 +81,9 @@ no longer drop into the debugger unexpectedly.
 the evaluated form itself unprotected. Errors inside the form still invoked the
 debugger. The binding is now wrapped around the expression passed to swank so
 evaluations run with the debugger hook disabled.
+
+## glide-eval evaluated raw strings
+
+`glide-eval` expected a parsed form but the server sent it expressions as
+strings, leading to evaluation failures. The function now reads the string into
+an s-expression before evaluating it.

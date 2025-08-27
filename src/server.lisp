@@ -12,7 +12,7 @@
 (defmethod sb-gray:stream-write-char ((s repl-stream) char)
   (format *real-standard-output* "(~a ~S)~%" (slot-value s 'label) (string char)))
 
-(defun glide-eval (form)
+(defun glide-eval (form-string)
   (setf *real-standard-output* *standard-output*)
   (handler-case
       (let* ((out (make-instance 'repl-stream :label "stdout"))
@@ -20,13 +20,15 @@
              (*standard-output* out)
              (*standard-error* err)
              (*error-output* err))
-        (let ((res (cl:eval form)))
-          (format *real-standard-output* "(result ~S)~%" res)))
+        (multiple-value-bind (form /*remaining*/)
+            (read-from-string form-string)
+          (let ((res (cl:eval form)))
+            (format *real-standard-output* "(result ~S)~%" res))))
     (error (e)
       (format *real-standard-output* "(error ~S)~%" (princ-to-string e)))))
 
 (defun start-server ()
-  (loop for form = (read *standard-input* nil :eof)
-        until (eq form :eof)
-        do (eval form)))
+  (loop for line = (read-line *standard-input* nil :eof)
+        until (eq line :eof)
+        do (glide-eval line)))
 
