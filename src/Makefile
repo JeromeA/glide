@@ -12,10 +12,10 @@ SOURCES += \
   preferences_dialog.c \
   process.c \
   real_process.c \
-  swank_process.c \
-  real_swank_process.c \
-  real_swank_session.c \
-  swank_session.c \
+  glide_process.c \
+  real_glide_process.c \
+  real_glide_session.c \
+  glide_session.c \
   evaluate.c \
   interactions_view.c \
   actions.c \

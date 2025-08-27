@@ -1,13 +1,13 @@
 /* evaluate.c
  *
  * Implements evaluation of Lisp code in the GtkSourceView buffer.  The text
- * is forwarded to the Swank backend for remote execution.
+ * is forwarded to the Glide backend for remote execution.
  */
 
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
 
-#include "swank_session.h"
+#include "glide_session.h"
 #include "interaction.h"
 #include "evaluate.h"
 #include "editor.h"
@@ -53,11 +53,11 @@ on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
     return;
   }
 
-  SwankSession *swank = app_get_swank(self);
-  if (swank) {
+  GlideSession *glide = app_get_glide(self);
+  if (glide) {
     Interaction *interaction = g_new0(Interaction, 1);
     interaction_init(interaction, expr);
-    swank_session_eval(swank, interaction);
+    glide_session_eval(glide, interaction);
   }
 
   g_free(expr);
@@ -90,11 +90,11 @@ on_evaluate_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
     return;
   }
 
-  SwankSession *swank = app_get_swank(self);
-  if (swank) {
+  GlideSession *glide = app_get_glide(self);
+  if (glide) {
     Interaction *interaction = g_new0(Interaction, 1);
     interaction_init(interaction, expr);
-    swank_session_eval(swank, interaction);
+    glide_session_eval(glide, interaction);
   }
 
   g_free(expr);
