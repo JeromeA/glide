@@ -7,6 +7,22 @@
 #include <signal.h>
 #include <sys/prctl.h>
 
+struct _Process {
+  GPid pid;
+  int refcnt;
+  int in_fd;
+  int out_fd;
+  int err_fd;
+  GThread *out_thread;
+  GThread *err_thread;
+  ProcessCallback out_cb;
+  gpointer out_user;
+  ProcessCallback err_cb;
+  gpointer err_user;
+  gchar **argv;
+  gboolean started;
+};
+
 static gpointer stdout_thread(gpointer data) {
   Process *process = data;
   char buf[256];
