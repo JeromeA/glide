@@ -24,7 +24,7 @@ static void mp_start(Process *p) {
     GString *line = g_string_new("banner\n");
     mp->out_cb(line, mp->out_data);
     g_string_free(line, TRUE);
-    line = g_string_new("*\n");
+    line = g_string_new("* \n");
     mp->out_cb(line, mp->out_data);
     g_string_free(line, TRUE);
   }
@@ -39,7 +39,7 @@ static gboolean mp_write(Process *p, const gchar *d, gssize len) {
       GString *line = g_string_new("NIL\n");
       mp->out_cb(line, mp->out_data);
       g_string_free(line, TRUE);
-      line = g_string_new("*\n");
+      line = g_string_new("* \n");
       mp->out_cb(line, mp->out_data);
       g_string_free(line, TRUE);
     } else if (strstr(d, "(glide:start-server)")) {

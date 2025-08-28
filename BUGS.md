@@ -105,3 +105,11 @@ session, so the interaction row missed the real result. `RealGlideProcess`
 now waits for SBCL's initial prompt, ignores the `NIL` and second prompt from
 `(require :glide)`, and only then starts the server, so sessions receive the
 actual evaluation results.
+
+## Session failed to start with trailing prompt space
+
+SBCL prints its prompt as `* ` with a trailing space. `RealGlideProcess` looked
+for a line containing only `*`, so the startup handshake never progressed and
+the server was not started. `RealGlideProcess` now trims whitespace from
+startup lines and logs each step of the handshake, ensuring sessions start
+reliably and the progress is visible in debug logs.

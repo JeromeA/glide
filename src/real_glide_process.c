@@ -37,15 +37,20 @@ static void on_proc_out(GString *data, gpointer user_data) {
     GString *line = g_string_new_len(self->buffer->str, len);
     g_string_erase(self->buffer, 0, len + 1);
     if (self->start_state != START_STATE_DONE) {
-      if (self->start_state == START_STATE_WAIT_PROMPT && strcmp(line->str, "*") == 0) {
+      gchar *trimmed = g_strstrip(g_strdup(line->str));
+      if (self->start_state == START_STATE_WAIT_PROMPT && strcmp(trimmed, "*") == 0) {
+        g_debug("RealGlideProcess.on_proc_out got prompt");
         self->start_state = START_STATE_WAIT_NIL;
         g_cond_broadcast(&self->cond);
-      } else if (self->start_state == START_STATE_WAIT_NIL && strcmp(line->str, "NIL") == 0) {
+      } else if (self->start_state == START_STATE_WAIT_NIL && strcmp(trimmed, "NIL") == 0) {
+        g_debug("RealGlideProcess.on_proc_out got NIL");
         self->start_state = START_STATE_WAIT_PROMPT2;
-      } else if (self->start_state == START_STATE_WAIT_PROMPT2 && strcmp(line->str, "*") == 0) {
+      } else if (self->start_state == START_STATE_WAIT_PROMPT2 && strcmp(trimmed, "*") == 0) {
+        g_debug("RealGlideProcess.on_proc_out got prompt");
         self->start_state = START_STATE_DONE;
         g_cond_broadcast(&self->cond);
       }
+      g_free(trimmed);
       g_string_free(line, TRUE);
       continue;
     }
@@ -72,18 +77,22 @@ static void gp_start(GlideProcess *base) {
   g_mutex_lock(&self->mutex);
   self->start_state = START_STATE_WAIT_PROMPT;
   g_mutex_unlock(&self->mutex);
+  g_debug("RealGlideProcess.start waiting for prompt");
   process_start(self->proc);
   g_mutex_lock(&self->mutex);
   while (self->start_state == START_STATE_WAIT_PROMPT)
     g_cond_wait(&self->cond, &self->mutex);
   g_mutex_unlock(&self->mutex);
   const char *req = "(require :glide)\n";
+  g_debug("RealGlideProcess.start sending require");
   process_write(self->proc, req, -1);
+  g_debug("RealGlideProcess.start waiting for second prompt");
   g_mutex_lock(&self->mutex);
   while (self->start_state != START_STATE_DONE)
     g_cond_wait(&self->cond, &self->mutex);
   g_mutex_unlock(&self->mutex);
   const char *start = "(glide:start-server)\n";
+  g_debug("RealGlideProcess.start sending start-server");
   process_write(self->proc, start, -1);
   g_mutex_lock(&self->mutex);
   self->started = TRUE;
