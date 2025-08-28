@@ -130,3 +130,10 @@ size interpreted the value as the client area, so the extra decoration height
 was added on each run. The size allocation handler now records the interior
 window size via `gtk_window_get_size`, so the saved height matches the restored
 height.
+
+## Interaction view could not scroll
+
+Long evaluation sessions pushed earlier interactions off screen because
+`InteractionsView` was a plain `GtkBox` without scrollbars. The widget now
+embeds its rows in a `GtkScrolledWindow`, so previous interactions remain
+accessible.

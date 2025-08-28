@@ -16,12 +16,13 @@ typedef struct {
 } InteractionRow;
 
 struct _InteractionsView {
-  GtkBox parent_instance;
+  GtkScrolledWindow parent_instance;
   GlideSession *session;
   GHashTable *rows;
+  GtkWidget *box;
 };
 
-G_DEFINE_TYPE(InteractionsView, interactions_view, GTK_TYPE_BOX)
+G_DEFINE_TYPE(InteractionsView, interactions_view, GTK_TYPE_SCROLLED_WINDOW)
 
 typedef struct {
   InteractionsView *self;
@@ -104,7 +105,7 @@ interaction_row_ensure(InteractionsView *self, Interaction *interaction)
     row->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 2);
     gtk_container_add(GTK_CONTAINER(row->frame), row->box);
     g_hash_table_insert(self->rows, interaction, row);
-    gtk_box_pack_start(GTK_BOX(self), row->frame, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(self->box), row->frame, FALSE, FALSE, 0);
   }
   return row;
 }
@@ -172,7 +173,11 @@ static void
 interactions_view_init(InteractionsView *self)
 {
   g_debug("InteractionsView.init");
-  gtk_orientable_set_orientation(GTK_ORIENTABLE(self), GTK_ORIENTATION_VERTICAL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self),
+      GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  self->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_widget_set_hexpand(self->box, TRUE);
+  gtk_container_add(GTK_CONTAINER(self), self->box);
 
   // Load CSS
   GtkCssProvider *provider = gtk_css_provider_new();
