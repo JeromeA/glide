@@ -1,7 +1,8 @@
 ifeq ($(origin .RECIPEPREFIX), undefined)
-$(error This Make does not support .RECIPEPREFIX (need GNU Make >= 4.0))
+$(error This Makefile does not support .RECIPEPREFIX (need GNU Make >= 4.0))
 endif
 .RECIPEPREFIX := :
+
 VPATH = ../src
 INCLUDES = -I$(VPATH) -I..
 CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0`
