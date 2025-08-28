@@ -3,6 +3,18 @@
 
 #include <string.h>
 
+struct _GlideProcess {
+  int refcnt;
+  Process *proc;
+  GString *buffer;
+  GMutex mutex;
+  GCond cond;
+  GlideProcessMessageCallback msg_cb;
+  gpointer msg_cb_data;
+  gboolean started;
+  int start_state;
+};
+
 enum {
   START_STATE_IDLE = 0,
   START_STATE_WAIT_PROMPT,
