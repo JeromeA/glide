@@ -10,6 +10,8 @@ static void test_eval(void) {
     "sbcl", "--noinform",
     "--eval", "(require :asdf)",
     "--eval", "(pushnew (truename \"../src/\") asdf:*central-registry*)",
+    "--eval", "(require :glide)",
+    "--eval", "(glide:start-server)",
     NULL
   };
   Process *proc = process_new_from_argv(argv);
