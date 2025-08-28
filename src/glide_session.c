@@ -70,6 +70,7 @@ static gpointer glide_session_thread(gpointer data) {
     if (item == GINT_TO_POINTER(1))
       break;
     Interaction *interaction = item;
+    g_debug("GlideSession.thread eval %s", interaction->expression);
     g_mutex_lock(&self->lock);
     if (!self->started) {
       guint status_id = status_service_publish(self->status_service, "SBCL is starting...");
@@ -89,6 +90,7 @@ static gpointer glide_session_thread(gpointer data) {
     GString *payload = g_string_new(cmd);
     g_free(escaped);
     g_free(cmd);
+    g_debug("GlideSession.thread send %s", payload->str);
     glide_process_send(self->proc, payload);
     g_string_free(payload, TRUE);
     g_mutex_lock(&self->lock);
@@ -101,8 +103,10 @@ static gpointer glide_session_thread(gpointer data) {
 
 void glide_session_eval(GlideSession *self, Interaction *interaction) {
   g_return_if_fail(self);
-  if (self->queue)
+  if (self->queue) {
+    g_debug("GlideSession.eval queue %s", interaction->expression);
     g_async_queue_push(self->queue, interaction);
+  }
 }
 
 void glide_session_set_interaction_added_cb(GlideSession *self, GlideSessionCallback cb, gpointer user_data) {
@@ -120,6 +124,7 @@ void glide_session_set_interaction_updated_cb(GlideSession *self, GlideSessionCa
 void glide_session_on_message(GString *msg, gpointer user_data) {
   GlideSession *self = user_data ? (GlideSession*)user_data : NULL;
   const char *str = msg->str;
+  g_debug("GlideSession.on_message %s", str);
   g_mutex_lock(&self->lock);
   Interaction *interaction = self->current;
   if (!interaction) {
@@ -131,6 +136,7 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strstr(start, "\")");
     if (end) {
       gchar *text = g_strndup(start, end - start);
+      g_debug("GlideSession.on_message stdout: %s", text);
       gchar *old = interaction->output;
       interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
       g_free(old);
@@ -141,6 +147,7 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strstr(start, "\")");
     if (end) {
       gchar *text = g_strndup(start, end - start);
+      g_debug("GlideSession.on_message stderr: %s", text);
       gchar *old = interaction->output;
       interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
       g_free(old);
@@ -151,6 +158,7 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strrchr(start, ')');
     if (end) {
       gchar *res = g_strndup(start, end - start);
+      g_debug("GlideSession.on_message result: %s", res);
       interaction->result = g_strdup(res);
       interaction->status = INTERACTION_OK;
       GlideSessionCallback updated_cb = self->updated_cb;
@@ -171,6 +179,7 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strrchr(start, '"');
     if (end) {
       gchar *err = g_strndup(start, end - start);
+      g_debug("GlideSession.on_message error: %s", err);
       interaction->error = g_strdup(err);
       interaction->status = INTERACTION_ERROR;
       GlideSessionCallback updated_cb = self->updated_cb;

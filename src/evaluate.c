@@ -53,6 +53,8 @@ on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
     return;
   }
 
+  g_debug("Evaluate.on_evaluate_toplevel expr: %s", expr);
+
   GlideSession *glide = app_get_glide(self);
   if (glide) {
     Interaction *interaction = g_new0(Interaction, 1);
@@ -89,6 +91,8 @@ on_evaluate_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
     g_free(expr);
     return;
   }
+
+  g_debug("Evaluate.on_evaluate_selection expr: %s", expr);
 
   GlideSession *glide = app_get_glide(self);
   if (glide) {
