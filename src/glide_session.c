@@ -86,7 +86,7 @@ static gpointer glide_session_thread(gpointer data) {
     if (added_cb)
       added_cb(self, interaction, added_cb_data);
     gchar *escaped = escape_string(interaction->expression);
-    gchar *cmd = g_strdup_printf("(glide:glide-eval \"%s\\n\")\n", escaped);
+    gchar *cmd = g_strdup_printf("(glide:glide-eval \"%s\")\n", escaped);
     GString *payload = g_string_new(cmd);
     g_free(escaped);
     g_free(cmd);
