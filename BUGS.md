@@ -137,3 +137,9 @@ Long evaluation sessions pushed earlier interactions off screen because
 `InteractionsView` was a plain `GtkBox` without scrollbars. The widget now
 embeds its rows in a `GtkScrolledWindow`, so previous interactions remain
 accessible.
+
+## Debugger hook disabled debugging
+
+Evaluations wrapped with `(let ((*debugger-hook* nil)) ...)` prevented the
+debugger from handling errors. Removing the binding restores normal debugger
+behavior during evaluations.
