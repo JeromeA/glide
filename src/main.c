@@ -62,11 +62,17 @@ main (int argc, char *argv[])
 
   Preferences *prefs = preferences_new (g_get_user_config_dir ());
 
-  const gchar *sdk_path = preferences_get_sdk (prefs);
-  Process *proc = process_new (sdk_path);
-  ReplProcess *repl_proc = repl_process_new (proc);
+  const gchar *sdk_path = preferences_get_sdk(prefs);
+  const gchar *proc_argv[] = {
+    sdk_path, "--noinform",
+    "--eval", "(require :glide)",
+    "--eval", "(glide:start-server)",
+    NULL
+  };
+  Process *proc = process_new_from_argv(proc_argv);
+  ReplProcess *repl_proc = repl_process_new(proc);
   StatusService *status_service = status_service_new();
-  ReplSession *repl = repl_session_new (repl_proc, status_service);
+  ReplSession *repl = repl_session_new(repl_proc, status_service);
   Project *project = project_new();
   App *app     = app_new (prefs, repl, project, status_service);
 
