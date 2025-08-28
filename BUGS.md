@@ -121,3 +121,12 @@ checked complete lines during startup. The state machine therefore stalled on
 "* " waiting for a newline that never arrived, leaving the server unstarted.
 Startup handling now inspects the partial buffer for prompts and clears it once
 consumed, so Glide no longer requires newline‑terminated prompts.
+
+## Window height increased on each launch
+
+The application grew taller by around 100 pixels every time it started. The
+saved window size included the window manager decorations, but the restored
+size interpreted the value as the client area, so the extra decoration height
+was added on each run. The size allocation handler now records the interior
+window size via `gtk_window_get_size`, so the saved height matches the restored
+height.

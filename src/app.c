@@ -16,7 +16,7 @@ STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, g
 STATIC void     app_update_recent_menu(App *self);
 STATIC void     on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data);
 STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data);
-STATIC void     on_window_size_allocate(GtkWidget * /*widget*/, GtkAllocation *allocation, gpointer data);
+STATIC void     on_window_size_allocate(GtkWidget *widget, GtkAllocation * /*allocation*/, gpointer data);
 
 /* === Instance structure ================================================= */
 struct _App
@@ -37,11 +37,14 @@ struct _App
 };
 
 STATIC void
-on_window_size_allocate(GtkWidget * /*widget*/, GtkAllocation *allocation, gpointer data)
+on_window_size_allocate(GtkWidget *widget, GtkAllocation * /*allocation*/, gpointer data)
 {
   App *self = (App *) data;
-  preferences_set_window_width(self->preferences, allocation->width);
-  preferences_set_window_height(self->preferences, allocation->height);
+  gint width;
+  gint height;
+  gtk_window_get_size(GTK_WINDOW(widget), &width, &height);
+  preferences_set_window_width(self->preferences, width);
+  preferences_set_window_height(self->preferences, height);
 }
 
 
