@@ -7,7 +7,7 @@ VPATH = ../src
 INCLUDES = -I$(VPATH) -I..
 CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0`
 LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0`
-TESTS = preferences_test process_test glide_session_test lisp_parser_test project_test asdf_test analyser_test package_test package_common_lisp_test status_service_test
+TESTS = preferences_test process_test repl_session_test lisp_parser_test project_test asdf_test analyser_test package_test package_common_lisp_test status_service_test
 CLEANABLES = $(TESTS)
 
 all: $(TESTS)
@@ -18,7 +18,7 @@ preferences_test: preferences_test.c preferences.c
 process_test: process_test.c process.c
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-glide_session_test: glide_session_test.c glide_session.c glide_process.c process.c status_service.c lisp_lexer.c lisp_parser.c node.c package.c string_text_provider.c text_provider.c
+repl_session_test: repl_session_test.c repl_session.c repl_process.c process.c status_service.c lisp_lexer.c lisp_parser.c node.c package.c string_text_provider.c text_provider.c
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 lisp_parser_test: lisp_parser_test.c lisp_lexer.c lisp_parser.c node.c package.c string_text_provider.c text_provider.c
@@ -45,7 +45,7 @@ status_service_test: status_service_test.c status_service.c
 run: all
 :./preferences_test
 :./process_test
-:./glide_session_test
+:./repl_session_test
 :./lisp_parser_test
 :./project_test
 :./asdf_test

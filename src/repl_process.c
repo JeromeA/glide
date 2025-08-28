@@ -1,15 +1,15 @@
-#include "glide_process.h"
+#include "repl_process.h"
 #include "util.h"
 
 #include <string.h>
 
-struct _GlideProcess {
+struct _ReplProcess {
   int refcnt;
   Process *proc;
   GString *buffer;
   GMutex mutex;
   GCond cond;
-  GlideProcessMessageCallback msg_cb;
+  ReplProcessMessageCallback msg_cb;
   gpointer msg_cb_data;
   gboolean started;
   int start_state;
@@ -23,7 +23,7 @@ enum {
   START_STATE_DONE,
 };
 
-static gboolean consume_startup_line(GlideProcess *self, const gchar *line) {
+static gboolean consume_startup_line(ReplProcess *self, const gchar *line) {
   gchar *trimmed = g_strstrip(g_strdup(line));
   gboolean consumed = FALSE;
   if (self->start_state == START_STATE_WAIT_PROMPT && strcmp(trimmed, "*") == 0) {
@@ -43,7 +43,7 @@ static gboolean consume_startup_line(GlideProcess *self, const gchar *line) {
 }
 
 static void on_proc_out(GString *data, gpointer user_data) {
-  GlideProcess *self = user_data;
+  ReplProcess *self = user_data;
   g_mutex_lock(&self->mutex);
   g_string_append_len(self->buffer, data->str, data->len);
   while (TRUE) {
@@ -58,7 +58,7 @@ static void on_proc_out(GString *data, gpointer user_data) {
       g_string_free(line, TRUE);
       continue;
     }
-    GlideProcessMessageCallback cb = self->msg_cb;
+    ReplProcessMessageCallback cb = self->msg_cb;
     gpointer cb_data = self->msg_cb_data;
     g_mutex_unlock(&self->mutex);
     if (cb)
@@ -77,13 +77,13 @@ static void on_proc_err(GString *data, gpointer user_data) {
   on_proc_out(data, user_data);
 }
 
-GlideProcess *glide_process_ref(GlideProcess *self) {
+ReplProcess *repl_process_ref(ReplProcess *self) {
   g_return_val_if_fail(self, NULL);
   self->refcnt++;
   return self;
 }
 
-static void glide_process_destroy(GlideProcess *self) {
+static void repl_process_destroy(ReplProcess *self) {
   if (self->proc)
     process_unref(self->proc);
   g_string_free(self->buffer, TRUE);
@@ -92,15 +92,15 @@ static void glide_process_destroy(GlideProcess *self) {
   g_free(self);
 }
 
-void glide_process_unref(GlideProcess *self) {
+void repl_process_unref(ReplProcess *self) {
   if (!self)
     return;
   if (--self->refcnt == 0)
-    glide_process_destroy(self);
+    repl_process_destroy(self);
 }
 
-GlideProcess *glide_process_new(Process *proc) {
-  GlideProcess *self = g_new0(GlideProcess, 1);
+ReplProcess *repl_process_new(Process *proc) {
+  ReplProcess *self = g_new0(ReplProcess, 1);
   self->refcnt = 1;
   self->proc = proc ? process_ref(proc) : NULL;
   self->buffer = g_string_new(NULL);
@@ -117,7 +117,7 @@ GlideProcess *glide_process_new(Process *proc) {
   return self;
 }
 
-void glide_process_start(GlideProcess *self) {
+void repl_process_start(ReplProcess *self) {
   g_return_if_fail(self);
   if (self->started || !self->proc)
     return;
@@ -140,12 +140,12 @@ void glide_process_start(GlideProcess *self) {
   g_mutex_unlock(&self->mutex);
 }
 
-void glide_process_send(GlideProcess *self, const GString *payload) {
+void repl_process_send(ReplProcess *self, const GString *payload) {
   g_return_if_fail(self);
   process_write(self->proc, payload->str, payload->len);
 }
 
-void glide_process_set_message_cb(GlideProcess *self, GlideProcessMessageCallback cb,
+void repl_process_set_message_cb(ReplProcess *self, ReplProcessMessageCallback cb,
                                   gpointer user_data) {
   g_return_if_fail(self);
   self->msg_cb = cb;

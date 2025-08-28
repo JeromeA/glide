@@ -27,7 +27,7 @@ struct _App
   GtkWidget      *window;
   LispSourceNotebook *notebook;
   Preferences    *preferences;
-  GlideSession   *glide;
+  ReplSession   *glide;
   Project        *project;
   StatusBar      *statusbar;
   StatusService  *status_service;
@@ -163,7 +163,7 @@ app_dispose (GObject *object)
     preferences_unref(self->preferences);
     self->preferences = NULL;
   }
-  g_clear_pointer(&self->glide, glide_session_unref);
+  g_clear_pointer(&self->glide, repl_session_unref);
   G_OBJECT_CLASS (app_parent_class)->dispose (object);
 }
 
@@ -196,7 +196,7 @@ app_init (App *self)
 }
 
 STATIC App *
-app_new (Preferences *prefs, GlideSession *glide, Project *project, StatusService *status_service)
+app_new (Preferences *prefs, ReplSession *glide, Project *project, StatusService *status_service)
 {
   g_debug("App.new");
   g_return_val_if_fail (glide, NULL);
@@ -208,7 +208,7 @@ app_new (Preferences *prefs, GlideSession *glide, Project *project, StatusServic
       NULL);
 
   self->preferences    = preferences_ref(prefs);
-  self->glide          = glide_session_ref(glide);
+  self->glide          = repl_session_ref(glide);
   self->project        = project_ref(project);
   self->status_service = status_service;
   return self;
@@ -376,7 +376,7 @@ app_get_preferences (App *self)
   return self->preferences;
 }
 
-STATIC GlideSession *
+STATIC ReplSession *
 app_get_glide (App *self)
 {
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);

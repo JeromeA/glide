@@ -16,8 +16,8 @@ SOURCES += \
   preferences.c \
   preferences_dialog.c \
   process.c \
-  glide_process.c \
-  glide_session.c \
+  repl_process.c \
+  repl_session.c \
   evaluate.c \
   interactions_view.c \
   actions.c \

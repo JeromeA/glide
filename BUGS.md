@@ -94,29 +94,29 @@ Evaluations occasionally displayed only the entered expression with no result.
 `InteractionsView` created rows only when the "added" signal arrived, but the
 backend could return a result before the row was created. The "updated"
 handler now ensures the row exists and updates it, so results are always shown.
-Debug logging was added to `RealGlideSession` to help trace message handling.
+Debug logging was added to `RealReplSession` to help trace message handling.
 
 ## Evaluation result hidden by startup prompt
 
 Selecting an expression sometimes displayed only the form with no result.
 SBCL prints a `*` prompt and its `NIL` result while loading Glide. Those
 startup lines arrived just before the first evaluation and confused the
-session, so the interaction row missed the real result. `RealGlideProcess`
+session, so the interaction row missed the real result. `RealReplProcess`
 now waits for SBCL's initial prompt, ignores the `NIL` and second prompt from
 `(require :glide)`, and only then starts the server, so sessions receive the
 actual evaluation results.
 
 ## Session failed to start with trailing prompt space
 
-SBCL prints its prompt as `* ` with a trailing space. `RealGlideProcess` looked
+SBCL prints its prompt as `* ` with a trailing space. `RealReplProcess` looked
 for a line containing only `*`, so the startup handshake never progressed and
-the server was not started. `RealGlideProcess` now trims whitespace from
+the server was not started. `RealReplProcess` now trims whitespace from
 startup lines and logs each step of the handshake, ensuring sessions start
 reliably and the progress is visible in debug logs.
 
 ## Session waited for newline after prompt
 
-SBCL's prompt is not terminated by a newline, but `RealGlideProcess` only
+SBCL's prompt is not terminated by a newline, but `RealReplProcess` only
 checked complete lines during startup. The state machine therefore stalled on
 "* " waiting for a newline that never arrived, leaving the server unstarted.
 Startup handling now inspects the partial buffer for prompts and clears it once
