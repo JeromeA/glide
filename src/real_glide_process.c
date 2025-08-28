@@ -28,16 +28,25 @@ static void on_proc_out(GString *data, gpointer user_data) {
   g_debug("RealGlideProcess.on_proc_out %s", data->str);
   RealGlideProcess *self = user_data;
   g_mutex_lock(&self->mutex);
+  g_debug("RealGlideProcess.on_proc_out start_state %d buffer before '%s'",
+          self->start_state, self->buffer->str);
   g_string_append_len(self->buffer, data->str, data->len);
+  g_debug("RealGlideProcess.on_proc_out buffer after append '%s'",
+          self->buffer->str);
   while (TRUE) {
     char *newline = memchr(self->buffer->str, '\n', self->buffer->len);
-    if (!newline)
+    if (!newline) {
+      g_debug("RealGlideProcess.on_proc_out no newline yet");
       break;
+    }
     gsize len = newline - self->buffer->str;
     GString *line = g_string_new_len(self->buffer->str, len);
+    g_debug("RealGlideProcess.on_proc_out line '%s'", line->str);
     g_string_erase(self->buffer, 0, len + 1);
     if (self->start_state != START_STATE_DONE) {
       gchar *trimmed = g_strstrip(g_strdup(line->str));
+      g_debug("RealGlideProcess.on_proc_out state %d trimmed '%s'",
+              self->start_state, trimmed);
       if (self->start_state == START_STATE_WAIT_PROMPT && strcmp(trimmed, "*") == 0) {
         g_debug("RealGlideProcess.on_proc_out got prompt");
         self->start_state = START_STATE_WAIT_NIL;
@@ -62,6 +71,8 @@ static void on_proc_out(GString *data, gpointer user_data) {
     g_string_free(line, TRUE);
     g_mutex_lock(&self->mutex);
   }
+  g_debug("RealGlideProcess.on_proc_out exiting start_state %d buffer '%s'",
+          self->start_state, self->buffer->str);
   g_mutex_unlock(&self->mutex);
 }
 
