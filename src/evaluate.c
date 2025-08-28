@@ -7,7 +7,7 @@
 #include <gtk/gtk.h>
 #include <gtksourceview/gtksource.h>
 
-#include "glide_session.h"
+#include "repl_session.h"
 #include "interaction.h"
 #include "evaluate.h"
 #include "editor.h"
@@ -55,11 +55,11 @@ on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
 
   g_debug("Evaluate.on_evaluate_toplevel expr: %s", expr);
 
-  GlideSession *glide = app_get_glide(self);
+  ReplSession *glide = app_get_glide(self);
   if (glide) {
     Interaction *interaction = g_new0(Interaction, 1);
     interaction_init(interaction, expr);
-    glide_session_eval(glide, interaction);
+    repl_session_eval(glide, interaction);
   }
 
   g_free(expr);
@@ -94,11 +94,11 @@ on_evaluate_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
 
   g_debug("Evaluate.on_evaluate_selection expr: %s", expr);
 
-  GlideSession *glide = app_get_glide(self);
+  ReplSession *glide = app_get_glide(self);
   if (glide) {
     Interaction *interaction = g_new0(Interaction, 1);
     interaction_init(interaction, expr);
-    glide_session_eval(glide, interaction);
+    repl_session_eval(glide, interaction);
   }
 
   g_free(expr);

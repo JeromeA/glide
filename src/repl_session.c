@@ -1,11 +1,11 @@
-#include "glide_session.h"
+#include "repl_session.h"
 #include "util.h"
 
 #include <string.h>
 
-struct _GlideSession {
+struct _ReplSession {
   int refcnt;
-  GlideProcess *proc;
+  ReplProcess *proc;
   StatusService *status_service;
   gboolean started;
   GAsyncQueue *queue;
@@ -13,13 +13,13 @@ struct _GlideSession {
   GMutex lock;
   GCond cond;
   Interaction *current;
-  GlideSessionCallback added_cb;
+  ReplSessionCallback added_cb;
   gpointer added_cb_data;
-  GlideSessionCallback updated_cb;
+  ReplSessionCallback updated_cb;
   gpointer updated_cb_data;
 };
 
-static gpointer glide_session_thread(gpointer data);
+static gpointer repl_session_thread(gpointer data);
 static gchar *escape_string(const char *str) {
   GString *out = g_string_new(NULL);
   for (const char *p = str; *p; p++) {
@@ -32,19 +32,19 @@ static gchar *escape_string(const char *str) {
   return g_string_free(out, FALSE);
 }
 
-GlideSession *glide_session_ref(GlideSession *self) {
+ReplSession *repl_session_ref(ReplSession *self) {
   g_return_val_if_fail(self, NULL);
   self->refcnt++;
   return self;
 }
 
-static void glide_session_destroy(GlideSession *self) {
+static void repl_session_destroy(ReplSession *self) {
   if (self->queue)
     g_async_queue_push(self->queue, GINT_TO_POINTER(1));
   if (self->thread)
     g_thread_join(self->thread);
   if (self->proc)
-    glide_process_unref(self->proc);
+    repl_process_unref(self->proc);
   if (self->queue)
     g_async_queue_unref(self->queue);
   g_mutex_clear(&self->lock);
@@ -52,21 +52,21 @@ static void glide_session_destroy(GlideSession *self) {
   g_free(self);
 }
 
-void glide_session_unref(GlideSession *self) {
+void repl_session_unref(ReplSession *self) {
   if (!self)
     return;
   if (--self->refcnt == 0)
-    glide_session_destroy(self);
+    repl_session_destroy(self);
 }
 
-GlideSession *glide_session_new(GlideProcess *proc, StatusService *status_service) {
-  GlideSession *self = g_new0(GlideSession, 1);
+ReplSession *repl_session_new(ReplProcess *proc, StatusService *status_service) {
+  ReplSession *self = g_new0(ReplSession, 1);
   self->refcnt = 1;
-  self->proc = proc ? glide_process_ref(proc) : NULL;
+  self->proc = proc ? repl_process_ref(proc) : NULL;
   self->status_service = status_service;
   self->started = FALSE;
   self->queue = g_async_queue_new();
-  self->thread = g_thread_new("glide-session", glide_session_thread, self);
+  self->thread = g_thread_new("repl-session", repl_session_thread, self);
   g_mutex_init(&self->lock);
   g_cond_init(&self->cond);
   self->current = NULL;
@@ -75,28 +75,28 @@ GlideSession *glide_session_new(GlideProcess *proc, StatusService *status_servic
   self->updated_cb = NULL;
   self->updated_cb_data = NULL;
   if (self->proc)
-    glide_process_set_message_cb(self->proc, glide_session_on_message, self);
+    repl_process_set_message_cb(self->proc, repl_session_on_message, self);
   return self;
 }
 
-static gpointer glide_session_thread(gpointer data) {
-  GlideSession *self = data;
+static gpointer repl_session_thread(gpointer data) {
+  ReplSession *self = data;
   for (;;) {
     gpointer item = g_async_queue_pop(self->queue);
     if (item == GINT_TO_POINTER(1))
       break;
     Interaction *interaction = item;
-    g_debug("GlideSession.thread eval %s", interaction->expression);
+    g_debug("ReplSession.thread eval %s", interaction->expression);
     g_mutex_lock(&self->lock);
     if (!self->started) {
       guint status_id = status_service_publish(self->status_service, "SBCL is starting...");
-      glide_process_start(self->proc);
+      repl_process_start(self->proc);
       status_service_unpublish(self->status_service, status_id);
       self->started = TRUE;
     }
     interaction->status = INTERACTION_RUNNING;
     self->current = interaction;
-    GlideSessionCallback added_cb = self->added_cb;
+    ReplSessionCallback added_cb = self->added_cb;
     gpointer added_cb_data = self->added_cb_data;
     g_mutex_unlock(&self->lock);
     if (added_cb)
@@ -106,8 +106,8 @@ static gpointer glide_session_thread(gpointer data) {
     GString *payload = g_string_new(cmd);
     g_free(escaped);
     g_free(cmd);
-    g_debug("GlideSession.thread send %s", payload->str);
-    glide_process_send(self->proc, payload);
+    g_debug("ReplSession.thread send %s", payload->str);
+    repl_process_send(self->proc, payload);
     g_string_free(payload, TRUE);
     g_mutex_lock(&self->lock);
     while (self->current)
@@ -117,30 +117,30 @@ static gpointer glide_session_thread(gpointer data) {
   return NULL;
 }
 
-void glide_session_eval(GlideSession *self, Interaction *interaction) {
+void repl_session_eval(ReplSession *self, Interaction *interaction) {
   g_return_if_fail(self);
   if (self->queue) {
-    g_debug("GlideSession.eval queue %s", interaction->expression);
+    g_debug("ReplSession.eval queue %s", interaction->expression);
     g_async_queue_push(self->queue, interaction);
   }
 }
 
-void glide_session_set_interaction_added_cb(GlideSession *self, GlideSessionCallback cb, gpointer user_data) {
+void repl_session_set_interaction_added_cb(ReplSession *self, ReplSessionCallback cb, gpointer user_data) {
   g_return_if_fail(self);
   self->added_cb = cb;
   self->added_cb_data = user_data;
 }
 
-void glide_session_set_interaction_updated_cb(GlideSession *self, GlideSessionCallback cb, gpointer user_data) {
+void repl_session_set_interaction_updated_cb(ReplSession *self, ReplSessionCallback cb, gpointer user_data) {
   g_return_if_fail(self);
   self->updated_cb = cb;
   self->updated_cb_data = user_data;
 }
 
-void glide_session_on_message(GString *msg, gpointer user_data) {
-  GlideSession *self = user_data ? (GlideSession*)user_data : NULL;
+void repl_session_on_message(GString *msg, gpointer user_data) {
+  ReplSession *self = user_data ? (ReplSession*)user_data : NULL;
   const char *str = msg->str;
-  g_debug("GlideSession.on_message %s", str);
+  g_debug("ReplSession.on_message %s", str);
   g_mutex_lock(&self->lock);
   Interaction *interaction = self->current;
   if (!interaction) {
@@ -152,7 +152,7 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strstr(start, "\")");
     if (end) {
       gchar *text = g_strndup(start, end - start);
-      g_debug("GlideSession.on_message stdout: %s", text);
+      g_debug("ReplSession.on_message stdout: %s", text);
       gchar *old = interaction->output;
       interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
       g_free(old);
@@ -163,7 +163,7 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strstr(start, "\")");
     if (end) {
       gchar *text = g_strndup(start, end - start);
-      g_debug("GlideSession.on_message stderr: %s", text);
+      g_debug("ReplSession.on_message stderr: %s", text);
       gchar *old = interaction->output;
       interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
       g_free(old);
@@ -174,10 +174,10 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strrchr(start, ')');
     if (end) {
       gchar *res = g_strndup(start, end - start);
-      g_debug("GlideSession.on_message result: %s", res);
+      g_debug("ReplSession.on_message result: %s", res);
       interaction->result = g_strdup(res);
       interaction->status = INTERACTION_OK;
-      GlideSessionCallback updated_cb = self->updated_cb;
+      ReplSessionCallback updated_cb = self->updated_cb;
       gpointer updated_cb_data = self->updated_cb_data;
       InteractionCallback done_cb = interaction->done_cb;
       gpointer done_cb_data = interaction->done_cb_data;
@@ -195,10 +195,10 @@ void glide_session_on_message(GString *msg, gpointer user_data) {
     const char *end = strrchr(start, '"');
     if (end) {
       gchar *err = g_strndup(start, end - start);
-      g_debug("GlideSession.on_message error: %s", err);
+      g_debug("ReplSession.on_message error: %s", err);
       interaction->error = g_strdup(err);
       interaction->status = INTERACTION_ERROR;
-      GlideSessionCallback updated_cb = self->updated_cb;
+      ReplSessionCallback updated_cb = self->updated_cb;
       gpointer updated_cb_data = self->updated_cb_data;
       InteractionCallback done_cb = interaction->done_cb;
       gpointer done_cb_data = interaction->done_cb_data;

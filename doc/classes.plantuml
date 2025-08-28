@@ -2,7 +2,7 @@
 
 GtkApplication <|-- App
 App *-- Project
-App *-- GlideSession
+App *-- ReplSession
 App *-- Window
 App *-- LispSourceNotebook
 App *-- Preferences
@@ -28,17 +28,17 @@ ProjectFile --> Project
 GtkBox <|-- InteractionsView
 GtkBox <|-- StatusBar
 InteractionsView "1" o-- "*" Interaction
-InteractionsView *-- GlideSession
+InteractionsView *-- ReplSession
 Interaction : expression
 Interaction : result
 Interaction : output
 Interaction : error
 Interaction : done_cb
-GlideSession : eval(Interaction)
-GlideSession : interactions
-GlideSession "1" --> "*" Interaction
-GlideSession *-- GlideProcess
-GlideProcess *-- Process
+ReplSession : eval(Interaction)
+ReplSession : interactions
+ReplSession "1" --> "*" Interaction
+ReplSession *-- ReplProcess
+ReplProcess *-- Process
 
 Process : pid
 Process : in_fd

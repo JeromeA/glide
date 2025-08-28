@@ -34,8 +34,8 @@
 #include "process.c"
 #include "project_file.c"
 #include "project.c"
-#include "glide_process.c"
-#include "glide_session.c"
+#include "repl_process.c"
+#include "repl_session.c"
 #include "reloc.c"
 #include "status_bar.c"
 #include "status_service.c"
@@ -49,8 +49,8 @@
 #include "includes.h"
 #include "preferences.h"
 #include "process.h"
-#include "glide_process.h"
-#include "glide_session.h"
+#include "repl_process.h"
+#include "repl_session.h"
 #include "project.h"
 #include "status_service.h"
 
@@ -64,16 +64,16 @@ main (int argc, char *argv[])
 
   const gchar *sdk_path = preferences_get_sdk (prefs);
   Process *proc = process_new (sdk_path);
-  GlideProcess *glide_proc = glide_process_new (proc);
+  ReplProcess *repl_proc = repl_process_new (proc);
   StatusService *status_service = status_service_new();
-  GlideSession *glide = glide_session_new (glide_proc, status_service);
+  ReplSession *repl = repl_session_new (repl_proc, status_service);
   Project *project = project_new();
-  App *app     = app_new (prefs, glide, project, status_service);
+  App *app     = app_new (prefs, repl, project, status_service);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref(app);
-  glide_session_unref(glide);
-  glide_process_unref(glide_proc);
+  repl_session_unref(repl);
+  repl_process_unref(repl_proc);
   process_unref(proc);
   project_unref(project);
   status_service_free(status_service);
