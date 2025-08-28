@@ -3,6 +3,22 @@
 
 #include <string.h>
 
+struct _GlideSession {
+  int refcnt;
+  GlideProcess *proc;
+  StatusService *status_service;
+  gboolean started;
+  GAsyncQueue *queue;
+  GThread *thread;
+  GMutex lock;
+  GCond cond;
+  Interaction *current;
+  GlideSessionCallback added_cb;
+  gpointer added_cb_data;
+  GlideSessionCallback updated_cb;
+  gpointer updated_cb_data;
+};
+
 static gpointer glide_session_thread(gpointer data);
 static gchar *escape_string(const char *str) {
   GString *out = g_string_new(NULL);
