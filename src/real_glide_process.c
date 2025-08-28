@@ -24,6 +24,30 @@ static const GlideProcessOps real_glide_process_ops = {
   .destroy = gp_destroy,
 };
 
+static gboolean consume_startup_line(RealGlideProcess *self, const gchar *line) {
+  gchar *trimmed = g_strstrip(g_strdup(line));
+  g_debug("RealGlideProcess.on_proc_out state %d trimmed '%s'",
+          self->start_state, trimmed);
+  gboolean consumed = FALSE;
+  if (self->start_state == START_STATE_WAIT_PROMPT && strcmp(trimmed, "*") == 0) {
+    g_debug("RealGlideProcess.on_proc_out got prompt");
+    self->start_state = START_STATE_WAIT_NIL;
+    g_cond_broadcast(&self->cond);
+    consumed = TRUE;
+  } else if (self->start_state == START_STATE_WAIT_NIL && strcmp(trimmed, "NIL") == 0) {
+    g_debug("RealGlideProcess.on_proc_out got NIL");
+    self->start_state = START_STATE_WAIT_PROMPT2;
+    consumed = TRUE;
+  } else if (self->start_state == START_STATE_WAIT_PROMPT2 && strcmp(trimmed, "*") == 0) {
+    g_debug("RealGlideProcess.on_proc_out got prompt");
+    self->start_state = START_STATE_DONE;
+    g_cond_broadcast(&self->cond);
+    consumed = TRUE;
+  }
+  g_free(trimmed);
+  return consumed;
+}
+
 static void on_proc_out(GString *data, gpointer user_data) {
   g_debug("RealGlideProcess.on_proc_out %s", data->str);
   RealGlideProcess *self = user_data;
@@ -44,22 +68,7 @@ static void on_proc_out(GString *data, gpointer user_data) {
     g_debug("RealGlideProcess.on_proc_out line '%s'", line->str);
     g_string_erase(self->buffer, 0, len + 1);
     if (self->start_state != START_STATE_DONE) {
-      gchar *trimmed = g_strstrip(g_strdup(line->str));
-      g_debug("RealGlideProcess.on_proc_out state %d trimmed '%s'",
-              self->start_state, trimmed);
-      if (self->start_state == START_STATE_WAIT_PROMPT && strcmp(trimmed, "*") == 0) {
-        g_debug("RealGlideProcess.on_proc_out got prompt");
-        self->start_state = START_STATE_WAIT_NIL;
-        g_cond_broadcast(&self->cond);
-      } else if (self->start_state == START_STATE_WAIT_NIL && strcmp(trimmed, "NIL") == 0) {
-        g_debug("RealGlideProcess.on_proc_out got NIL");
-        self->start_state = START_STATE_WAIT_PROMPT2;
-      } else if (self->start_state == START_STATE_WAIT_PROMPT2 && strcmp(trimmed, "*") == 0) {
-        g_debug("RealGlideProcess.on_proc_out got prompt");
-        self->start_state = START_STATE_DONE;
-        g_cond_broadcast(&self->cond);
-      }
-      g_free(trimmed);
+      consume_startup_line(self, line->str);
       g_string_free(line, TRUE);
       continue;
     }
@@ -70,6 +79,10 @@ static void on_proc_out(GString *data, gpointer user_data) {
       cb(line, cb_data);
     g_string_free(line, TRUE);
     g_mutex_lock(&self->mutex);
+  }
+  if (self->start_state != START_STATE_DONE && self->buffer->len > 0 &&
+      consume_startup_line(self, self->buffer->str)) {
+    g_string_truncate(self->buffer, 0);
   }
   g_debug("RealGlideProcess.on_proc_out exiting start_state %d buffer '%s'",
           self->start_state, self->buffer->str);

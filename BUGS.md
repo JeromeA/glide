@@ -113,3 +113,11 @@ for a line containing only `*`, so the startup handshake never progressed and
 the server was not started. `RealGlideProcess` now trims whitespace from
 startup lines and logs each step of the handshake, ensuring sessions start
 reliably and the progress is visible in debug logs.
+
+## Session waited for newline after prompt
+
+SBCL's prompt is not terminated by a newline, but `RealGlideProcess` only
+checked complete lines during startup. The state machine therefore stalled on
+"* " waiting for a newline that never arrived, leaving the server unstarted.
+Startup handling now inspects the partial buffer for prompts and clears it once
+consumed, so Glide no longer requires newline‑terminated prompts.
