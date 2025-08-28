@@ -11,10 +11,7 @@ SOURCES += \
   preferences.c \
   preferences_dialog.c \
   process.c \
-  real_process.c \
   glide_process.c \
-  real_glide_process.c \
-  real_glide_session.c \
   glide_session.c \
   evaluate.c \
   interactions_view.c \
@@ -45,4 +42,3 @@ SOURCES += \
   status_service.c
 
 include Makefile_common
-

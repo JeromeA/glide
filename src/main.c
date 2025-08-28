@@ -34,15 +34,12 @@
 #include "process.c"
 #include "project_file.c"
 #include "project.c"
-#include "real_process.c"
-#include "real_glide_process.c"
-#include "real_glide_session.c"
+#include "glide_process.c"
+#include "glide_session.c"
 #include "reloc.c"
 #include "status_bar.c"
 #include "status_service.c"
 #include "string_text_provider.c"
-#include "glide_process.c"
-#include "glide_session.c"
 #include "text_provider.c"
 #undef g_debug
 #define g_debug(...) do { } while (0)
@@ -52,9 +49,6 @@
 #include "includes.h"
 #include "preferences.h"
 #include "process.h"
-#include "real_process.h"
-#include "real_glide_process.h"
-#include "real_glide_session.h"
 #include "glide_process.h"
 #include "glide_session.h"
 #include "project.h"
@@ -69,10 +63,10 @@ main (int argc, char *argv[])
   Preferences *prefs = preferences_new (g_get_user_config_dir ());
 
   const gchar *sdk_path = preferences_get_sdk (prefs);
-  Process *proc = real_process_new (sdk_path);
-  GlideProcess *glide_proc = real_glide_process_new (proc);
+  Process *proc = process_new (sdk_path);
+  GlideProcess *glide_proc = glide_process_new (proc);
   StatusService *status_service = status_service_new();
-  GlideSession *glide = real_glide_session_new (glide_proc, status_service);
+  GlideSession *glide = glide_session_new (glide_proc, status_service);
   Project *project = project_new();
   App *app     = app_new (prefs, glide, project, status_service);
 

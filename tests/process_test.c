@@ -1,5 +1,4 @@
 #include "process.h"
-#include "real_process.h"
 #include <glib.h>
 #include <string.h>
 
@@ -10,7 +9,7 @@ static void on_out(GString *data, gpointer /*user*/) {
 }
 
 static void test_bc(void) {
-  Process *p = real_process_new("/usr/bin/bc");
+  Process *p = process_new("/usr/bin/bc");
   g_assert_nonnull(p);
   output = g_string_new(NULL);
   process_set_stdout_cb(p, on_out, NULL);
@@ -24,7 +23,7 @@ static void test_bc(void) {
 }
 
 static void test_no_callbacks(void) {
-  Process *p = real_process_new("/usr/bin/bc");
+  Process *p = process_new("/usr/bin/bc");
   g_assert_nonnull(p);
   process_start(p);
   process_write(p, "1+2\n", -1);
