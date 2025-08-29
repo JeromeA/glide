@@ -2,6 +2,11 @@
 #include "file_save.h"
 #include "file_open.h"
 #include "file_rename.h"
+#include "file_new.h"
+#include "file_add.h"
+#include "file_delete.h"
+#include "project_new_wizard.h"
+#include "preferences_dialog.h"
 #include "evaluate.h"
 #include "lisp_parser_view.h"
 #include "project_file.h"
@@ -9,9 +14,197 @@
 #include "editor.h"
 
 static gboolean app_maybe_save_all(App *self);
+static void show_parser(App *self);
+
+/* === Action callbacks ==================================================== */
+
+static void
+project_new_cb(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  project_new_wizard(NULL, data);
+}
+
+static void
+project_open_cb(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  file_open(NULL, data);
+}
+
+static void
+recent_project(GSimpleAction * /*action*/, GVariant *param, gpointer data)
+{
+  App *self = data;
+  const gchar *path = g_variant_get_string(param, NULL);
+  if (path)
+    file_open_path(self, path);
+}
+
+static void
+file_new_action(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  file_new(NULL, data);
+}
+
+static void
+file_add_action(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  file_add(NULL, data);
+}
+
+static void
+save_all(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  App *self = data;
+  file_save_all(app_get_project(self));
+}
+
+static void
+close_project(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  app_close_project(data, TRUE);
+}
+
+static void
+preferences(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  on_preferences(NULL, data);
+}
+
+static void
+quit(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  app_on_quit(data);
+}
+
+static void
+extend_selection(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  App *self = data;
+  LispSourceNotebook *notebook = app_get_notebook(self);
+  Editor *view = lisp_source_notebook_get_current_editor(notebook);
+  if (view)
+    editor_extend_selection(view);
+}
+
+static void
+shrink_selection(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  App *self = data;
+  LispSourceNotebook *notebook = app_get_notebook(self);
+  Editor *view = lisp_source_notebook_get_current_editor(notebook);
+  if (view)
+    editor_shrink_selection(view);
+}
+
+static void
+rename_file(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  file_rename(NULL, data);
+}
+
+static void
+delete_file(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  file_delete(NULL, data);
+}
+
+static void
+show_parser_action(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  show_parser(data);
+}
+
+static void
+eval_toplevel(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  on_evaluate_toplevel(NULL, data);
+}
+
+static void
+eval_selection(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  on_evaluate_selection(NULL, data);
+}
+
+static void
+eval_current(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  App *self = data;
+  LispSourceNotebook *notebook = app_get_notebook(self);
+  Editor *view = lisp_source_notebook_get_current_editor(notebook);
+  GtkTextBuffer *buffer = view ?
+      GTK_TEXT_BUFFER(editor_get_buffer(view)) : NULL;
+  GtkTextIter it_start;
+  GtkTextIter it_end;
+  if (buffer && gtk_text_buffer_get_selection_bounds(buffer,
+      &it_start, &it_end))
+    on_evaluate_selection(NULL, self);
+  else
+    on_evaluate_toplevel(NULL, self);
+}
+
+/* === Action table ======================================================== */
+
+static const GActionEntry app_entries[] = {
+  { .name = "project-new", .activate = project_new_cb },
+  { .name = "project-open", .activate = project_open_cb },
+  { .name = "recent-project", .activate = recent_project, .parameter_type = "s" },
+  { .name = "file-new", .activate = file_new_action },
+  { .name = "file-add", .activate = file_add_action },
+  { .name = "save-all", .activate = save_all },
+  { .name = "close-project", .activate = close_project },
+  { .name = "preferences", .activate = preferences },
+  { .name = "quit", .activate = quit },
+  { .name = "extend-selection", .activate = extend_selection },
+  { .name = "shrink-selection", .activate = shrink_selection },
+  { .name = "file-rename", .activate = rename_file },
+  { .name = "file-delete", .activate = delete_file },
+  { .name = "show-parser", .activate = show_parser_action },
+  { .name = "eval-toplevel", .activate = eval_toplevel },
+  { .name = "eval-selection", .activate = eval_selection },
+  { .name = "eval", .activate = eval_current },
+};
+
+/* === Public functions ==================================================== */
 
 void
-on_show_parser(App *self)
+actions_init(App *self)
+{
+  g_action_map_add_action_entries(G_ACTION_MAP(self), app_entries,
+      G_N_ELEMENTS(app_entries), self);
+
+  const gchar *eval_accels[] = {"<Alt>Return", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.eval", eval_accels);
+  const gchar *parser_accels[] = {"<Alt>p", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.show-parser", parser_accels);
+  const gchar *shrink_accels[] = {"<Primary><Shift>w", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.shrink-selection", shrink_accels);
+  const gchar *extend_accels[] = {"<Primary>w", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.extend-selection", extend_accels);
+  const gchar *rename_accels[] = {"<Shift>F6", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.file-rename", rename_accels);
+  const gchar *quit_accels[] = {"<Primary>q", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.quit", quit_accels);
+}
+
+gboolean
+on_quit_delete_event(GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data)
+{
+  g_debug("Actions.on_quit_delete_event");
+  app_on_quit(GLIDE_APP(data));
+  return TRUE;
+}
+
+/* === Helpers ============================================================== */
+
+static void
+show_parser(App *self)
 {
   GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(win), "Parser View");
@@ -25,120 +218,6 @@ on_show_parser(App *self)
   gtk_widget_show_all(win);
 }
 
-void
-on_extend_selection(GtkWidget * /*item*/, gpointer data)
-{
-  App *self = GLIDE_APP(data);
-  LispSourceNotebook *notebook = app_get_notebook(self);
-  Editor *view = lisp_source_notebook_get_current_editor(notebook);
-  if (view)
-    editor_extend_selection(view);
-}
-
-void
-on_shrink_selection(GtkWidget * /*item*/, gpointer data)
-{
-  App *self = GLIDE_APP(data);
-  LispSourceNotebook *notebook = app_get_notebook(self);
-  Editor *view = lisp_source_notebook_get_current_editor(notebook);
-  if (view)
-    editor_shrink_selection(view);
-}
-
-void
-on_save_all(GtkWidget * /*item*/, gpointer data)
-{
-  App *self = GLIDE_APP(data);
-  file_save_all(app_get_project(self));
-}
-
-void
-on_close_project(GtkWidget * /*item*/, gpointer data)
-{
-  g_debug("Actions.on_close_project");
-  app_close_project(GLIDE_APP(data), TRUE);
-}
-
-void
-on_quit_menu(GtkWidget * /*item*/, gpointer data)
-{
-  g_debug("Actions.on_quit_menu");
-  app_on_quit(GLIDE_APP(data));
-}
-
-gboolean
-on_quit_delete_event(GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data)
-{
-  g_debug("Actions.on_quit_delete_event");
-  app_on_quit(GLIDE_APP(data));
-  return TRUE;
-}
-
-void
-on_recent_project(GtkWidget *item, gpointer data)
-{
-  App *self = GLIDE_APP(data);
-  const gchar *path = g_object_get_data(G_OBJECT(item), "project-path");
-  if (path)
-    file_open_path(self, path);
-}
-
-gboolean
-on_key_press(GtkWidget * /*widget*/, GdkEventKey *event, gpointer user_data)
-{
-  App *self = (App *) user_data;
-
-  if ((event->keyval == GDK_KEY_Return) &&
-      (event->state & GDK_MOD1_MASK))
-  {
-    LispSourceNotebook *notebook = app_get_notebook(self);
-    Editor *view = lisp_source_notebook_get_current_editor(notebook);
-    GtkTextBuffer *buffer = view ?
-        GTK_TEXT_BUFFER(editor_get_buffer(view)) : NULL;
-    GtkTextIter it_start;
-    GtkTextIter it_end;
-    if (buffer && gtk_text_buffer_get_selection_bounds(buffer,
-        &it_start, &it_end))
-      on_evaluate_selection(NULL, self);
-    else
-      on_evaluate_toplevel(NULL, self);
-    return TRUE;
-  }
-  if ((event->keyval == GDK_KEY_p || event->keyval == GDK_KEY_P) &&
-      (event->state & GDK_MOD1_MASK))
-  {
-    on_show_parser(self);
-    return TRUE;
-  }
-  if ((event->keyval == GDK_KEY_w || event->keyval == GDK_KEY_W) &&
-      ((event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) ==
-       (GDK_CONTROL_MASK | GDK_SHIFT_MASK)))
-  {
-    LispSourceNotebook *notebook = app_get_notebook(self);
-    Editor *view = lisp_source_notebook_get_current_editor(notebook);
-    if (view)
-      editor_shrink_selection(view);
-    return TRUE;
-  }
-  if ((event->keyval == GDK_KEY_w || event->keyval == GDK_KEY_W) &&
-      ((event->state & (GDK_CONTROL_MASK | GDK_SHIFT_MASK)) ==
-       GDK_CONTROL_MASK))
-  {
-    LispSourceNotebook *notebook = app_get_notebook(self);
-    Editor *view = lisp_source_notebook_get_current_editor(notebook);
-    if (view)
-      editor_extend_selection(view);
-    return TRUE;
-  }
-  if ((event->keyval == GDK_KEY_F6) &&
-      (event->state & GDK_SHIFT_MASK))
-  {
-    file_rename(NULL, self);
-    return TRUE;
-  }
-  return FALSE;
-}
-
 static gboolean
 app_maybe_save_all(App *self)
 {
@@ -149,7 +228,8 @@ app_maybe_save_all(App *self)
   gboolean modified = FALSE;
   for (gint i = 0; i < pages; i++) {
     GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
-    GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(editor_get_buffer(GLIDE_EDITOR(view))) : NULL;
+    GtkTextBuffer *buffer = view ?
+        GTK_TEXT_BUFFER(editor_get_buffer(GLIDE_EDITOR(view))) : NULL;
     if (buffer && gtk_text_buffer_get_modified(buffer)) {
       modified = TRUE;
       break;
@@ -190,3 +270,4 @@ app_close_project(App *self, gboolean forget_project)
   app_update_asdf_view(self);
   return TRUE;
 }
+
