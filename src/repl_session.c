@@ -12,12 +12,14 @@ struct _ReplSession {
   GThread *thread;
   GMutex lock;
   GCond cond;
-  Interaction *current;
+  GHashTable *interactions;
   ReplSessionCallback added_cb;
   gpointer added_cb_data;
   ReplSessionCallback updated_cb;
   gpointer updated_cb_data;
 };
+
+static volatile gint next_tag = 1;
 
 static gpointer repl_session_thread(gpointer data);
 static gchar *escape_string(const char *str) {
@@ -47,6 +49,8 @@ static void repl_session_destroy(ReplSession *self) {
     repl_process_unref(self->proc);
   if (self->queue)
     g_async_queue_unref(self->queue);
+  if (self->interactions)
+    g_hash_table_destroy(self->interactions);
   g_mutex_clear(&self->lock);
   g_cond_clear(&self->cond);
   g_free(self);
@@ -69,7 +73,7 @@ ReplSession *repl_session_new(ReplProcess *proc, StatusService *status_service) 
   self->thread = g_thread_new("repl-session", repl_session_thread, self);
   g_mutex_init(&self->lock);
   g_cond_init(&self->cond);
-  self->current = NULL;
+  self->interactions = g_hash_table_new(g_direct_hash, g_direct_equal);
   self->added_cb = NULL;
   self->added_cb_data = NULL;
   self->updated_cb = NULL;
@@ -95,14 +99,15 @@ static gpointer repl_session_thread(gpointer data) {
       self->started = TRUE;
     }
     interaction->status = INTERACTION_RUNNING;
-    self->current = interaction;
+    g_hash_table_insert(self->interactions, GINT_TO_POINTER(interaction->tag), interaction);
     ReplSessionCallback added_cb = self->added_cb;
     gpointer added_cb_data = self->added_cb_data;
     g_mutex_unlock(&self->lock);
     if (added_cb)
       added_cb(self, interaction, added_cb_data);
     gchar *escaped = escape_string(interaction->expression);
-    gchar *cmd = g_strdup_printf("(glide:glide-eval \"%s\")\n", escaped);
+    gchar *cmd = g_strdup_printf("(glide:eval-and-capture %u \"%s\")\n",
+        interaction->tag, escaped);
     GString *payload = g_string_new(cmd);
     g_free(escaped);
     g_free(cmd);
@@ -110,8 +115,9 @@ static gpointer repl_session_thread(gpointer data) {
     repl_process_send(self->proc, payload);
     g_string_free(payload, TRUE);
     g_mutex_lock(&self->lock);
-    while (self->current)
+    while (interaction->status == INTERACTION_RUNNING)
       g_cond_wait(&self->cond, &self->lock);
+    g_hash_table_remove(self->interactions, GINT_TO_POINTER(interaction->tag));
     g_mutex_unlock(&self->lock);
   }
   return NULL;
@@ -120,6 +126,7 @@ static gpointer repl_session_thread(gpointer data) {
 void repl_session_eval(ReplSession *self, Interaction *interaction) {
   g_return_if_fail(self);
   if (self->queue) {
+    interaction->tag = g_atomic_int_add(&next_tag, 1);
     g_debug("ReplSession.eval queue %s", interaction->expression);
     g_async_queue_push(self->queue, interaction);
   }
@@ -141,76 +148,98 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
   ReplSession *self = user_data ? (ReplSession*)user_data : NULL;
   const char *str = msg->str;
   g_debug("ReplSession.on_message %s", str);
+  ReplSessionCallback updated_cb = NULL;
+  gpointer updated_cb_data = NULL;
+  InteractionCallback done_cb = NULL;
+  gpointer done_cb_data = NULL;
+  Interaction *interaction = NULL;
+  gboolean finished = FALSE;
   g_mutex_lock(&self->lock);
-  Interaction *interaction = self->current;
-  if (!interaction) {
-    g_mutex_unlock(&self->lock);
-    return;
-  }
-  if (g_str_has_prefix(str, "(stdout \"")) {
-    const char *start = str + strlen("(stdout \"");
-    const char *end = strstr(start, "\")");
-    if (end) {
-      gchar *text = g_strndup(start, end - start);
-      g_debug("ReplSession.on_message stdout: %s", text);
-      gchar *old = interaction->output;
-      interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
-      g_free(old);
-      g_free(text);
+  if (g_str_has_prefix(str, "(stdout ")) {
+    const char *p = str + strlen("(stdout ");
+    gchar *endptr = NULL;
+    guint32 id = g_ascii_strtoull(p, &endptr, 10);
+    interaction = g_hash_table_lookup(self->interactions, GINT_TO_POINTER(id));
+    if (interaction && endptr && *endptr == ' ' && *(endptr + 1) == '"') {
+      const char *start = endptr + 2;
+      const char *end = strstr(start, "\")");
+      if (end) {
+        gchar *text = g_strndup(start, end - start);
+        g_debug("ReplSession.on_message stdout: %s", text);
+        gchar *old = interaction->output;
+        interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
+        g_free(old);
+        g_free(text);
+      }
     }
-  } else if (g_str_has_prefix(str, "(stderr \"")) {
-    const char *start = str + strlen("(stderr \"");
-    const char *end = strstr(start, "\")");
-    if (end) {
-      gchar *text = g_strndup(start, end - start);
-      g_debug("ReplSession.on_message stderr: %s", text);
-      gchar *old = interaction->output;
-      interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
-      g_free(old);
-      g_free(text);
+  } else if (g_str_has_prefix(str, "(stderr ")) {
+    const char *p = str + strlen("(stderr ");
+    gchar *endptr = NULL;
+    guint32 id = g_ascii_strtoull(p, &endptr, 10);
+    interaction = g_hash_table_lookup(self->interactions, GINT_TO_POINTER(id));
+    if (interaction && endptr && *endptr == ' ' && *(endptr + 1) == '"') {
+      const char *start = endptr + 2;
+      const char *end = strstr(start, "\")");
+      if (end) {
+        gchar *text = g_strndup(start, end - start);
+        g_debug("ReplSession.on_message stderr: %s", text);
+        gchar *old = interaction->output;
+        interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
+        g_free(old);
+        g_free(text);
+      }
     }
   } else if (g_str_has_prefix(str, "(result ")) {
-    const char *start = str + strlen("(result ");
-    const char *end = strrchr(start, ')');
-    if (end) {
-      gchar *res = g_strndup(start, end - start);
-      g_debug("ReplSession.on_message result: %s", res);
-      interaction->result = g_strdup(res);
-      interaction->status = INTERACTION_OK;
-      ReplSessionCallback updated_cb = self->updated_cb;
-      gpointer updated_cb_data = self->updated_cb_data;
-      InteractionCallback done_cb = interaction->done_cb;
-      gpointer done_cb_data = interaction->done_cb_data;
-      self->current = NULL;
-      g_mutex_unlock(&self->lock);
-      if (updated_cb)
-        updated_cb(self, interaction, updated_cb_data);
-      if (done_cb)
-        done_cb(interaction, done_cb_data);
-      g_mutex_lock(&self->lock);
-      g_cond_broadcast(&self->cond);
+    const char *p = str + strlen("(result ");
+    gchar *endptr = NULL;
+    guint32 id = g_ascii_strtoull(p, &endptr, 10);
+    interaction = g_hash_table_lookup(self->interactions, GINT_TO_POINTER(id));
+    if (interaction && endptr && *endptr == ' ') {
+      const char *start = endptr + 1;
+      const char *end = strrchr(start, ')');
+      if (end) {
+        gchar *res = g_strndup(start, end - start);
+        g_debug("ReplSession.on_message result: %s", res);
+        interaction->result = g_strdup(res);
+        interaction->status = INTERACTION_OK;
+        g_free(res);
+        updated_cb = self->updated_cb;
+        updated_cb_data = self->updated_cb_data;
+        done_cb = interaction->done_cb;
+        done_cb_data = interaction->done_cb_data;
+        finished = TRUE;
+      }
     }
-  } else if (g_str_has_prefix(str, "(error \"")) {
-    const char *start = str + strlen("(error \"");
-    const char *end = strrchr(start, '"');
-    if (end) {
-      gchar *err = g_strndup(start, end - start);
-      g_debug("ReplSession.on_message error: %s", err);
-      interaction->error = g_strdup(err);
-      interaction->status = INTERACTION_ERROR;
-      ReplSessionCallback updated_cb = self->updated_cb;
-      gpointer updated_cb_data = self->updated_cb_data;
-      InteractionCallback done_cb = interaction->done_cb;
-      gpointer done_cb_data = interaction->done_cb_data;
-      self->current = NULL;
-      g_mutex_unlock(&self->lock);
-      if (updated_cb)
-        updated_cb(self, interaction, updated_cb_data);
-      if (done_cb)
-        done_cb(interaction, done_cb_data);
-      g_mutex_lock(&self->lock);
-      g_cond_broadcast(&self->cond);
+  } else if (g_str_has_prefix(str, "(error ")) {
+    const char *p = str + strlen("(error ");
+    gchar *endptr = NULL;
+    guint32 id = g_ascii_strtoull(p, &endptr, 10);
+    interaction = g_hash_table_lookup(self->interactions, GINT_TO_POINTER(id));
+    if (interaction && endptr && *endptr == ' ' && *(endptr + 1) == '"') {
+      const char *start = endptr + 2;
+      const char *end = strrchr(start, '"');
+      if (end) {
+        gchar *err = g_strndup(start, end - start);
+        g_debug("ReplSession.on_message error: %s", err);
+        interaction->error = g_strdup(err);
+        interaction->status = INTERACTION_ERROR;
+        updated_cb = self->updated_cb;
+        updated_cb_data = self->updated_cb_data;
+        done_cb = interaction->done_cb;
+        done_cb_data = interaction->done_cb_data;
+        finished = TRUE;
+        g_free(err);
+      }
     }
   }
   g_mutex_unlock(&self->lock);
+  if (finished) {
+    if (updated_cb)
+      updated_cb(self, interaction, updated_cb_data);
+    if (done_cb)
+      done_cb(interaction, done_cb_data);
+    g_mutex_lock(&self->lock);
+    g_cond_broadcast(&self->cond);
+    g_mutex_unlock(&self->lock);
+  }
 }
