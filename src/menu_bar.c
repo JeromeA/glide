@@ -37,10 +37,8 @@ menu_bar_new(App *self)
   g_menu_append_submenu(menu_bar, "Edit", G_MENU_MODEL(edit_menu));
 
   GMenu *refactor_menu = g_menu_new();
-  GMenu *refactor_file_menu = g_menu_new();
-  g_menu_append(refactor_file_menu, "Rename", "app.file-rename");
-  g_menu_append(refactor_file_menu, "Delete", "app.file-delete");
-  g_menu_append_submenu(refactor_menu, "File", G_MENU_MODEL(refactor_file_menu));
+  g_menu_append(refactor_menu, "Rename file", "app.file-rename");
+  g_menu_append(refactor_menu, "Delete file", "app.file-delete");
   g_menu_append_submenu(menu_bar, "Refactor", G_MENU_MODEL(refactor_menu));
 
   GMenu *run_menu = g_menu_new();
@@ -57,7 +55,6 @@ menu_bar_new(App *self)
   g_object_unref(exit_menu);
   g_object_unref(edit_menu);
   g_object_unref(refactor_menu);
-  g_object_unref(refactor_file_menu);
   g_object_unref(run_menu);
 
   return widget;
