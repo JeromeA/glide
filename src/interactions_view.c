@@ -31,6 +31,8 @@ typedef struct {
 
 static gboolean dispatch_interaction_added(gpointer data);
 static gboolean dispatch_interaction_updated(gpointer data);
+static gboolean scroll_to_bottom(gpointer data);
+static void ensure_interaction_visible(InteractionsView *self);
 
 static void on_interaction_added(ReplSession *session, Interaction *interaction, gpointer user_data);
 static void on_interaction_updated(ReplSession *session, Interaction *interaction, gpointer user_data);
@@ -111,6 +113,23 @@ interaction_row_ensure(InteractionsView *self, Interaction *interaction)
 }
 
 static gboolean
+scroll_to_bottom(gpointer data)
+{
+  InteractionsView *self = data;
+  GtkAdjustment *adj = gtk_scrolled_window_get_vadjustment(GTK_SCROLLED_WINDOW(self));
+  gtk_adjustment_set_value(adj,
+      gtk_adjustment_get_upper(adj) - gtk_adjustment_get_page_size(adj));
+  g_object_unref(self);
+  return G_SOURCE_REMOVE;
+}
+
+static void
+ensure_interaction_visible(InteractionsView *self)
+{
+  g_idle_add(scroll_to_bottom, g_object_ref(self));
+}
+
+static gboolean
 dispatch_interaction_added(gpointer data)
 {
   InteractionDispatch *d = data;
@@ -122,6 +141,7 @@ dispatch_interaction_added(gpointer data)
   InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
+  ensure_interaction_visible(self);
 out:
   g_object_unref(self);
   g_free(d);
@@ -140,6 +160,7 @@ dispatch_interaction_updated(gpointer data)
   InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
+  ensure_interaction_visible(self);
 out:
   g_object_unref(self);
   g_free(d);
