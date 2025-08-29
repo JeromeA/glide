@@ -32,8 +32,6 @@ SOURCES += \
   analyse_defun.c \
   function.c \
   package.c \
-  package_common_lisp_user.c \
-  package_common_lisp.c \
   node.c \
   lisp_parser_view.c \
   project.c \
