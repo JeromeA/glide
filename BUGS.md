@@ -52,13 +52,6 @@ menu item as the first argument, but the handler expected only an `App*`. The
 function now uses the standard `GtkWidget *, gpointer` signature and verifies
 the `App` instance before evaluating the current form.
 
-## Swank debug mode left enabled
-
-Evaluating expressions kept `swank:*swank-debug-p*` set to `t`, so swank printed
-verbose debugging information during normal evaluations. The swank process now
-evaluates `(setf swank:*global-debugger* nil)` before starting the server,
-keeping swank quiet.
-
 ## Eval toplevel always picked first expression
 
 Using the "Run > Eval toplevel" action evaluated the first form in the buffer
@@ -68,51 +61,11 @@ beginning of a line. Evaluation now asks `Editor` for the enclosing
 top‑level range, which is shared with the selection expansion logic, so the
 correct expression is sent to swank.
 
-## Debugger still activated during evaluations
-
-Disabling swank's global debugger was not enough to prevent the debugger from
-grabbing control. The swank process now let-binds `*debugger-hook*` to `nil`
-when evaluating forms and sends them in the `CL-USER` package, so evaluations
-no longer drop into the debugger unexpectedly.
-
-## Debugger hook bound outside evaluated form
-
-`*debugger-hook*` was `let`-bound around `swank:eval-and-grab-output`, leaving
-the evaluated form itself unprotected. Errors inside the form still invoked the
-debugger. The binding is now wrapped around the expression passed to swank so
-evaluations run with the debugger hook disabled.
-
 ## glide-eval evaluated raw strings
 
 `glide-eval` expected a parsed form but the server sent it expressions as
 strings, leading to evaluation failures. The function now reads the string into
 an s-expression before evaluating it.
-
-## Interaction results sometimes missing
-
-Evaluations occasionally displayed only the entered expression with no result.
-`InteractionsView` created rows only when the "added" signal arrived, but the
-backend could return a result before the row was created. The "updated"
-handler now ensures the row exists and updates it, so results are always shown.
-Debug logging was added to `RealReplSession` to help trace message handling.
-
-## Evaluation result hidden by startup prompt
-
-Selecting an expression sometimes displayed only the form with no result.
-SBCL prints a `*` prompt and its `NIL` result while loading Glide. Those
-startup lines arrived just before the first evaluation and confused the
-session, so the interaction row missed the real result. `RealReplProcess`
-now waits for SBCL's initial prompt, ignores the `NIL` and second prompt from
-`(require :glide)`, and only then starts the server, so sessions receive the
-actual evaluation results.
-
-## Session failed to start with trailing prompt space
-
-SBCL prints its prompt as `* ` with a trailing space. `RealReplProcess` looked
-for a line containing only `*`, so the startup handshake never progressed and
-the server was not started. `RealReplProcess` now trims whitespace from
-startup lines and logs each step of the handshake, ensuring sessions start
-reliably and the progress is visible in debug logs.
 
 ## Session waited for newline after prompt
 
@@ -137,12 +90,6 @@ Long evaluation sessions pushed earlier interactions off screen because
 `InteractionsView` was a plain `GtkBox` without scrollbars. The widget now
 embeds its rows in a `GtkScrolledWindow`, so previous interactions remain
 accessible.
-
-## Debugger hook disabled debugging
-
-Evaluations wrapped with `(let ((*debugger-hook* nil)) ...)` prevented the
-debugger from handling errors. Removing the binding restores normal debugger
-behavior during evaluations.
 
 ## Interactions view truncated without scrollbars
 
