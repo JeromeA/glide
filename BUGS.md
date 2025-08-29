@@ -129,3 +129,9 @@ scrollbars. The `GtkViewport` inside the view was marked as vertically
 expandable, so it shrank along with the scrolled window and never exceeded its
 allocation. Removing the expansion flag lets the viewport keep its natural
 height, allowing the scrollbars to appear when the pane is too small.
+
+## Interactions view left updates off screen
+
+New interactions or additional output could appear below the visible area while
+the scroll position stayed unchanged. The view now scrolls to keep the most
+recent interaction in sight.
