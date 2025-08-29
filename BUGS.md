@@ -121,3 +121,11 @@ its contents instead of allowing the embedded scrolled window to show
 scrollbars. Packing the pane with `resize` set to `TRUE` and marking the widget
 as vertically expandable keeps the pane at a fixed height and enables scrolling
 when needed.
+
+## Interactions view shrank with its viewport
+
+Dragging the pane divider to reduce the interactions view did not reveal
+scrollbars. The `GtkViewport` inside the view was marked as vertically
+expandable, so it shrank along with the scrolled window and never exceeded its
+allocation. Removing the expansion flag lets the viewport keep its natural
+height, allowing the scrollbars to appear when the pane is too small.
