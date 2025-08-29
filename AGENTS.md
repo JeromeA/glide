@@ -15,6 +15,7 @@
 - If you're fixing a bug, add an entry to BUGS.md.
 - Never assume a name is local (the INLINE version compiles all .c files in one translation unit), so even
 enum values should always have a prefix.
+- Wrap at 120 characters, and migrate existing code to that style when you touch it.
 
 ## OO
 
