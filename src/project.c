@@ -1,6 +1,11 @@
 #include "project.h"
 #include "string_text_provider.h"
 #include "analyse.h"
+#include "analyse_defpackage.h"
+#include "lisp_lexer.h"
+#include "lisp_parser.h"
+#include "repl_session.h"
+#include "interaction.h"
 #include <glib-object.h>
 
 struct _Project {
@@ -26,6 +31,8 @@ static void project_index_clear(Project *self);
 static void project_index_node(Project *self, const Node *node);
 static void project_index_walk(Project *self, const Node *node);
 static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type);
+static void project_on_package_definition(Interaction *interaction, gpointer user_data);
+static void project_request_package(Project *self, ReplSession *repl, const gchar *name);
 
 static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
@@ -61,12 +68,53 @@ static void project_free(Project *self) {
   g_free(self);
 }
 
-Project *project_new(void) {
+static void project_on_package_definition(Interaction *interaction, gpointer user_data) {
+  Project *project = user_data;
+  if (interaction->result) {
+    TextProvider *provider = string_text_provider_new(interaction->result);
+    LispLexer *lexer = lisp_lexer_new(provider);
+    lisp_lexer_lex(lexer);
+    GArray *tokens = lisp_lexer_get_tokens(lexer);
+    LispParser *parser = lisp_parser_new();
+    lisp_parser_parse(parser, tokens);
+    const Node *ast = lisp_parser_get_ast(parser);
+    if (ast && ast->children && ast->children->len > 0) {
+      Node *expr = g_array_index(ast->children, Node*, 0);
+      analyse_defpackage(project, expr, NULL);
+    }
+    lisp_parser_free(parser);
+    lisp_lexer_free(lexer);
+    text_provider_unref(provider);
+  }
+  project_unref(project);
+  interaction_clear(interaction);
+  g_free(interaction);
+}
+
+static void project_request_package(Project *self, ReplSession *repl, const gchar *name) {
+  g_return_if_fail(self);
+  g_return_if_fail(repl);
+  g_return_if_fail(name);
+  gchar *expr = g_strdup_printf("(glide:package-definition \"%s\")", name);
+  Interaction *interaction = g_new0(Interaction, 1);
+  interaction_init(interaction, expr);
+  interaction->type = INTERACTION_INTERNAL;
+  interaction->done_cb = project_on_package_definition;
+  interaction->done_cb_data = project_ref(self);
+  repl_session_eval(repl, interaction);
+  g_free(expr);
+}
+
+Project *project_new(ReplSession *repl) {
   g_debug("project_new");
   Project *self = project_init();
   TextProvider *provider = string_text_provider_new("");
   project_add_file(self, provider, NULL, "unnamed.lisp", PROJECT_FILE_LIVE);
   text_provider_unref(provider);
+  if (repl) {
+    project_request_package(self, repl, "COMMON-LISP");
+    project_request_package(self, repl, "COMMON-LISP-USER");
+  }
   return self;
 }
 

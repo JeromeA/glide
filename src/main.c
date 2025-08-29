@@ -27,8 +27,6 @@
 #include "editor.c"
 #include "node.c"
 #include "package.c"
-#include "package_common_lisp.c"
-#include "package_common_lisp_user.c"
 #include "preferences.c"
 #include "preferences_dialog.c"
 #include "process.c"
@@ -73,7 +71,7 @@ main (int argc, char *argv[])
   ReplProcess *repl_proc = repl_process_new(proc);
   StatusService *status_service = status_service_new();
   ReplSession *repl = repl_session_new(repl_proc, status_service);
-  Project *project = project_new();
+  Project *project = project_new(repl);
   App *app     = app_new (prefs, repl, project, status_service);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);

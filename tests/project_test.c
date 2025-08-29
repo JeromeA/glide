@@ -7,7 +7,7 @@
 
 static void test_default_file(void)
 {
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   g_assert_cmpuint(project_get_file_count(project), ==, 1);
   ProjectFile *file = project_get_file(project, 0);
   g_assert_cmpint(project_file_get_state(file), ==, PROJECT_FILE_LIVE);
@@ -17,7 +17,7 @@ static void test_default_file(void)
 
 static void test_parse_on_change(void)
 {
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   TextProvider *provider = string_text_provider_new("(a)");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
@@ -49,7 +49,7 @@ static void test_file_load(void)
   const gchar *contents = "(a b c)";
   g_file_set_contents(filepath, contents, -1, NULL);
 
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   TextProvider *provider = string_text_provider_new("");
   ProjectFile *file = project_add_file(project, provider, NULL, filepath,
       PROJECT_FILE_LIVE);
@@ -77,7 +77,7 @@ static void test_file_load(void)
 
 static void test_function_analysis(void)
 {
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
@@ -97,7 +97,7 @@ static void test_function_analysis(void)
 
 static void test_index(void)
 {
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL,
       PROJECT_FILE_LIVE);
@@ -129,7 +129,7 @@ static void test_index(void)
 
 static void test_functions_table(void)
 {
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   TextProvider *provider = string_text_provider_new("(defun foo () \"doc\")");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
@@ -147,7 +147,7 @@ static void test_functions_table(void)
 static void test_relative_path(void)
 {
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   project_set_path(project, tmpdir);
   TextProvider *provider = string_text_provider_new("");
   gchar *filepath = g_build_filename(tmpdir, "file.lisp", NULL);
@@ -170,7 +170,7 @@ static void on_removed(Project * /*project*/, ProjectFile * /*file*/, gpointer u
 
 static void test_remove_file(void)
 {
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   TextProvider *provider = string_text_provider_new("");
   ProjectFile *file = project_add_file(project, provider, NULL, "foo.lisp",
       PROJECT_FILE_LIVE);

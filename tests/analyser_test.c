@@ -21,7 +21,7 @@ int main(void) {
   lisp_parser_parse(parser, tokens);
   Node *ast = (Node*)lisp_parser_get_ast(parser);
 
-  Project *project = project_new();
+  Project *project = project_new(NULL);
   analyse_ast(project, ast);
 
   Package *pkg = project_get_package(project, "MY-PACK");

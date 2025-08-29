@@ -10,11 +10,12 @@ typedef struct _GtkTextBuffer GtkTextBuffer;
 #include "function.h"
 
 typedef struct _Project Project;
+typedef struct _ReplSession ReplSession;
 
 typedef void (*ProjectFileLoadedCb)(Project *self, ProjectFile *file, gpointer user_data);
 typedef void (*ProjectFileRemovedCb)(Project *self, ProjectFile *file, gpointer user_data);
 
-Project       *project_new(void);
+Project       *project_new(ReplSession *repl);
 Project       *project_ref(Project *self);
 void           project_unref(Project *self);
 void           project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer user_data);
