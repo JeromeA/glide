@@ -85,9 +85,10 @@ app_activate (GApplication *app)
   GtkWidget *menu_bar = menu_bar_new(self);
 
   GtkWidget *interactions = GTK_WIDGET(interactions_view_new(self->glide));
+  gtk_widget_set_vexpand(interactions, TRUE);
   GtkWidget *paned = gtk_paned_new(GTK_ORIENTATION_VERTICAL);
   gtk_paned_pack1(GTK_PANED(paned), self->notebook_paned, TRUE, TRUE);
-  gtk_paned_pack2(GTK_PANED(paned), interactions, FALSE, TRUE);
+  gtk_paned_pack2(GTK_PANED(paned), interactions, TRUE, TRUE);
 
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_box_pack_start(GTK_BOX(vbox), menu_bar, FALSE, FALSE, 0);
