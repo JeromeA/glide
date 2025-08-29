@@ -30,6 +30,8 @@ s/\.value\s(-?\d+)/dw $1/g;
 s/\.long\s(.+)/dd $1/g;
 s/\.quad\s(-?\d+)/dq $1/g;
 s/\.quad\s(\S+)/dq BASE_ADDR + $1/g;
+s/^\s+\.zero\s+(\d+)\n/    times $1 db 0\n/gm;
+
 
 # Replace local labels with global ones.
 s/\.LC(\d+)/LC$1/g;
