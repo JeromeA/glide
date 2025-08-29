@@ -12,19 +12,23 @@ menu_bar_new(App *self)
   GMenu *recent_menu = g_menu_new();
   g_menu_append_submenu(project_menu, "Recent", G_MENU_MODEL(recent_menu));
   app_set_recent_menu(self, recent_menu);
-  g_menu_append_submenu(file_menu, "Project", G_MENU_MODEL(project_menu));
-  g_menu_append(file_menu, "New file", "app.file-new");
-  g_menu_append(file_menu, "Add file", "app.file-add");
-  g_menu_append(file_menu, "Save all", "app.save-all");
-  g_menu_append(file_menu, "Close project", "app.close-project");
-  GMenu *sep = g_menu_new();
-  g_menu_append_section(file_menu, NULL, G_MENU_MODEL(sep));
-  g_object_unref(sep);
-  g_menu_append(file_menu, "Settings…", "app.preferences");
-  sep = g_menu_new();
-  g_menu_append_section(file_menu, NULL, G_MENU_MODEL(sep));
-  g_object_unref(sep);
-  g_menu_append(file_menu, "Exit", "app.quit");
+  g_menu_append(project_menu, "Close project", "app.close-project");
+  g_menu_append_section(file_menu, NULL, G_MENU_MODEL(project_menu));
+
+  GMenu *file_actions = g_menu_new();
+  g_menu_append(file_actions, "New file", "app.file-new");
+  g_menu_append(file_actions, "Add file", "app.file-add");
+  g_menu_append(file_actions, "Save all", "app.save-all");
+  g_menu_append_section(file_menu, NULL, G_MENU_MODEL(file_actions));
+
+  GMenu *settings_menu = g_menu_new();
+  g_menu_append(settings_menu, "Settings…", "app.preferences");
+  g_menu_append_section(file_menu, NULL, G_MENU_MODEL(settings_menu));
+
+  GMenu *exit_menu = g_menu_new();
+  g_menu_append(exit_menu, "Exit", "app.quit");
+  g_menu_append_section(file_menu, NULL, G_MENU_MODEL(exit_menu));
+
   g_menu_append_submenu(menu_bar, "File", G_MENU_MODEL(file_menu));
 
   GMenu *edit_menu = g_menu_new();
@@ -48,6 +52,9 @@ menu_bar_new(App *self)
   g_object_unref(menu_bar);
   g_object_unref(file_menu);
   g_object_unref(project_menu);
+  g_object_unref(file_actions);
+  g_object_unref(settings_menu);
+  g_object_unref(exit_menu);
   g_object_unref(edit_menu);
   g_object_unref(refactor_menu);
   g_object_unref(refactor_file_menu);
