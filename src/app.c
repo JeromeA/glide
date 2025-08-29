@@ -33,7 +33,7 @@ struct _App
   StatusService  *status_service;
   GtkWidget      *notebook_paned;
   GtkWidget      *asdf_scrolled;
-  GtkWidget      *recent_menu;
+  GMenu          *recent_menu;
 };
 
 STATIC void
@@ -81,10 +81,6 @@ app_activate (GApplication *app)
   gtk_paned_pack2(GTK_PANED(self->notebook_paned), notebook, TRUE, TRUE);
   g_signal_connect(self->notebook, "switch-page",
       G_CALLBACK(on_notebook_switch_page), self);
-
-  Editor *view = lisp_source_notebook_get_current_editor(self->notebook);
-  g_signal_connect (editor_get_view(view), "key-press-event",
-      G_CALLBACK (on_key_press), self);
 
   GtkWidget *menu_bar = menu_bar_new(self);
 
@@ -142,6 +138,7 @@ app_startup (GApplication *app)
   g_debug("App.startup");
   /* Chain up first */
   G_APPLICATION_CLASS (app_parent_class)->startup (app);
+  actions_init(GLIDE_APP(app));
 }
 
 static void
@@ -244,8 +241,6 @@ app_connect_editor(App *self, Editor *editor)
 {
   g_return_if_fail(GLIDE_IS_APP(self));
   g_return_if_fail(GLIDE_IS_EDITOR(editor));
-  g_signal_connect(editor_get_view(editor), "key-press-event",
-      G_CALLBACK(on_key_press), self);
 }
 
 STATIC ProjectFile *
@@ -350,21 +345,20 @@ app_update_recent_menu(App *self)
   g_return_if_fail(GLIDE_IS_APP(self));
   if (!self->recent_menu)
     return;
-  GList *children = gtk_container_get_children(GTK_CONTAINER(self->recent_menu));
-  for (GList *l = children; l; l = l->next)
-    gtk_widget_destroy(GTK_WIDGET(l->data));
-  g_list_free(children);
+  gint n = g_menu_model_get_n_items(G_MENU_MODEL(self->recent_menu));
+  for (gint i = n - 1; i >= 0; i--)
+    g_menu_remove(self->recent_menu, i);
   const GList *recent = preferences_get_recent_projects(self->preferences);
   for (const GList *l = recent; l; l = l->next) {
     const gchar *path = l->data;
     gchar *label = g_path_get_basename(path);
-    GtkWidget *item = gtk_menu_item_new_with_label(label);
+    GMenuItem *item = g_menu_item_new(label, NULL);
     g_free(label);
-    g_object_set_data_full(G_OBJECT(item), "project-path", g_strdup(path), g_free);
-    g_signal_connect(item, "activate", G_CALLBACK(on_recent_project), self);
-    gtk_menu_shell_append(GTK_MENU_SHELL(self->recent_menu), item);
+    g_menu_item_set_action_and_target_value(item, "app.recent-project",
+        g_variant_new_string(path));
+    g_menu_append_item(self->recent_menu, item);
+    g_object_unref(item);
   }
-  gtk_widget_show_all(self->recent_menu);
 }
 
 
@@ -391,7 +385,7 @@ app_get_status_service (App *self)
 }
 
 void
-app_set_recent_menu(App *self, GtkWidget *menu)
+app_set_recent_menu(App *self, GMenu *menu)
 {
   g_return_if_fail(GLIDE_IS_APP(self));
   self->recent_menu = menu;
