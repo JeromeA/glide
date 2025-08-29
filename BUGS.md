@@ -104,3 +104,11 @@ visible area. The window neither grew nor displayed a scrollbar, so the only
 way to see the new interactions was to drag the pane divider to enlarge the
 view. The scrolled window now disables natural height propagation so the window
 scrolls when content exceeds the available space.
+
+## Interactions view still did not scroll
+
+Even after disabling natural height propagation, the interactions list still
+expanded with its contents and never triggered the scrollbars. The surrounding
+viewport did not advertise that it could shrink, so the scrolled window kept
+resizing to fit the growing box. Marking the viewport as vertically expandable
+prevents this, letting the view scroll when there are many interactions.
