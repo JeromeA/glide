@@ -96,3 +96,11 @@ accessible.
 The interactions list was added directly to the `GtkScrolledWindow` without a
 `GtkViewport`, so the scrollbars never appeared when the view was shorter than
 its contents. Wrapping the box in a viewport allows the window to scroll.
+
+## Interactions view hid new interactions without scrollbars
+
+When evaluation produced many interactions, new rows were appended below the
+visible area. The window neither grew nor displayed a scrollbar, so the only
+way to see the new interactions was to drag the pane divider to enlarge the
+view. The scrolled window now disables natural height propagation so the window
+scrolls when content exceeds the available space.
