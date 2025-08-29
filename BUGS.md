@@ -112,3 +112,12 @@ expanded with its contents and never triggered the scrollbars. The surrounding
 viewport did not advertise that it could shrink, so the scrolled window kept
 resizing to fit the growing box. Marking the viewport as vertically expandable
 prevents this, letting the view scroll when there are many interactions.
+
+## Interactions view packed without resizing
+
+The interactions pane was inserted into the main window's `GtkPaned` with the
+`resize` flag set to `FALSE`. As interactions accumulated, the pane grew to fit
+its contents instead of allowing the embedded scrolled window to show
+scrollbars. Packing the pane with `resize` set to `TRUE` and marking the widget
+as vertically expandable keeps the pane at a fixed height and enables scrolling
+when needed.
