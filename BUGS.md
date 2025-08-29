@@ -135,3 +135,10 @@ height, allowing the scrollbars to appear when the pane is too small.
 New interactions or additional output could appear below the visible area while
 the scroll position stayed unchanged. The view now scrolls to keep the most
 recent interaction in sight.
+
+## Interactions view still scrolled unreliably
+
+Scrolling to the latest interaction relied on an idle callback that sometimes
+ran before GTK completed its resize, leaving the view above the newest content.
+The interactions box now scrolls in response to its size allocating growing, so
+the view reliably follows new output without race conditions.
