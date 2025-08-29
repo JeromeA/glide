@@ -178,7 +178,6 @@ interactions_view_init(InteractionsView *self)
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(self),
       FALSE);
   GtkWidget *viewport = gtk_viewport_new(NULL, NULL);
-  gtk_widget_set_vexpand(viewport, TRUE);
   self->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_hexpand(self->box, TRUE);
   gtk_container_add(GTK_CONTAINER(viewport), self->box);
