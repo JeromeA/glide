@@ -143,3 +143,9 @@ accessible.
 Evaluations wrapped with `(let ((*debugger-hook* nil)) ...)` prevented the
 debugger from handling errors. Removing the binding restores normal debugger
 behavior during evaluations.
+
+## Interactions view truncated without scrollbars
+
+The interactions list was added directly to the `GtkScrolledWindow` without a
+`GtkViewport`, so the scrollbars never appeared when the view was shorter than
+its contents. Wrapping the box in a viewport allows the window to scroll.

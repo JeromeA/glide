@@ -175,9 +175,11 @@ interactions_view_init(InteractionsView *self)
   g_debug("InteractionsView.init");
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self),
       GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  GtkWidget *viewport = gtk_viewport_new(NULL, NULL);
   self->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_widget_set_hexpand(self->box, TRUE);
-  gtk_container_add(GTK_CONTAINER(self), self->box);
+  gtk_container_add(GTK_CONTAINER(viewport), self->box);
+  gtk_container_add(GTK_CONTAINER(self), viewport);
 
   // Load CSS
   GtkCssProvider *provider = gtk_css_provider_new();
