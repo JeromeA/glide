@@ -61,9 +61,9 @@ beginning of a line. Evaluation now asks `Editor` for the enclosing
 top‑level range, which is shared with the selection expansion logic, so the
 correct expression is sent to swank.
 
-## glide-eval evaluated raw strings
+## eval-and-capture evaluated raw strings
 
-`glide-eval` expected a parsed form but the server sent it expressions as
+`eval-and-capture` expected a parsed form but the server sent it expressions as
 strings, leading to evaluation failures. The function now reads the string into
 an s-expression before evaluating it.
 

@@ -2,5 +2,5 @@
   (:use :cl)
   (:export :package-symbols
            :package-info
-           :glide-eval
+           :eval-and-capture
            :start-server))
