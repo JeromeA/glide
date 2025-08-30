@@ -17,6 +17,7 @@ static void on_proc_out(GString *data, gpointer user_data) {
   ReplProcess *self = user_data;
   g_mutex_lock(&self->mutex);
   g_string_append_len(self->buffer, data->str, data->len);
+  g_debug_160("ReplProcess.on_proc_out append ", data->str);
   while (self->buffer->len > 0) {
     if (self->buffer->str[0] == '\n') {
       g_string_erase(self->buffer, 0, 1);
@@ -24,14 +25,17 @@ static void on_proc_out(GString *data, gpointer user_data) {
     }
     if (self->buffer->str[0] == ';') {
       char *newline = memchr(self->buffer->str, '\n', self->buffer->len);
-      if (!newline)
+      if (!newline) {
+        g_debug_160("ReplProcess.on_proc_out waiting ", self->buffer->str);
         break;
+      }
       gsize len = newline - self->buffer->str;
       GString *line = g_string_new_len(self->buffer->str, len);
       g_string_erase(self->buffer, 0, len + 1);
       ReplProcessMessageCallback cb = self->msg_cb;
       gpointer cb_data = self->msg_cb_data;
       g_mutex_unlock(&self->mutex);
+      g_debug_160("ReplProcess.on_proc_out forward ", line->str);
       if (cb)
         cb(line, cb_data);
       g_string_free(line, TRUE);
@@ -67,8 +71,10 @@ static void on_proc_out(GString *data, gpointer user_data) {
         }
       }
     }
-    if (!complete)
+    if (!complete) {
+      g_debug_160("ReplProcess.on_proc_out waiting ", self->buffer->str);
       break;
+    }
     GString *line = g_string_new_len(self->buffer->str, i + 1);
     g_string_erase(self->buffer, 0, i + 1);
     if (self->buffer->len > 0 && self->buffer->str[0] == '\n')
@@ -76,6 +82,7 @@ static void on_proc_out(GString *data, gpointer user_data) {
     ReplProcessMessageCallback cb = self->msg_cb;
     gpointer cb_data = self->msg_cb_data;
     g_mutex_unlock(&self->mutex);
+    g_debug_160("ReplProcess.on_proc_out forward ", line->str);
     if (cb)
       cb(line, cb_data);
     g_string_free(line, TRUE);
