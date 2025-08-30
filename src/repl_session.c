@@ -93,9 +93,7 @@ static gpointer repl_session_thread(gpointer data) {
     g_debug("ReplSession.thread eval %s", interaction->expression);
     g_mutex_lock(&self->lock);
     if (!self->started) {
-      guint status_id = status_service_publish(self->status_service, "SBCL is starting...");
       repl_process_start(self->proc);
-      status_service_unpublish(self->status_service, status_id);
       self->started = TRUE;
     }
     interaction->status = INTERACTION_RUNNING;
@@ -114,11 +112,6 @@ static gpointer repl_session_thread(gpointer data) {
     g_debug("ReplSession.thread send %s", payload->str);
     repl_process_send(self->proc, payload);
     g_string_free(payload, TRUE);
-    g_mutex_lock(&self->lock);
-    while (interaction->status == INTERACTION_RUNNING)
-      g_cond_wait(&self->cond, &self->lock);
-    g_hash_table_remove(self->interactions, GINT_TO_POINTER(interaction->tag));
-    g_mutex_unlock(&self->lock);
   }
   return NULL;
 }
