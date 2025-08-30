@@ -148,3 +148,8 @@ the view reliably follows new output without race conditions.
 REPL sessions appended stdout and stderr text to the interaction but did not
 invoke the update callback, so the UI missed incremental output. The session now
 notifies listeners when stdout or stderr arrives.
+
+## Debug logging split across lines
+
+Messages containing newlines caused `g_debug_160` to emit multi-line log entries, making logs harder to read.
+The helper now escapes newline characters so each debug message stays on a single line.
