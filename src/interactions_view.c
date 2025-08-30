@@ -149,12 +149,9 @@ dispatch_interaction_updated(gpointer data)
   InteractionsView *self = d->self;
   Interaction *interaction = d->interaction;
   g_debug("InteractionsView.on_interaction_updated %s", interaction->expression);
-  if (interaction->type != INTERACTION_USER)
-    goto out;
   InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
-out:
   g_object_unref(self);
   g_free(d);
   return FALSE;
@@ -242,6 +239,8 @@ on_interaction_added(ReplSession * /*session*/, Interaction *interaction, gpoint
 static void
 on_interaction_updated(ReplSession * /*session*/, Interaction *interaction, gpointer user_data)
 {
+  if (interaction->type != INTERACTION_USER)
+    return;
   InteractionDispatch *d = g_new0(InteractionDispatch, 1);
   d->self = g_object_ref(GLIDE_INTERACTIONS_VIEW(user_data));
   d->interaction = interaction;
