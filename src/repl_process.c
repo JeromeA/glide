@@ -17,78 +17,51 @@ static void on_proc_out(GString *data, gpointer user_data) {
   ReplProcess *self = user_data;
   g_mutex_lock(&self->mutex);
   g_string_append_len(self->buffer, data->str, data->len);
-  g_debug_160("ReplProcess.on_proc_out append ", data->str);
-  while (self->buffer->len > 0) {
-    if (self->buffer->str[0] == '\n') {
-      g_string_erase(self->buffer, 0, 1);
-      continue;
-    }
-    if (self->buffer->str[0] == ';') {
-      char *newline = memchr(self->buffer->str, '\n', self->buffer->len);
-      if (!newline) {
-        g_debug_160("ReplProcess.on_proc_out waiting ", self->buffer->str);
-        break;
-      }
-      gsize len = newline - self->buffer->str;
-      GString *line = g_string_new_len(self->buffer->str, len);
-      g_string_erase(self->buffer, 0, len + 1);
-      ReplProcessMessageCallback cb = self->msg_cb;
-      gpointer cb_data = self->msg_cb_data;
-      g_mutex_unlock(&self->mutex);
-      g_debug_160("ReplProcess.on_proc_out forward ", line->str);
-      if (cb)
-        cb(line, cb_data);
-      g_string_free(line, TRUE);
-      g_mutex_lock(&self->mutex);
-      continue;
-    }
-    gsize i;
-    int level = 0;
-    gboolean in_string = FALSE;
-    gboolean escape = FALSE;
-    gboolean complete = FALSE;
-    for (i = 0; i < self->buffer->len; i++) {
-      char c = self->buffer->str[i];
-      if (in_string) {
-        if (escape)
-          escape = FALSE;
-        else if (c == '\\')
-          escape = TRUE;
-        else if (c == '"')
-          in_string = FALSE;
-      } else {
-        if (c == '"')
-          in_string = TRUE;
-        else if (c == '(')
-          level++;
-        else if (c == ')') {
-          if (level > 0)
-            level--;
-          if (level == 0) {
-            complete = TRUE;
-            break;
-          }
+  g_debug_160("ReplProcess.on_proc_out added: ", data->str);
+  while (self->buffer->str[0] == '\n') {
+    g_string_erase(self->buffer, 0, 1);
+  }
+  gsize i;
+  int level = 0;
+  gboolean in_string = FALSE;
+  gboolean escape = FALSE;
+  gboolean complete = FALSE;
+  for (i = 0; i < self->buffer->len; i++) {
+    char c = self->buffer->str[i];
+    if (in_string) {
+      if (escape)
+        escape = FALSE;
+      else if (c == '\\')
+        escape = TRUE;
+      else if (c == '"')
+        in_string = FALSE;
+    } else {
+      if (c == '"')
+        in_string = TRUE;
+      else if (c == '(')
+        level++;
+      else if (c == ')') {
+        if (level > 0)
+          level--;
+        if (level == 0) {
+          complete = TRUE;
+          break;
         }
       }
     }
-    if (!complete) {
-      g_debug_160("ReplProcess.on_proc_out waiting ", self->buffer->str);
-      break;
-    }
-    GString *line = g_string_new_len(self->buffer->str, i + 1);
-    g_string_erase(self->buffer, 0, i + 1);
-    if (self->buffer->len > 0 && self->buffer->str[0] == '\n')
-      g_string_erase(self->buffer, 0, 1);
-    ReplProcessMessageCallback cb = self->msg_cb;
-    gpointer cb_data = self->msg_cb_data;
-    g_mutex_unlock(&self->mutex);
-    g_debug_160("ReplProcess.on_proc_out forward ", line->str);
-    if (cb)
-      cb(line, cb_data);
-    g_string_free(line, TRUE);
-    g_mutex_lock(&self->mutex);
   }
+  if (!complete) {
+    g_debug_160("ReplProcess.on_proc_out incomplete: ", self->buffer->str);
+    return;
+  }
+  GString *line = g_string_new_len(self->buffer->str, i + 1);
+  g_string_erase(self->buffer, 0, i + 1);
   g_mutex_unlock(&self->mutex);
+  g_debug_160("ReplProcess.on_proc_out forwarding: ", line->str);
+  g_debug_160("ReplProcess.on_proc_out still in buffer: ", line->str);
+  if (self->msg_cb)
+    self->msg_cb(line, self->msg_cb_data);
+  g_string_free(line, TRUE);
 }
 
 static void on_proc_err(GString *data, gpointer user_data) {
