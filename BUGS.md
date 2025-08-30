@@ -142,3 +142,9 @@ Scrolling to the latest interaction relied on an idle callback that sometimes
 ran before GTK completed its resize, leaving the view above the newest content.
 The interactions box now scrolls in response to its size allocating growing, so
 the view reliably follows new output without race conditions.
+
+## Stdout and stderr output did not update interactions
+
+REPL sessions appended stdout and stderr text to the interaction but did not
+invoke the update callback, so the UI missed incremental output. The session now
+notifies listeners when stdout or stderr arrives.
