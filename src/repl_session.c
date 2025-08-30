@@ -163,6 +163,8 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
         interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
         g_free(old);
         g_free(text);
+        updated_cb = self->updated_cb;
+        updated_cb_data = self->updated_cb_data;
       }
     }
   } else if (g_str_has_prefix(str, "(stderr ")) {
@@ -180,6 +182,8 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
         interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
         g_free(old);
         g_free(text);
+        updated_cb = self->updated_cb;
+        updated_cb_data = self->updated_cb_data;
       }
     }
   } else if (g_str_has_prefix(str, "(result ")) {
@@ -224,11 +228,13 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
         g_free(err);
       }
     }
+  } else {
+    g_message("ReplSession.on_message unknown message: %s", str);
   }
   g_mutex_unlock(&self->lock);
+  if (updated_cb)
+    updated_cb(self, interaction, updated_cb_data);
   if (finished) {
-    if (updated_cb)
-      updated_cb(self, interaction, updated_cb_data);
     if (done_cb)
       done_cb(interaction, done_cb_data);
     g_mutex_lock(&self->lock);
