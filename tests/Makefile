@@ -5,9 +5,9 @@ endif
 
 VPATH = ../src
 INCLUDES = -I$(VPATH) -I..
-CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0`
-LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0`
-TESTS = preferences_test process_test repl_process_test repl_session_test lisp_parser_test project_test asdf_test analyser_test package_test status_service_test
+CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0 gtksourceview-4`
+LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0 gtksourceview-4`
+TESTS = preferences_test process_test repl_process_test repl_session_test lisp_parser_test project_test asdf_test analyser_test package_test status_service_test editor_test
 CLEANABLES = $(TESTS)
 
 all: $(TESTS)
@@ -42,6 +42,9 @@ package_test: package_test.c package.c node.c
 status_service_test: status_service_test.c status_service.c
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
+editor_test: editor_test.c editor.c gtk_text_provider.c project.c project_file.c analyse.c analyse_defpackage.c analyse_defun.c function.c node.c package.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c repl_session.c repl_process.c process.c status_service.c
+:$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+
 run: all
 :./preferences_test
 :./process_test
@@ -53,6 +56,7 @@ run: all
 :./analyser_test
 :./package_test
 :./status_service_test
+:./editor_test
 
 clean:
 :rm -f $(CLEANABLES)
