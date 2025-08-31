@@ -24,11 +24,21 @@ static void test_eval(void) {
   interaction_init(&interaction, "(+ 1 2)");
   repl_session_eval(sess, &interaction);
   int tries = 0;
-  while ((interaction.status == INTERACTION_CREATED || interaction.status == INTERACTION_RUNNING) && tries++ < 100) {
+  while (tries++ < 200) {
+    g_mutex_lock(&interaction.lock);
+    InteractionStatus status = interaction.status;
+    g_mutex_unlock(&interaction.lock);
+    if (status != INTERACTION_CREATED && status != INTERACTION_RUNNING)
+      break;
     g_usleep(100000);
   }
-  g_assert_cmpint(interaction.status, ==, INTERACTION_OK);
-  g_assert_cmpstr(interaction.result, ==, "3");
+  g_mutex_lock(&interaction.lock);
+  InteractionStatus status = interaction.status;
+  gchar *result = g_strdup(interaction.result);
+  g_mutex_unlock(&interaction.lock);
+  g_assert_cmpint(status, ==, INTERACTION_OK);
+  g_assert_cmpstr(result, ==, "3");
+  g_free(result);
   interaction_clear(&interaction);
   repl_session_unref(sess);
   repl_process_unref(gp);

@@ -160,3 +160,10 @@ The helper now escapes newline characters so each debug message stays on a singl
 sexp. The missing unlock left the mutex held, so the next chunk blocked waiting for the lock and tests hung.
 `on_proc_out` now releases the mutex before returning when output is incomplete, allowing processing to
 continue.
+
+## Interactions view accessed freed text
+
+`InteractionsView` filled its widgets with pointers to strings stored in `Interaction`. The session thread
+could update an interaction concurrently, freeing or replacing those strings while the UI still held references.
+`Interaction` now guards its fields with a mutex, and both the session and view lock around any access,
+copying text as needed to keep pointers valid.
