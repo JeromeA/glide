@@ -70,8 +70,13 @@ static void project_free(Project *self) {
 
 static void project_on_package_definition(Interaction *interaction, gpointer user_data) {
   Project *project = user_data;
-  if (interaction->result) {
-    TextProvider *provider = string_text_provider_new(interaction->result);
+  gchar *res = NULL;
+  g_mutex_lock(&interaction->lock);
+  if (interaction->result)
+    res = g_strdup(interaction->result);
+  g_mutex_unlock(&interaction->lock);
+  if (res) {
+    TextProvider *provider = string_text_provider_new(res);
     LispLexer *lexer = lisp_lexer_new(provider);
     lisp_lexer_lex(lexer);
     GArray *tokens = lisp_lexer_get_tokens(lexer);
@@ -89,6 +94,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   project_unref(project);
   interaction_clear(interaction);
   g_free(interaction);
+  g_free(res);
 }
 
 static void project_request_package(Project *self, ReplSession *repl, const gchar *name) {
@@ -98,9 +104,11 @@ static void project_request_package(Project *self, ReplSession *repl, const gcha
   gchar *expr = g_strdup_printf("(glide:package-definition \"%s\")", name);
   Interaction *interaction = g_new0(Interaction, 1);
   interaction_init(interaction, expr);
+  g_mutex_lock(&interaction->lock);
   interaction->type = INTERACTION_INTERNAL;
   interaction->done_cb = project_on_package_definition;
   interaction->done_cb_data = project_ref(self);
+  g_mutex_unlock(&interaction->lock);
   repl_session_eval(repl, interaction);
   g_free(expr);
 }

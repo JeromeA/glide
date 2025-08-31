@@ -90,24 +90,35 @@ static gpointer repl_session_thread(gpointer data) {
     if (item == GINT_TO_POINTER(1))
       break;
     Interaction *interaction = item;
-    g_debug_160("ReplSession.thread eval ", interaction->expression);
+    gchar *expr = NULL;
+    g_mutex_lock(&interaction->lock);
+    expr = g_strdup(interaction->expression);
+    g_mutex_unlock(&interaction->lock);
+    g_debug_160("ReplSession.thread eval ", expr);
     g_mutex_lock(&self->lock);
     if (!self->started) {
       repl_process_start(self->proc);
       self->started = TRUE;
     }
+    g_mutex_lock(&interaction->lock);
     interaction->status = INTERACTION_RUNNING;
-    g_hash_table_insert(self->interactions, GINT_TO_POINTER(interaction->tag), interaction);
+    guint32 tag = interaction->tag;
+    g_mutex_unlock(&interaction->lock);
+    g_hash_table_insert(self->interactions, GINT_TO_POINTER(tag), interaction);
     ReplSessionCallback added_cb = self->added_cb;
     gpointer added_cb_data = self->added_cb_data;
     g_mutex_unlock(&self->lock);
     if (added_cb)
       added_cb(self, interaction, added_cb_data);
+    g_mutex_lock(&interaction->lock);
     gchar *escaped = escape_string(interaction->expression);
+    guint32 cmd_tag = interaction->tag;
+    g_mutex_unlock(&interaction->lock);
     gchar *cmd = g_strdup_printf("(glide:eval-and-capture %u \"%s\")\n",
-        interaction->tag, escaped);
+        cmd_tag, escaped);
     GString *payload = g_string_new(cmd);
     g_free(escaped);
+    g_free(expr);
     g_free(cmd);
     g_debug_160("ReplSession.thread send ", payload->str);
     repl_process_send(self->proc, payload);
@@ -119,9 +130,13 @@ static gpointer repl_session_thread(gpointer data) {
 void repl_session_eval(ReplSession *self, Interaction *interaction) {
   g_return_if_fail(self);
   if (self->queue) {
+    g_mutex_lock(&interaction->lock);
     interaction->tag = g_atomic_int_add(&next_tag, 1);
-    g_debug_160("ReplSession.eval queue ", interaction->expression);
+    gchar *expr = g_strdup(interaction->expression);
+    g_mutex_unlock(&interaction->lock);
+    g_debug_160("ReplSession.eval queue ", expr);
     g_async_queue_push(self->queue, interaction);
+    g_free(expr);
   }
 }
 
@@ -159,8 +174,11 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       if (end) {
         gchar *text = g_strndup(start, end - start);
         g_debug_160("ReplSession.on_message stdout: ", text);
-        gchar *old = interaction->output;
+        gchar *old = NULL;
+        g_mutex_lock(&interaction->lock);
+        old = interaction->output;
         interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
+        g_mutex_unlock(&interaction->lock);
         g_free(old);
         g_free(text);
         updated_cb = self->updated_cb;
@@ -178,8 +196,11 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       if (end) {
         gchar *text = g_strndup(start, end - start);
         g_debug_160("ReplSession.on_message stderr: ", text);
-        gchar *old = interaction->output;
+        gchar *old = NULL;
+        g_mutex_lock(&interaction->lock);
+        old = interaction->output;
         interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
+        g_mutex_unlock(&interaction->lock);
         g_free(old);
         g_free(text);
         updated_cb = self->updated_cb;
@@ -197,13 +218,15 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       if (end) {
         gchar *res = g_strndup(start, end - start);
         g_debug_160("ReplSession.on_message result: ", res);
+        g_mutex_lock(&interaction->lock);
         interaction->result = g_strdup(res);
         interaction->status = INTERACTION_OK;
+        done_cb = interaction->done_cb;
+        done_cb_data = interaction->done_cb_data;
+        g_mutex_unlock(&interaction->lock);
         g_free(res);
         updated_cb = self->updated_cb;
         updated_cb_data = self->updated_cb_data;
-        done_cb = interaction->done_cb;
-        done_cb_data = interaction->done_cb_data;
         finished = TRUE;
       }
     }
@@ -218,12 +241,14 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       if (end) {
         gchar *err = g_strndup(start, end - start);
         g_debug_160("ReplSession.on_message error: ", err);
+        g_mutex_lock(&interaction->lock);
         interaction->error = g_strdup(err);
         interaction->status = INTERACTION_ERROR;
         updated_cb = self->updated_cb;
         updated_cb_data = self->updated_cb_data;
         done_cb = interaction->done_cb;
         done_cb_data = interaction->done_cb_data;
+        g_mutex_unlock(&interaction->lock);
         finished = TRUE;
         g_free(err);
       }

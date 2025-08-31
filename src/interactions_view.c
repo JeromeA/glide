@@ -79,17 +79,31 @@ set_text_view(GtkBox *box,
 static void
 interaction_row_update(InteractionRow *row, Interaction *interaction)
 {
-  g_debug("InteractionsView.row_update %s", interaction->expression);
+  gchar *expression;
+  gchar *output;
+  gchar *error;
+  gchar *result;
+  g_mutex_lock(&interaction->lock);
+  expression = g_strdup(interaction->expression);
+  output = g_strdup(interaction->output);
+  error = g_strdup(interaction->error);
+  result = g_strdup(interaction->result);
+  g_mutex_unlock(&interaction->lock);
+  g_debug("InteractionsView.row_update %s", expression);
   set_text_view(GTK_BOX(row->box), &row->expression,
-      interaction->expression, NULL, FALSE);
+      expression, NULL, FALSE);
   set_text_view(GTK_BOX(row->box), &row->output,
-      interaction->output, CSS_CLASS_OUTPUT, TRUE);
+      output, CSS_CLASS_OUTPUT, TRUE);
   set_text_view(GTK_BOX(row->box), &row->error,
-      interaction->error, CSS_CLASS_ERROR, TRUE);
+      error, CSS_CLASS_ERROR, TRUE);
   set_text_view(GTK_BOX(row->box), &row->result,
-      interaction->result, CSS_CLASS_RESULT, TRUE);
+      result, CSS_CLASS_RESULT, TRUE);
   if (row->result)
     gtk_box_reorder_child(GTK_BOX(row->box), row->result, -1);
+  g_free(expression);
+  g_free(output);
+  g_free(error);
+  g_free(result);
 }
 
 static InteractionRow *
@@ -97,7 +111,11 @@ interaction_row_ensure(InteractionsView *self, Interaction *interaction)
 {
   InteractionRow *row = g_hash_table_lookup(self->rows, interaction);
   if (!row) {
-    g_debug("InteractionsView.interaction_row_ensure creating row for %s", interaction->expression);
+    gchar *expr;
+    g_mutex_lock(&interaction->lock);
+    expr = g_strdup(interaction->expression);
+    g_mutex_unlock(&interaction->lock);
+    g_debug("InteractionsView.interaction_row_ensure creating row for %s", expr);
     row = g_new0(InteractionRow, 1);
     row->frame = gtk_frame_new(NULL);
     gtk_widget_set_margin_start(row->frame, 5);
@@ -108,6 +126,7 @@ interaction_row_ensure(InteractionsView *self, Interaction *interaction)
     gtk_container_add(GTK_CONTAINER(row->frame), row->box);
     g_hash_table_insert(self->rows, interaction, row);
     gtk_box_pack_start(GTK_BOX(self->box), row->frame, FALSE, FALSE, 0);
+    g_free(expr);
   }
   return row;
 }
@@ -130,14 +149,21 @@ dispatch_interaction_added(gpointer data)
   InteractionDispatch *d = data;
   InteractionsView *self = d->self;
   Interaction *interaction = d->interaction;
-  g_debug("InteractionsView.on_interaction_added %s", interaction->expression);
-  if (interaction->type != INTERACTION_USER)
+  gchar *expr;
+  InteractionType type;
+  g_mutex_lock(&interaction->lock);
+  expr = g_strdup(interaction->expression);
+  type = interaction->type;
+  g_mutex_unlock(&interaction->lock);
+  g_debug("InteractionsView.on_interaction_added %s", expr);
+  if (type != INTERACTION_USER)
     goto out;
   InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
 out:
   g_object_unref(self);
+  g_free(expr);
   g_free(d);
   return FALSE;
 }
@@ -148,11 +174,16 @@ dispatch_interaction_updated(gpointer data)
   InteractionDispatch *d = data;
   InteractionsView *self = d->self;
   Interaction *interaction = d->interaction;
-  g_debug("InteractionsView.on_interaction_updated %s", interaction->expression);
+  gchar *expr;
+  g_mutex_lock(&interaction->lock);
+  expr = g_strdup(interaction->expression);
+  g_mutex_unlock(&interaction->lock);
+  g_debug("InteractionsView.on_interaction_updated %s", expr);
   InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
   g_object_unref(self);
+  g_free(expr);
   g_free(d);
   return FALSE;
 }
@@ -239,7 +270,10 @@ on_interaction_added(ReplSession * /*session*/, Interaction *interaction, gpoint
 static void
 on_interaction_updated(ReplSession * /*session*/, Interaction *interaction, gpointer user_data)
 {
-  if (interaction->type != INTERACTION_USER)
+  g_mutex_lock(&interaction->lock);
+  InteractionType type = interaction->type;
+  g_mutex_unlock(&interaction->lock);
+  if (type != INTERACTION_USER)
     return;
   InteractionDispatch *d = g_new0(InteractionDispatch, 1);
   d->self = g_object_ref(GLIDE_INTERACTIONS_VIEW(user_data));
