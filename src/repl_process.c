@@ -18,50 +18,53 @@ static void on_proc_out(GString *data, gpointer user_data) {
   g_mutex_lock(&self->mutex);
   g_string_append_len(self->buffer, data->str, data->len);
   g_debug_160("ReplProcess.on_proc_out added: ", data->str);
-  while (self->buffer->str[0] == '\n') {
-    g_string_erase(self->buffer, 0, 1);
-  }
-  gsize i;
-  int level = 0;
-  gboolean in_string = FALSE;
-  gboolean escape = FALSE;
-  gboolean complete = FALSE;
-  for (i = 0; i < self->buffer->len; i++) {
-    char c = self->buffer->str[i];
-    if (in_string) {
-      if (escape)
-        escape = FALSE;
-      else if (c == '\\')
-        escape = TRUE;
-      else if (c == '"')
-        in_string = FALSE;
-    } else {
-      if (c == '"')
-        in_string = TRUE;
-      else if (c == '(')
-        level++;
-      else if (c == ')') {
-        if (level > 0)
-          level--;
-        if (level == 0) {
-          complete = TRUE;
-          break;
+  while(TRUE) {
+    while (self->buffer->str[0] == '\n') {
+      g_string_erase(self->buffer, 0, 1);
+    }
+    gsize i;
+    int level = 0;
+    gboolean in_string = FALSE;
+    gboolean escape = FALSE;
+    gboolean complete = FALSE;
+    for (i = 0; i < self->buffer->len; i++) {
+      char c = self->buffer->str[i];
+      if (in_string) {
+        if (escape)
+          escape = FALSE;
+        else if (c == '\\')
+          escape = TRUE;
+        else if (c == '"')
+          in_string = FALSE;
+      } else {
+        if (c == '"')
+          in_string = TRUE;
+        else if (c == '(')
+          level++;
+        else if (c == ')') {
+          if (level > 0)
+            level--;
+          if (level == 0) {
+            complete = TRUE;
+            break;
+          }
         }
       }
     }
+    if (!complete) {
+      g_debug_160("ReplProcess.on_proc_out incomplete: ", self->buffer->str);
+      return;
+    }
+    GString *line = g_string_new_len(self->buffer->str, i + 1);
+    g_string_erase(self->buffer, 0, i + 1);
+    g_debug_160("ReplProcess.on_proc_out forwarding: ", line->str);
+    g_debug_160("ReplProcess.on_proc_out still in buffer: ", self->buffer->str);
+    g_mutex_unlock(&self->mutex);
+    if (self->msg_cb)
+      self->msg_cb(line, self->msg_cb_data);
+    g_mutex_lock(&self->mutex);
+    g_string_free(line, TRUE);
   }
-  if (!complete) {
-    g_debug_160("ReplProcess.on_proc_out incomplete: ", self->buffer->str);
-    return;
-  }
-  GString *line = g_string_new_len(self->buffer->str, i + 1);
-  g_string_erase(self->buffer, 0, i + 1);
-  g_mutex_unlock(&self->mutex);
-  g_debug_160("ReplProcess.on_proc_out forwarding: ", line->str);
-  g_debug_160("ReplProcess.on_proc_out still in buffer: ", line->str);
-  if (self->msg_cb)
-    self->msg_cb(line, self->msg_cb_data);
-  g_string_free(line, TRUE);
 }
 
 static void on_proc_err(GString *data, gpointer user_data) {
@@ -115,9 +118,15 @@ void repl_process_start(ReplProcess *self) {
   g_mutex_unlock(&self->mutex);
 }
 
-void repl_process_send(ReplProcess *self, const GString *payload) {
-  g_return_if_fail(self);
-  process_write(self->proc, payload->str, payload->len);
+gboolean repl_process_send(ReplProcess *self, const GString *payload) {
+  g_return_val_if_fail(self, FALSE);
+  g_return_val_if_fail(payload, FALSE);
+  g_debug_160("ReplProcess.send: ", payload->str);
+  gboolean success = process_write(self->proc, payload->str, payload->len);
+  if (!success) {
+    g_warning("ReplProcess.send failed to write to process");
+  }
+  return success;
 }
 
 void repl_process_set_message_cb(ReplProcess *self, ReplProcessMessageCallback cb,

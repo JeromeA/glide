@@ -90,7 +90,7 @@ static gpointer repl_session_thread(gpointer data) {
     if (item == GINT_TO_POINTER(1))
       break;
     Interaction *interaction = item;
-    g_debug("ReplSession.thread eval %s", interaction->expression);
+    g_debug_160("ReplSession.thread eval ", interaction->expression);
     g_mutex_lock(&self->lock);
     if (!self->started) {
       repl_process_start(self->proc);
@@ -109,7 +109,7 @@ static gpointer repl_session_thread(gpointer data) {
     GString *payload = g_string_new(cmd);
     g_free(escaped);
     g_free(cmd);
-    g_debug("ReplSession.thread send %s", payload->str);
+    g_debug_160("ReplSession.thread send ", payload->str);
     repl_process_send(self->proc, payload);
     g_string_free(payload, TRUE);
   }
@@ -120,7 +120,7 @@ void repl_session_eval(ReplSession *self, Interaction *interaction) {
   g_return_if_fail(self);
   if (self->queue) {
     interaction->tag = g_atomic_int_add(&next_tag, 1);
-    g_debug("ReplSession.eval queue %s", interaction->expression);
+    g_debug_160("ReplSession.eval queue ", interaction->expression);
     g_async_queue_push(self->queue, interaction);
   }
 }
@@ -140,7 +140,7 @@ void repl_session_set_interaction_updated_cb(ReplSession *self, ReplSessionCallb
 void repl_session_on_message(GString *msg, gpointer user_data) {
   ReplSession *self = user_data ? (ReplSession*)user_data : NULL;
   const char *str = msg->str;
-  g_debug("ReplSession.on_message %s", str);
+  g_debug_160("ReplSession.on_message ", str);
   ReplSessionCallback updated_cb = NULL;
   gpointer updated_cb_data = NULL;
   InteractionCallback done_cb = NULL;
@@ -158,7 +158,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strstr(start, "\")");
       if (end) {
         gchar *text = g_strndup(start, end - start);
-        g_debug("ReplSession.on_message stdout: %s", text);
+        g_debug_160("ReplSession.on_message stdout: ", text);
         gchar *old = interaction->output;
         interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
         g_free(old);
@@ -177,7 +177,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strstr(start, "\")");
       if (end) {
         gchar *text = g_strndup(start, end - start);
-        g_debug("ReplSession.on_message stderr: %s", text);
+        g_debug_160("ReplSession.on_message stderr: ", text);
         gchar *old = interaction->output;
         interaction->output = old ? g_strconcat(old, text, NULL) : g_strdup(text);
         g_free(old);
@@ -196,7 +196,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strrchr(start, ')');
       if (end) {
         gchar *res = g_strndup(start, end - start);
-        g_debug("ReplSession.on_message result: %s", res);
+        g_debug_160("ReplSession.on_message result: ", res);
         interaction->result = g_strdup(res);
         interaction->status = INTERACTION_OK;
         g_free(res);
@@ -217,7 +217,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strrchr(start, '"');
       if (end) {
         gchar *err = g_strndup(start, end - start);
-        g_debug("ReplSession.on_message error: %s", err);
+        g_debug_160("ReplSession.on_message error: ", err);
         interaction->error = g_strdup(err);
         interaction->status = INTERACTION_ERROR;
         updated_cb = self->updated_cb;
