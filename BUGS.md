@@ -168,6 +168,11 @@ could update an interaction concurrently, freeing or replacing those strings whi
 `Interaction` now guards its fields with a mutex, and both the session and view lock around any access,
 copying text as needed to keep pointers valid.
 
+## Package info name mismatch
+
+`Project` asked the server for `glide:package-definition`, but the Lisp code exported `package-info`
+under a different name. The missing function prevented fetching package metadata. Renaming the file and
+function to `package-definition` synchronized the API and restored package lookup.
 ## Undo cleared buffer with no edits
 
 Pressing `Ctrl-z` immediately after opening a file erased its contents. Loading the file text was recorded as

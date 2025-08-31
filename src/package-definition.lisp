@@ -1,6 +1,6 @@
 (in-package :glide)
 
-(defun package-info (package-name)
+(defun package-definition (package-name)
   (let ((pkg (find-package package-name)))
     (when pkg
       (list :name (package-name pkg)
