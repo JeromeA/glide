@@ -106,7 +106,7 @@ cov: app-cov
 :lcov --capture --directory . --output-file coverage.info
 :genhtml coverage.info --output-directory out
 
-run-debug: app-full
+run-full: app-full
 :LSAN_OPTIONS="suppressions=${PWD}/lsan.supp" \
 :ASAN_OPTIONS="detect_leaks=1:abort_on_error=1" \
 :G_MESSAGES_DEBUG=all \
