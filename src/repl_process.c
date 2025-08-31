@@ -53,6 +53,7 @@ static void on_proc_out(GString *data, gpointer user_data) {
     }
     if (!complete) {
       g_debug_160("ReplProcess.on_proc_out incomplete: ", self->buffer->str);
+      g_mutex_unlock(&self->mutex);
       return;
     }
     GString *line = g_string_new_len(self->buffer->str, i + 1);

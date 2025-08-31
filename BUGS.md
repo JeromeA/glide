@@ -153,3 +153,10 @@ notifies listeners when stdout or stderr arrives.
 
 Messages containing newlines caused `g_debug_160` to emit multi-line log entries, making logs harder to read.
 The helper now escapes newline characters so each debug message stays on a single line.
+
+## ReplProcess deadlocked on incomplete messages
+
+`ReplProcess` locked its mutex while accumulating output but returned early when the buffer lacked a complete
+sexp. The missing unlock left the mutex held, so the next chunk blocked waiting for the lock and tests hung.
+`on_proc_out` now releases the mutex before returning when output is incomplete, allowing processing to
+continue.
