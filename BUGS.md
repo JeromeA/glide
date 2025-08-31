@@ -173,3 +173,9 @@ copying text as needed to keep pointers valid.
 `Project` asked the server for `glide:package-definition`, but the Lisp code exported `package-info`
 under a different name. The missing function prevented fetching package metadata. Renaming the file and
 function to `package-definition` synchronized the API and restored package lookup.
+## Undo cleared buffer with no edits
+
+Pressing `Ctrl-z` immediately after opening a file erased its contents. Loading the file text was recorded as
+an undoable action, so the first undo reverted the buffer to empty. Wrapping the initial load in a
+non-undoable action initializes the undo stack with the file's contents, so undo before any edits now leaves
+the text unchanged.
