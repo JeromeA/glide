@@ -167,3 +167,9 @@ continue.
 could update an interaction concurrently, freeing or replacing those strings while the UI still held references.
 `Interaction` now guards its fields with a mutex, and both the session and view lock around any access,
 copying text as needed to keep pointers valid.
+
+## Package info name mismatch
+
+`Project` asked the server for `glide:package-definition`, but the Lisp code exported `package-info`
+under a different name. The missing function prevented fetching package metadata. Renaming the file and
+function to `package-definition` synchronized the API and restored package lookup.
