@@ -91,11 +91,13 @@ editor_new_for_file (Project *project, ProjectFile *file)
   self->project = project_ref(project);
   self->file = file;
 
-  TextProvider *existing = project_file_get_provider (self->file);
+  TextProvider *existing = project_file_get_provider(self->file);
   if (existing) {
     gsize len = text_provider_get_length(existing);
     gchar *text = text_provider_get_text(existing, 0, len);
-    gtk_text_buffer_set_text (GTK_TEXT_BUFFER (self->buffer), text, -1);
+    gtk_source_buffer_begin_not_undoable_action(self->buffer);
+    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(self->buffer), text, -1);
+    gtk_source_buffer_end_not_undoable_action(self->buffer);
     g_free(text);
   }
 

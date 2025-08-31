@@ -167,3 +167,10 @@ continue.
 could update an interaction concurrently, freeing or replacing those strings while the UI still held references.
 `Interaction` now guards its fields with a mutex, and both the session and view lock around any access,
 copying text as needed to keep pointers valid.
+
+## Undo cleared buffer with no edits
+
+Pressing `Ctrl-z` immediately after opening a file erased its contents. Loading the file text was recorded as
+an undoable action, so the first undo reverted the buffer to empty. Wrapping the initial load in a
+non-undoable action initializes the undo stack with the file's contents, so undo before any edits now leaves
+the text unchanged.
