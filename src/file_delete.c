@@ -33,10 +33,10 @@ void file_delete(GtkWidget */*widget*/, gpointer data) {
     }
     g_remove(path);
     Asdf *asdf = project_get_asdf(app_get_project(app));
-    if (asdf && comp) {
+    if (comp) {
       asdf_remove_component(asdf, comp);
       asdf_save(asdf, asdf_get_filename(asdf));
-      app_update_asdf_view(app);
+      app_update_project_view(app);
     }
     Project *project = app_get_project(app);
     project_remove_file(project, file);

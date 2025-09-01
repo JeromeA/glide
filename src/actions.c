@@ -267,7 +267,7 @@ app_close_project(App *self, gboolean forget_project)
     preferences_set_last_file(prefs, NULL);
     preferences_set_cursor_position(prefs, 0);
   }
-  app_update_asdf_view(self);
+  app_update_project_view(self);
   return TRUE;
 }
 

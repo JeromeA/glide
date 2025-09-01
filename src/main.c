@@ -8,7 +8,7 @@
 #include "menu_bar.c"
 #include "app.c"
 #include "asdf.c"
-#include "asdf_view.c"
+#include "project_view.c"
 #include "evaluate.c"
 #include "function.c"
 #include "file_open.c"

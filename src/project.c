@@ -6,6 +6,7 @@
 #include "lisp_parser.h"
 #include "repl_session.h"
 #include "interaction.h"
+#include "asdf.h"
 #include <glib-object.h>
 
 struct _Project {
@@ -46,7 +47,7 @@ static Project *project_init(void) {
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->packages = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)package_unref);
   self->functions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)function_unref);
-  self->asdf = NULL;
+  self->asdf = asdf_new();
   self->path = NULL;
   return self;
 }
@@ -285,7 +286,9 @@ void project_clear(Project *self) {
   }
   g_hash_table_remove_all(self->packages);
   g_hash_table_remove_all(self->functions);
-  project_set_asdf(self, NULL);
+  Asdf *asdf = asdf_new();
+  project_set_asdf(self, asdf);
+  g_object_unref(asdf);
 }
 
 static void project_index_node(Project *self, const Node *node) {

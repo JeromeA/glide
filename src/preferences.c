@@ -10,7 +10,7 @@ struct _Preferences {
   gchar   *project_dir;
   gint     window_width;
   gint     window_height;
-  gint     asdf_view_width;
+  gint     project_view_width;
   gchar   *last_file;
   gint     cursor_position;
   GList   *recent_projects;
@@ -49,9 +49,9 @@ static void preferences_load(Preferences *self) {
     if (win_h)
       preferences_set_window_height(self, win_h);
 
-    gint width = g_key_file_get_integer(key_file, "General", "asdf_view_width", NULL);
+    gint width = g_key_file_get_integer(key_file, "General", "project_view_width", NULL);
     if (width)
-      preferences_set_asdf_view_width(self, width);
+      preferences_set_project_view_width(self, width);
 
     char *last = g_key_file_get_string(key_file, "General", "last_file", NULL);
     if (last) {
@@ -94,7 +94,7 @@ static void preferences_save(Preferences *self) {
     g_key_file_set_string(key_file, "General", "project_dir", self->project_dir);
   g_key_file_set_integer(key_file, "General", "window_width", self->window_width);
   g_key_file_set_integer(key_file, "General", "window_height", self->window_height);
-  g_key_file_set_integer(key_file, "General", "asdf_view_width", self->asdf_view_width);
+  g_key_file_set_integer(key_file, "General", "project_view_width", self->project_view_width);
   if (self->last_file)
     g_key_file_set_string(key_file, "General", "last_file", self->last_file);
   g_key_file_set_integer(key_file, "General", "cursor_position", self->cursor_position);
@@ -139,7 +139,7 @@ preferences_new(const gchar *config_dir)
   self->project_dir = g_strdup("~/lisp");
   self->window_width = 800;
   self->window_height = 600;
-  self->asdf_view_width = 200;
+  self->project_view_width = 200;
   self->cursor_position = 0;
   preferences_load(self);
   return self;
@@ -182,13 +182,13 @@ void preferences_set_project_dir(Preferences *self, const gchar *dir) {
   }
 }
 
-gint preferences_get_asdf_view_width(Preferences *self) {
-  return self->asdf_view_width;
+gint preferences_get_project_view_width(Preferences *self) {
+  return self->project_view_width;
 }
 
-void preferences_set_asdf_view_width(Preferences *self, gint width) {
-  if (self->asdf_view_width != width) {
-    self->asdf_view_width = width;
+void preferences_set_project_view_width(Preferences *self, gint width) {
+  if (self->project_view_width != width) {
+    self->project_view_width = width;
     preferences_save(self);
   }
 }

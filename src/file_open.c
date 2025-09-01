@@ -73,7 +73,9 @@ gboolean file_open_path(App *app, const gchar *filename) {
     g_free(dir);
     g_free(base);
   } else {
-    project_set_asdf(project, NULL);
+    Asdf *asdf = asdf_new();
+    project_set_asdf(project, asdf);
+    g_object_unref(asdf);
     gchar *dir = g_path_get_dirname(filename);
     project_set_path(project, dir);
     TextProvider *provider = string_text_provider_new("");
@@ -92,7 +94,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
   Editor *view = lisp_source_notebook_get_current_editor(notebook);
   if (view)
     app_connect_editor(app, view);
-  app_update_asdf_view(app);
+  app_update_project_view(app);
   return TRUE;
 }
 
