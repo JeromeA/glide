@@ -106,26 +106,24 @@ project_view_populate_store(ProjectView *self)
 
   gtk_tree_store_append(self->store, &iter, &root);
   gtk_tree_store_set(self->store, &iter,
-      PROJECT_VIEW_COL_TEXT, "libraries",
-      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_LIBRARIES,
+      PROJECT_VIEW_COL_TEXT, "packages",
+      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_PACKAGES,
       PROJECT_VIEW_COL_OBJECT, NULL,
       -1);
-  gtk_tree_store_append(self->store, &child, &iter);
-  gtk_tree_store_set(self->store, &child,
-      PROJECT_VIEW_COL_TEXT, "COMMON-LISP",
-      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_LIBRARY,
-      PROJECT_VIEW_COL_OBJECT, "COMMON-LISP",
-      -1);
-  for (guint i = 0; i < asdf_get_dependency_count(self->asdf); i++) {
-    const gchar *dep = asdf_get_dependency(self->asdf, i);
-    if (g_strcmp0(dep, "COMMON-LISP") != 0) {
+  if (self->project) {
+    guint n = 0;
+    gchar **names = project_get_package_names(self->project, &n);
+    for (guint i = 0; i < n; i++) {
+      const gchar *name = names[i];
       gtk_tree_store_append(self->store, &child, &iter);
       gtk_tree_store_set(self->store, &child,
-          PROJECT_VIEW_COL_TEXT, dep,
-          PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_LIBRARY,
-          PROJECT_VIEW_COL_OBJECT, dep,
+          PROJECT_VIEW_COL_TEXT, name,
+          PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_PACKAGE,
+          PROJECT_VIEW_COL_OBJECT,
+          project_get_package(self->project, name),
           -1);
     }
+    g_free(names);
   }
 
   gtk_tree_view_expand_all(GTK_TREE_VIEW(self));
