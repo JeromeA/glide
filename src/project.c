@@ -249,6 +249,11 @@ Package *project_get_package(Project *self, const gchar *name) {
   return g_hash_table_lookup(self->packages, name);
 }
 
+gchar **project_get_package_names(Project *self, guint *length) {
+  g_return_val_if_fail(self != NULL, NULL);
+  return (gchar **) g_hash_table_get_keys_as_array(self->packages, length);
+}
+
 void project_set_asdf(Project *self, Asdf *asdf) {
   g_return_if_fail(self != NULL);
   g_debug("project_set_asdf %p", asdf);
