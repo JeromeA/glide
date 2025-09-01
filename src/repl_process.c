@@ -19,7 +19,7 @@ static void on_proc_out(GString *data, gpointer user_data) {
   g_string_append_len(self->buffer, data->str, data->len);
   g_debug_160("ReplProcess.on_proc_out added: ", data->str);
   while(TRUE) {
-    while (self->buffer->str[0] == '\n') {
+    while (self->buffer->len > 0 && self->buffer->str[0] == '\n') {
       g_string_erase(self->buffer, 0, 1);
     }
     gsize i;

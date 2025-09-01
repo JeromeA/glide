@@ -185,3 +185,11 @@ the text unchanged.
 Packages fetched from the REPL were added to `Project` but `ProjectView` never
 repopulated, so the packages list stayed empty. `Project` now notifies listeners
 when packages are added and `ProjectView` refreshes its store in response.
+
+## repl_process_test hung on empty output
+
+`ReplProcess` stripped leading newlines without verifying that the buffer
+contained any characters. When the process emitted only newlines, the trimming
+loop examined the first byte of an empty string, triggering undefined behavior
+and leaving tests blocked. The loop now guards the check with the buffer's
+length so empty output exits cleanly and the test completes.
