@@ -40,16 +40,14 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
         if (view)
           app_connect_editor(app, view);
         Asdf *asdf = project_get_asdf(project);
-        if (asdf) {
-          const gchar *rel = project_file_get_relative_path(file);
-          gchar *comp = g_strdup(rel);
-          if (g_str_has_suffix(comp, ".lisp"))
-            comp[strlen(comp) - 5] = '\0';
-          asdf_add_component(asdf, comp);
-          asdf_save(asdf, asdf_get_filename(asdf));
-          app_update_asdf_view(app);
-          g_free(comp);
-        }
+        const gchar *rel = project_file_get_relative_path(file);
+        gchar *comp = g_strdup(rel);
+        if (g_str_has_suffix(comp, ".lisp"))
+          comp[strlen(comp) - 5] = '\0';
+        asdf_add_component(asdf, comp);
+        asdf_save(asdf, asdf_get_filename(asdf));
+        app_update_project_view(app);
+        g_free(comp);
       }
       g_free(path);
       g_free(fname);

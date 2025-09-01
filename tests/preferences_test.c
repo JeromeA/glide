@@ -13,7 +13,7 @@ test_defaults(void)
 
     g_assert_null(preferences_get_sdk(prefs));
     g_assert_cmpstr(preferences_get_project_dir(prefs), ==, "~/lisp");
-    g_assert_cmpint(preferences_get_asdf_view_width(prefs), ==, 200);
+    g_assert_cmpint(preferences_get_project_view_width(prefs), ==, 200);
     g_assert_cmpint(preferences_get_window_width(prefs), ==, 800);
     g_assert_cmpint(preferences_get_window_height(prefs), ==, 600);
 
@@ -83,14 +83,14 @@ test_set_project_dir(void)
 }
 
 static void
-test_set_asdf_view_width(void)
+test_set_project_view_width(void)
 {
   gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
   Preferences *prefs = preferences_new(tmpdir);
   gchar *file = g_build_filename(tmpdir, "glide", "preferences.ini", NULL);
 
-  preferences_set_asdf_view_width(prefs, 300);
-  g_assert_cmpint(preferences_get_asdf_view_width(prefs), ==, 300);
+  preferences_set_project_view_width(prefs, 300);
+  g_assert_cmpint(preferences_get_project_view_width(prefs), ==, 300);
 
   gchar *contents = NULL;
   g_file_get_contents(file, &contents, NULL, NULL);
@@ -186,7 +186,7 @@ main(int argc, char *argv[])
     g_test_add_func("/preferences/defaults", test_defaults);
     g_test_add_func("/preferences/set_sdk", test_set_sdk);
     g_test_add_func("/preferences/set_project_dir", test_set_project_dir);
-    g_test_add_func("/preferences/set_asdf_view_width", test_set_asdf_view_width);
+    g_test_add_func("/preferences/set_project_view_width", test_set_project_view_width);
     g_test_add_func("/preferences/set_window_size", test_set_window_size);
     g_test_add_func("/preferences/recent_projects", test_recent_projects);
 

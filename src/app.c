@@ -7,14 +7,14 @@
 #include "project.h"
 #include "project_file.h"
 #include "status_bar.h"
-#include "asdf_view.h"
+#include "project_view.h"
 #include "menu_bar.h"
 #include "actions.h"
 
 /* Signal handlers */
 STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, gpointer data);
 STATIC void     app_update_recent_menu(App *self);
-STATIC void     on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data);
+STATIC void     on_project_view_selection_changed(GtkTreeSelection *selection, gpointer data);
 STATIC void     on_notebook_switch_page(GtkNotebook *notebook, GtkWidget *page, guint page_num, gpointer data);
 STATIC void     on_window_size_allocate(GtkWidget *widget, GtkAllocation * /*allocation*/, gpointer data);
 
@@ -32,7 +32,7 @@ struct _App
   StatusBar      *statusbar;
   StatusService  *status_service;
   GtkWidget      *notebook_paned;
-  GtkWidget      *asdf_scrolled;
+  GtkWidget      *project_scrolled;
   GMenu          *recent_menu;
 };
 
@@ -78,7 +78,13 @@ app_activate (GApplication *app)
   self->notebook_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
   g_signal_connect(self->notebook_paned, "notify::position",
       G_CALLBACK(on_notebook_paned_position), self);
+  self->project_scrolled = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->project_scrolled),
+      GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
+  gtk_paned_pack1(GTK_PANED(self->notebook_paned), self->project_scrolled, FALSE, TRUE);
   gtk_paned_pack2(GTK_PANED(self->notebook_paned), notebook, TRUE, TRUE);
+  gint width = preferences_get_project_view_width(self->preferences);
+  gtk_paned_set_position(GTK_PANED(self->notebook_paned), width);
   g_signal_connect(self->notebook, "switch-page",
       G_CALLBACK(on_notebook_switch_page), self);
 
@@ -126,6 +132,7 @@ app_activate (GApplication *app)
       }
     }
   }
+  app_update_project_view(self);
   app_update_recent_menu(self);
   gtk_widget_show_all(self->window);
   Editor *current_view = lisp_source_notebook_get_current_editor(self->notebook);
@@ -154,7 +161,7 @@ app_dispose (GObject *object)
     self->project = NULL;
   }
   g_clear_object(&self->notebook);
-  g_clear_object(&self->asdf_scrolled);
+  g_clear_object(&self->project_scrolled);
   g_clear_object(&self->notebook_paned);
   g_clear_object(&self->recent_menu);
   if (self->preferences) {
@@ -189,7 +196,7 @@ app_init (App *self)
   self->statusbar = NULL;
   self->status_service = NULL;
   self->notebook_paned = NULL;
-  self->asdf_scrolled = NULL;
+  self->project_scrolled = NULL;
   self->recent_menu = NULL;
 }
 
@@ -254,29 +261,20 @@ app_get_current_file(App *self)
 
 
 STATIC void
-app_update_asdf_view(App *self)
+app_update_project_view(App *self)
 {
   g_return_if_fail(GLIDE_IS_APP(self));
-  if (!self->notebook_paned)
+  if (!self->project_scrolled)
     return;
-  if (self->asdf_scrolled) {
-    gtk_widget_destroy(self->asdf_scrolled);
-    self->asdf_scrolled = NULL;
-  }
+  GtkWidget *old = gtk_bin_get_child(GTK_BIN(self->project_scrolled));
+  if (old)
+    gtk_widget_destroy(old);
   Asdf *asdf = project_get_asdf(self->project);
-  if (!asdf)
-    return;
-  GtkWidget *view = asdf_view_new(asdf, self);
+  GtkWidget *view = project_view_new(asdf, self);
   GtkTreeSelection *sel = gtk_tree_view_get_selection(GTK_TREE_VIEW(view));
-  g_signal_connect(sel, "changed", G_CALLBACK(on_asdf_view_selection_changed), self);
-  self->asdf_scrolled = gtk_scrolled_window_new(NULL, NULL);
-  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->asdf_scrolled),
-      GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
-  gtk_container_add(GTK_CONTAINER(self->asdf_scrolled), view);
-  gtk_widget_show_all(self->asdf_scrolled);
-  gtk_paned_pack1(GTK_PANED(self->notebook_paned), self->asdf_scrolled, FALSE, TRUE);
-  gint width = preferences_get_asdf_view_width(self->preferences);
-  gtk_paned_set_position(GTK_PANED(self->notebook_paned), width);
+  g_signal_connect(sel, "changed", G_CALLBACK(on_project_view_selection_changed), self);
+  gtk_container_add(GTK_CONTAINER(self->project_scrolled), view);
+  gtk_widget_show_all(self->project_scrolled);
   on_notebook_switch_page(GTK_NOTEBOOK(self->notebook), NULL,
       gtk_notebook_get_current_page(GTK_NOTEBOOK(self->notebook)), self);
 }
@@ -285,17 +283,15 @@ STATIC void
 on_notebook_paned_position(GObject *object, GParamSpec * /*pspec*/, gpointer data)
 {
   App *self = GLIDE_APP(data);
-  if (!self->asdf_scrolled)
-    return;
   Preferences *prefs = app_get_preferences(self);
   if (!prefs)
     return;
   gint pos = gtk_paned_get_position(GTK_PANED(object));
-  preferences_set_asdf_view_width(prefs, pos);
+  preferences_set_project_view_width(prefs, pos);
 }
 
 STATIC void
-on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data)
+on_project_view_selection_changed(GtkTreeSelection *selection, gpointer data)
 {
   App *self = GLIDE_APP(data);
   GtkTreeModel *model;
@@ -305,10 +301,10 @@ on_asdf_view_selection_changed(GtkTreeSelection *selection, gpointer data)
   gint kind = 0;
   gpointer obj = NULL;
   gtk_tree_model_get(model, &iter,
-      ASDF_VIEW_COL_KIND, &kind,
-      ASDF_VIEW_COL_OBJECT, &obj,
+      PROJECT_VIEW_COL_KIND, &kind,
+      PROJECT_VIEW_COL_OBJECT, &obj,
       -1);
-  if (kind != ASDF_VIEW_KIND_COMPONENT || !obj)
+  if (kind != PROJECT_VIEW_KIND_COMPONENT || !obj)
     return;
   ProjectFile *file = obj;
   guint count = project_get_file_count(self->project);
@@ -324,9 +320,7 @@ STATIC void
 on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*page_num*/, gpointer data)
 {
   App *self = GLIDE_APP(data);
-  if (!self->asdf_scrolled)
-    return;
-  GtkWidget *view = gtk_bin_get_child(GTK_BIN(self->asdf_scrolled));
+  GtkWidget *view = gtk_bin_get_child(GTK_BIN(self->project_scrolled));
   if (!view)
     return;
   if (!page)
@@ -337,7 +331,7 @@ on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*pag
   const gchar *rel = project_file_get_relative_path(file);
   if (!rel)
     return;
-  asdf_view_select_file(ASDF_VIEW(view), rel);
+  project_view_select_file(PROJECT_VIEW(view), rel);
 }
 
 STATIC void
