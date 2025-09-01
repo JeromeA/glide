@@ -7,6 +7,7 @@
 #include "repl_session.h"
 #include "interaction.h"
 #include "asdf.h"
+#include "util.h"
 #include <glib-object.h>
 
 struct _Project {
@@ -86,11 +87,23 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
     const Node *ast = lisp_parser_get_ast(parser);
     if (ast && ast->children && ast->children->len > 0) {
       Node *expr = g_array_index(ast->children, Node*, 0);
-      analyse_defpackage(project, expr, NULL);
+      Node *name_node = (expr->children && expr->children->len > 1) ?
+        g_array_index(expr->children, Node*, 1) : NULL;
+      const gchar *pkg_name = node_get_name(name_node);
+      if (pkg_name) {
+        analyse_defpackage(project, expr, NULL);
+        g_debug("project_on_package_definition built package %s", pkg_name);
+      } else {
+        g_debug_160("project_on_package_definition failed, missing name in ", res);
+      }
+    } else {
+      g_debug_160("project_on_package_definition failed to parse ", res);
     }
     lisp_parser_free(parser);
     lisp_lexer_free(lexer);
     text_provider_unref(provider);
+  } else {
+    g_debug("project_on_package_definition no result");
   }
   project_unref(project);
   interaction_clear(interaction);
@@ -226,6 +239,7 @@ void project_add_package(Project *self, Package *package) {
   g_return_if_fail(package != NULL);
   const gchar *name = package_get_name(package);
   if (!name) return;
+  g_debug("project_add_package %s", name);
   g_hash_table_replace(self->packages, g_strdup(name), package_ref(package));
 }
 
