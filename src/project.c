@@ -24,6 +24,8 @@ struct _Project {
   gpointer file_loaded_data;
   ProjectFileRemovedCb file_removed_cb;
   gpointer file_removed_data;
+  ProjectPackageAddedCb package_added_cb;
+  gpointer package_added_data;
   Asdf *asdf; /* owned, nullable */
   gchar *path;
   gint refcnt;
@@ -50,6 +52,8 @@ static Project *project_init(void) {
   self->functions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)function_unref);
   self->asdf = asdf_new();
   self->path = NULL;
+  self->package_added_cb = NULL;
+  self->package_added_data = NULL;
   return self;
 }
 
@@ -241,6 +245,8 @@ void project_add_package(Project *self, Package *package) {
   if (!name) return;
   g_debug("project_add_package %s", name);
   g_hash_table_replace(self->packages, g_strdup(name), package_ref(package));
+  if (self->package_added_cb)
+    self->package_added_cb(self, package, self->package_added_data);
 }
 
 void project_add_function(Project *self, Function *function) {
@@ -383,5 +389,11 @@ void project_file_removed(Project *self, ProjectFile *file) {
   g_return_if_fail(file != NULL);
   if (self->file_removed_cb)
     self->file_removed_cb(self, file, self->file_removed_data);
+}
+
+void project_set_package_added_cb(Project *self, ProjectPackageAddedCb cb, gpointer user_data) {
+  g_return_if_fail(self != NULL);
+  self->package_added_cb = cb;
+  self->package_added_data = user_data;
 }
 

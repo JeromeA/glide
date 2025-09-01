@@ -179,3 +179,9 @@ Pressing `Ctrl-z` immediately after opening a file erased its contents. Loading 
 an undoable action, so the first undo reverted the buffer to empty. Wrapping the initial load in a
 non-undoable action initializes the undo stack with the file's contents, so undo before any edits now leaves
 the text unchanged.
+
+## Project view missed package updates
+
+Packages fetched from the REPL were added to `Project` but `ProjectView` never
+repopulated, so the packages list stayed empty. `Project` now notifies listeners
+when packages are added and `ProjectView` refreshes its store in response.

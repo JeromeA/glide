@@ -14,12 +14,14 @@ typedef struct _ReplSession ReplSession;
 
 typedef void (*ProjectFileLoadedCb)(Project *self, ProjectFile *file, gpointer user_data);
 typedef void (*ProjectFileRemovedCb)(Project *self, ProjectFile *file, gpointer user_data);
+typedef void (*ProjectPackageAddedCb)(Project *self, Package *package, gpointer user_data);
 
 Project       *project_new(ReplSession *repl);
 Project       *project_ref(Project *self);
 void           project_unref(Project *self);
 void           project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer user_data);
 void           project_set_file_removed_cb(Project *self, ProjectFileRemovedCb cb, gpointer user_data);
+void           project_set_package_added_cb(Project *self, ProjectPackageAddedCb cb, gpointer user_data);
 ProjectFile   *project_get_file(Project *self, guint index);
 guint          project_get_file_count(Project *self);
 ProjectFile   *project_add_file(Project *self, TextProvider *provider,
