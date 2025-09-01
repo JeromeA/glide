@@ -20,6 +20,7 @@ static void project_view_populate_store(ProjectView *self);
 static gboolean filename_matches(const gchar *component, const gchar *file);
 static gchar *get_selected_component(ProjectView *self);
 static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data);
+static void on_package_added(Project *project, Package *package, gpointer user_data);
 
 static void
 project_view_init(ProjectView *self)
@@ -46,6 +47,8 @@ project_view_dispose(GObject *object)
 {
   ProjectView *self = PROJECT_VIEW(object);
   g_clear_object(&self->asdf);
+  if (self->project)
+    project_set_package_added_cb(self->project, NULL, NULL);
   g_clear_pointer(&self->project, project_unref);
   g_clear_object(&self->app);
   g_clear_object(&self->store);
@@ -137,6 +140,8 @@ project_view_new(Asdf *asdf, App *app)
   self->asdf = g_object_ref(asdf);
   self->app = app ? g_object_ref(app) : NULL;
   self->project = app ? project_ref(app_get_project(app)) : NULL;
+  if (self->project)
+    project_set_package_added_cb(self->project, on_package_added, self);
   project_view_populate_store(self);
   return GTK_WIDGET(self);
 }
@@ -186,6 +191,10 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
     }
   }
   return GTK_WIDGET_CLASS(project_view_parent_class)->button_press_event(widget, event);
+}
+
+static void on_package_added(Project * /*project*/, Package * /*package*/, gpointer user_data) {
+  project_view_populate_store(PROJECT_VIEW(user_data));
 }
 
 static gboolean
