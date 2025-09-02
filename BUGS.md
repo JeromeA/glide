@@ -193,3 +193,11 @@ contained any characters. When the process emitted only newlines, the trimming
 loop examined the first byte of an empty string, triggering undefined behavior
 and leaving tests blocked. The loop now guards the check with the buffer's
 length so empty output exits cleanly and the test completes.
+
+## Package list updated from background thread
+
+`ProjectView` refreshed its tree store directly from the package-added callback,
+which may run outside the main GTK thread. GTK requires UI updates on the main
+context, so repopulating from a background thread could lead to race conditions
+and warnings. The callback now dispatches the refresh via `g_main_context_invoke`,
+ensuring the tree store updates on the UI thread.
