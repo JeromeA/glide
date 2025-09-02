@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "gtk_text_provider.h"
 #include "project.h"
+#include "util.h"
 
 typedef struct {
   gsize start;

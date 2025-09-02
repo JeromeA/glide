@@ -12,6 +12,7 @@
 #include "project_file.h"
 #include "lisp_source_notebook.h"
 #include "editor.h"
+#include "util.h"
 
 static gboolean app_maybe_save_all(App *self);
 static void show_parser(App *self);

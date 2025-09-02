@@ -16,6 +16,7 @@
 #include "preferences.h"
 #include "asdf.h"
 #include "file_utilities.h"
+#include "util.h"
 
 static gboolean save_if_modified(App *app) {
   Project *project = app_get_project(app);
