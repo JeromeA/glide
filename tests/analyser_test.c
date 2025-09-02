@@ -6,7 +6,7 @@
 #include "project.h"
 #include <glib.h>
 
-int main(void) {
+static void test_analyse(void) {
   const gchar *text =
     "(defpackage :my-pack (:nicknames :mp) (:use :cl))\n"
     "(defun foo ())\n"
@@ -25,9 +25,9 @@ int main(void) {
   analyse_ast(project, ast);
 
   Package *pkg = project_get_package(project, "MY-PACK");
-  g_assert(pkg);
-  g_assert(g_hash_table_contains(package_get_nicknames(pkg), "MP"));
-  g_assert(g_hash_table_contains(package_get_uses(pkg), "CL"));
+  g_assert_nonnull(pkg);
+  g_assert_true(g_hash_table_contains(package_get_nicknames(pkg), "MP"));
+  g_assert_true(g_hash_table_contains(package_get_uses(pkg), "CL"));
 
   Node *foo_expr = g_array_index(ast->children, Node*, 1);
   Node *foo_name = g_array_index(foo_expr->children, Node*, 1);
@@ -46,5 +46,10 @@ int main(void) {
   lisp_lexer_free(lexer);
   text_provider_unref(provider);
   project_unref(project);
-  return 0;
+}
+
+int main(int argc, char *argv[]) {
+  g_test_init(&argc, &argv, NULL);
+  g_test_add_func("/analyse/basic", test_analyse);
+  return g_test_run();
 }
