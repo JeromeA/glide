@@ -14,6 +14,14 @@ static void node_finalize(Node *node) {
   g_clear_pointer(&node->name, g_free);
 }
 
+Node *node_new(LispAstNodeType type, ProjectFile *file) {
+  Node *node = g_new0(Node, 1);
+  g_atomic_int_set(&node->ref, 1);
+  node->type = type;
+  node->file = file;
+  return node;
+}
+
 Node *node_ref(Node *node) {
   if (!node) return NULL;
   g_atomic_int_inc(&node->ref);

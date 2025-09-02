@@ -147,7 +147,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
   lisp_lexer_lex(lexer);
   LispParser *parser = lisp_parser_new();
   GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens);
+  lisp_parser_parse(parser, tokens, NULL);
 
   const Node *ast = lisp_parser_get_ast(parser);
   if (!ast)
