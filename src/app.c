@@ -10,6 +10,7 @@
 #include "project_view.h"
 #include "menu_bar.h"
 #include "actions.h"
+#include "util.h"
 
 /* Signal handlers */
 STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, gpointer data);

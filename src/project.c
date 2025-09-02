@@ -98,10 +98,10 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
         analyse_defpackage(project, expr, NULL);
         g_debug("project_on_package_definition built package %s", pkg_name);
       } else {
-        g_debug_160("project_on_package_definition failed, missing name in ", res);
+        g_debug_160(1, "project_on_package_definition failed, missing name in ", res);
       }
     } else {
-      g_debug_160("project_on_package_definition failed to parse ", res);
+      g_debug_160(1, "project_on_package_definition failed to parse ", res);
     }
     lisp_parser_free(parser);
     lisp_lexer_free(lexer);

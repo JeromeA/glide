@@ -2,6 +2,7 @@
 #include "preferences.h"
 #include <glib/gstdio.h>
 #include <errno.h>
+#include "util.h"
 
 struct _Preferences {
   gchar   *filename;

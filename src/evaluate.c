@@ -12,6 +12,7 @@
 #include "evaluate.h"
 #include "editor.h"
 #include "app.h"
+#include "util.h"
 
 /* ------------------------------------------------------------------------- */
 /* Callback triggered when the user requests evaluation of the current form. */

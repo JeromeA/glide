@@ -5,6 +5,7 @@
 #include "asdf.h"
 #include "file_open.h"
 #include <glib/gstdio.h>
+#include "util.h"
 
 typedef struct {
   GtkEntry *name_entry;

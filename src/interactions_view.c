@@ -1,6 +1,7 @@
 #include "interactions_view.h"
 #include "interaction.h"
 #include "repl_session.h"
+#include "util.h"
 
 #define CSS_CLASS_OUTPUT "interaction-output"
 #define CSS_CLASS_ERROR  "interaction-error"

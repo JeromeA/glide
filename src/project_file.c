@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <glib-object.h>
 #include "syscalls.h"
+#include "util.h"
 
 struct _ProjectFile {
   ProjectFileState state;
