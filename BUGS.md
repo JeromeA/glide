@@ -201,3 +201,9 @@ which may run outside the main GTK thread. GTK requires UI updates on the main
 context, so repopulating from a background thread could lead to race conditions
 and warnings. The callback now dispatches the refresh via `g_main_context_invoke`,
 ensuring the tree store updates on the UI thread.
+
+## Undo test asserted with pristine buffer
+
+`editor_test` invoked `gtk_source_buffer_undo` on a new buffer even though the undo manager had no actions, causing a
+GtkSourceView assertion. The test now avoids calling `gtk_source_buffer_undo` and simply verifies the undo stack is
+empty, so pristine buffers no longer crash.
