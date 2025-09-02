@@ -144,6 +144,39 @@ static void test_functions_table(void)
   project_unref(project);
 }
 
+static void test_incremental_index(void)
+{
+  Project *project = project_new(NULL);
+  TextProvider *p1 = string_text_provider_new("(defun foo () nil)");
+  ProjectFile *f1 = project_add_file(project, p1, NULL, NULL, PROJECT_FILE_LIVE);
+  text_provider_unref(p1);
+  project_file_changed(project, f1);
+
+  TextProvider *p2 = string_text_provider_new("(defun bar () nil)");
+  ProjectFile *f2 = project_add_file(project, p2, NULL, NULL, PROJECT_FILE_LIVE);
+  text_provider_unref(p2);
+  project_file_changed(project, f2);
+
+  GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
+  g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
+  g_assert_nonnull(g_hash_table_lookup(defs, "BAR"));
+
+  StringTextProvider *stp2 = (StringTextProvider*)project_file_get_provider(f2);
+  g_free(stp2->text);
+  stp2->text = g_strdup("(defun baz () nil)");
+  project_file_changed(project, f2);
+
+  g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
+  g_assert_null(g_hash_table_lookup(defs, "BAR"));
+  g_assert_nonnull(g_hash_table_lookup(defs, "BAZ"));
+
+  g_assert_nonnull(project_get_function(project, "FOO"));
+  g_assert_null(project_get_function(project, "BAR"));
+  g_assert_nonnull(project_get_function(project, "BAZ"));
+
+  project_unref(project);
+}
+
 static void test_relative_path(void)
 {
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
@@ -213,6 +246,7 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/function_analysis", test_function_analysis);
   g_test_add_func("/project/index", test_index);
   g_test_add_func("/project/functions_table", test_functions_table);
+  g_test_add_func("/project/incremental_index", test_incremental_index);
   g_test_add_func("/project/relative_path", test_relative_path);
   g_test_add_func("/project/remove_file", test_remove_file);
   g_test_add_func("/project/package_added_cb", test_package_added_cb);

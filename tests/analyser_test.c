@@ -18,7 +18,7 @@ static void test_analyse(void) {
   lisp_lexer_lex(lexer);
   LispParser *parser = lisp_parser_new();
   GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens);
+  lisp_parser_parse(parser, tokens, NULL);
   Node *ast = (Node*)lisp_parser_get_ast(parser);
 
   Project *project = project_new(NULL);

@@ -87,7 +87,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
     lisp_lexer_lex(lexer);
     GArray *tokens = lisp_lexer_get_tokens(lexer);
     LispParser *parser = lisp_parser_new();
-    lisp_parser_parse(parser, tokens);
+    lisp_parser_parse(parser, tokens, NULL);
     const Node *ast = lisp_parser_get_ast(parser);
     if (ast && ast->children && ast->children->len > 0) {
       Node *expr = g_array_index(ast->children, Node*, 0);
@@ -329,27 +329,75 @@ static void project_index_walk(Project *self, const Node *node) {
       project_index_walk(self, g_array_index(node->children, Node*, i));
 }
 
+static void project_index_remove_from_table(GHashTable *table, ProjectFile *file) {
+  if (!table) return;
+  GHashTableIter iter;
+  g_hash_table_iter_init(&iter, table);
+  gpointer key, value;
+  while (g_hash_table_iter_next(&iter, &key, &value)) {
+    GPtrArray *arr = value;
+    for (guint i = 0; i < arr->len; ) {
+      Node *node = g_ptr_array_index(arr, i);
+      if (node->file == file)
+        g_ptr_array_remove_index(arr, i);
+      else
+        i++;
+    }
+    if (arr->len == 0)
+      g_hash_table_iter_remove(&iter);
+  }
+}
+
+static void project_index_remove_file(Project *self, ProjectFile *file) {
+  GHashTable *tables[] = { self->function_defs, self->function_uses,
+    self->variable_defs, self->variable_uses, self->package_defs,
+    self->package_uses };
+  for (guint t = 0; t < G_N_ELEMENTS(tables); t++)
+    project_index_remove_from_table(tables[t], file);
+}
+
+static void project_functions_remove_file(Project *self, ProjectFile *file) {
+  if (!self->functions) return;
+  GHashTableIter iter;
+  g_hash_table_iter_init(&iter, self->functions);
+  gpointer key, value;
+  while (g_hash_table_iter_next(&iter, &key, &value)) {
+    Function *fn = value;
+    const Node *sym = function_get_symbol(fn);
+    if (sym && sym->file == file)
+      g_hash_table_iter_remove(&iter);
+  }
+}
+
+static void project_packages_prune(Project *self) {
+  if (!self->packages) return;
+  GHashTableIter iter;
+  g_hash_table_iter_init(&iter, self->packages);
+  gpointer key, value;
+  while (g_hash_table_iter_next(&iter, &key, &value))
+    if (!g_hash_table_lookup(self->package_defs, key))
+      g_hash_table_iter_remove(&iter);
+}
+
 void project_file_changed(Project *self, ProjectFile *file) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
   g_debug("project_file_changed path=%s", project_file_get_path(file));
   if (!project_file_get_lexer(file) || !project_file_get_parser(file))
     return;
-  project_index_clear(self);
+  project_index_remove_file(self, file);
+  project_functions_remove_file(self, file);
+  project_packages_prune(self);
   LispLexer *lexer = project_file_get_lexer(file);
   LispParser *parser = project_file_get_parser(file);
   lisp_lexer_lex(lexer);
   GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens);
+  lisp_parser_parse(parser, tokens, file);
   const Node *ast = lisp_parser_get_ast(parser);
   if (ast)
     analyse_ast(self, (Node*)ast);
-  for (guint i = 0; i < self->files->len; i++) {
-    ProjectFile *f = g_ptr_array_index(self->files, i);
-    const Node *a = lisp_parser_get_ast(project_file_get_parser(f));
-    if (a)
-      project_index_walk(self, a);
-  }
+  if (ast)
+    project_index_walk(self, ast);
 }
 
 Project *project_ref(Project *self) {

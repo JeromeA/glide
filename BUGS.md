@@ -212,3 +212,9 @@ empty, so pristine buffers no longer crash.
 
 Loading preferences invoked the setter functions, which saved the configuration file for each key.
 Initialization now disables auto-saving while preferences are loaded, avoiding unnecessary writes.
+
+## project_file_changed cleared all indexes
+
+Editing a file reindexed the whole project and wiped out symbol information from other files.
+`project_file_changed` now scans existing indexes and removes only entries originating from the
+modified file, keeping definitions from untouched files intact.

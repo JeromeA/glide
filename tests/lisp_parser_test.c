@@ -15,7 +15,7 @@ static ParserFixture parser_fixture_from_text(const gchar *text) {
   lisp_lexer_lex(fixture.lexer);
   fixture.parser = lisp_parser_new();
   GArray *tokens = lisp_lexer_get_tokens(fixture.lexer);
-  lisp_parser_parse(fixture.parser, tokens);
+  lisp_parser_parse(fixture.parser, tokens, NULL);
   text_provider_unref(provider);
   return fixture;
 }
