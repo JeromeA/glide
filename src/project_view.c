@@ -22,6 +22,7 @@ static gchar *get_selected_component(ProjectView *self);
 static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data);
 static gboolean dispatch_package_added(gpointer data);
 static void on_package_added(Project *project, Package *package, gpointer user_data);
+static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
 
 static void
 project_view_init(ProjectView *self)
@@ -61,6 +62,14 @@ project_view_class_init(ProjectViewClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS(klass);
   object_class->dispose = project_view_dispose;
+}
+
+static gint
+compare_names(gconstpointer a, gconstpointer b, gpointer /*user_data*/)
+{
+  const gchar *sa = *(const gchar *const *) a;
+  const gchar *sb = *(const gchar *const *) b;
+  return g_strcmp0(sa, sb);
 }
 
 static void
@@ -117,6 +126,7 @@ project_view_populate_store(ProjectView *self)
   if (self->project) {
     guint n = 0;
     gchar **names = project_get_package_names(self->project, &n);
+    g_qsort_with_data(names, n, sizeof(gchar *), compare_names, NULL);
     for (guint i = 0; i < n; i++) {
       const gchar *name = names[i];
       gtk_tree_store_append(self->store, &child, &iter);
