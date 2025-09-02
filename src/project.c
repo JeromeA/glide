@@ -369,14 +369,21 @@ static void project_functions_remove_file(Project *self, ProjectFile *file) {
   }
 }
 
-static void project_packages_prune(Project *self) {
-  if (!self->packages) return;
+static void project_packages_remove_file(Project *self, ProjectFile *file) {
+  if (!self->packages || !self->package_defs) return;
   GHashTableIter iter;
-  g_hash_table_iter_init(&iter, self->packages);
+  g_hash_table_iter_init(&iter, self->package_defs);
   gpointer key, value;
-  while (g_hash_table_iter_next(&iter, &key, &value))
-    if (!g_hash_table_lookup(self->package_defs, key))
-      g_hash_table_iter_remove(&iter);
+  while (g_hash_table_iter_next(&iter, &key, &value)) {
+    GPtrArray *arr = value;
+    for (guint i = 0; i < arr->len; i++) {
+      Node *node = g_ptr_array_index(arr, i);
+      if (node->file == file) {
+        g_hash_table_remove(self->packages, key);
+        break;
+      }
+    }
+  }
 }
 
 void project_file_changed(Project *self, ProjectFile *file) {
@@ -385,9 +392,9 @@ void project_file_changed(Project *self, ProjectFile *file) {
   g_debug("project_file_changed path=%s", project_file_get_path(file));
   if (!project_file_get_lexer(file) || !project_file_get_parser(file))
     return;
+  project_packages_remove_file(self, file);
   project_index_remove_file(self, file);
   project_functions_remove_file(self, file);
-  project_packages_prune(self);
   LispLexer *lexer = project_file_get_lexer(file);
   LispParser *parser = project_file_get_parser(file);
   lisp_lexer_lex(lexer);

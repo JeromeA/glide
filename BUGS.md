@@ -224,3 +224,10 @@ modified file, keeping definitions from untouched files intact.
 Packages in the project viewer appeared in arbitrary order because the project
 did not sort package names before populating the tree. The package list is now
 sorted alphabetically so entries appear in order.
+
+## Pruning removed known packages
+
+`project_packages_prune` deleted any package missing from `package_defs`, which
+also removed packages known to the project but defined elsewhere like
+`COMMON-LISP`. The fix removes packages defined by the file being unindexed
+before clearing its package definitions so external packages remain.
