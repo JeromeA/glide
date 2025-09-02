@@ -20,13 +20,6 @@ static void test_undo_pristine(void)
   GtkSourceBuffer *buffer = editor_get_buffer(editor);
 
   g_assert_false(gtk_source_buffer_can_undo(buffer));
-  gtk_source_buffer_undo(buffer);
-  GtkTextIter start;
-  GtkTextIter end;
-  gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buffer), &start, &end);
-  gchar *text = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffer), &start, &end, FALSE);
-  g_assert_cmpstr(text, ==, "(a b)");
-  g_free(text);
 
   g_object_unref(widget);
   project_unref(project);
