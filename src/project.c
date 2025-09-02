@@ -27,6 +27,7 @@ struct _Project {
   ProjectPackageAddedCb package_added_cb;
   gpointer package_added_data;
   Asdf *asdf; /* owned, nullable */
+  ReplSession *repl;
   gchar *path;
   gint refcnt;
 };
@@ -36,7 +37,10 @@ static void project_index_node(Project *self, const Node *node);
 static void project_index_walk(Project *self, const Node *node);
 static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type);
 static void project_on_package_definition(Interaction *interaction, gpointer user_data);
-static void project_request_package(Project *self, ReplSession *repl, const gchar *name);
+static void project_on_describe(Interaction *interaction, gpointer user_data);
+static void project_request_package(Project *self, const gchar *name);
+static void project_request_describe(Project *self, const gchar *pkg_name,
+    const gchar *symbol);
 
 static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
@@ -51,6 +55,7 @@ static Project *project_init(void) {
   self->packages = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)package_unref);
   self->functions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)function_unref);
   self->asdf = asdf_new();
+  self->repl = NULL;
   self->path = NULL;
   self->package_added_cb = NULL;
   self->package_added_data = NULL;
@@ -70,6 +75,7 @@ static void project_free(Project *self) {
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
   g_clear_object(&self->asdf);
+  g_clear_pointer(&self->repl, repl_session_unref);
   g_free(self->path);
   g_free(self);
 }
@@ -97,6 +103,22 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
       if (pkg_name) {
         analyse_defpackage(project, expr, NULL);
         g_debug("project_on_package_definition built package %s", pkg_name);
+        Package *pkg = project_get_package(project, pkg_name);
+        if (pkg && project->repl) {
+          GHashTable *exports = package_get_exports(pkg);
+          if (exports) {
+            GHashTableIter iter;
+            g_hash_table_iter_init(&iter, exports);
+            gpointer key, value;
+            gint count = 0;
+            while (count < 10 && g_hash_table_iter_next(&iter, &key, &value)) {
+              const gchar *sym = key;
+              project_request_describe(project, pkg_name, sym);
+              count++;
+            }
+            (void)value;
+          }
+        }
       } else {
         g_debug_160(1, "project_on_package_definition failed, missing name in ", res);
       }
@@ -115,9 +137,15 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   g_free(res);
 }
 
-static void project_request_package(Project *self, ReplSession *repl, const gchar *name) {
+typedef struct {
+  Project *project;
+  gchar *package_name;
+  gchar *symbol;
+} DescribeData;
+
+static void project_request_package(Project *self, const gchar *name) {
   g_return_if_fail(self);
-  g_return_if_fail(repl);
+  g_return_if_fail(self->repl);
   g_return_if_fail(name);
   gchar *expr = g_strdup_printf("(glide:package-definition \"%s\")", name);
   Interaction *interaction = g_new0(Interaction, 1);
@@ -127,19 +155,156 @@ static void project_request_package(Project *self, ReplSession *repl, const gcha
   interaction->done_cb = project_on_package_definition;
   interaction->done_cb_data = project_ref(self);
   g_mutex_unlock(&interaction->lock);
-  repl_session_eval(repl, interaction);
+  repl_session_eval(self->repl, interaction);
   g_free(expr);
+}
+
+static void project_request_describe(Project *self, const gchar *pkg_name,
+    const gchar *symbol) {
+  g_return_if_fail(self);
+  g_return_if_fail(self->repl);
+  g_return_if_fail(pkg_name);
+  g_return_if_fail(symbol);
+  gchar *expr = g_strdup_printf("(describe '%s:%s)", pkg_name, symbol);
+  Interaction *interaction = g_new0(Interaction, 1);
+  interaction_init(interaction, expr);
+  g_mutex_lock(&interaction->lock);
+  interaction->type = INTERACTION_INTERNAL;
+  DescribeData *data = g_new0(DescribeData, 1);
+  data->project = project_ref(self);
+  data->package_name = g_strdup(pkg_name);
+  data->symbol = g_strdup(symbol);
+  interaction->done_cb = project_on_describe;
+  interaction->done_cb_data = data;
+  g_mutex_unlock(&interaction->lock);
+  repl_session_eval(self->repl, interaction);
+  g_free(expr);
+}
+
+static void project_handle_special_variable(const gchar *symbol,
+    GPtrArray *section) {
+  gchar *declared_type = NULL;
+  gchar *value = NULL;
+  GString *doc = NULL;
+  for (guint i = 1; i < section->len; i++) {
+    const gchar *line = g_ptr_array_index(section, i);
+    if (g_str_has_prefix(line, "  Declared type:")) {
+      g_free(declared_type);
+      declared_type = g_strdup(g_strstrip((gchar*)line + 15));
+    } else if (g_str_has_prefix(line, "  Value:")) {
+      g_free(value);
+      value = g_strdup(g_strstrip((gchar*)line + 7));
+    } else if (g_str_has_prefix(line, "  Documentation:")) {
+      if (!doc)
+        doc = g_string_new(NULL);
+      for (guint j = i + 1; j < section->len; j++) {
+        const gchar *dline = g_ptr_array_index(section, j);
+        if (g_str_has_prefix(dline, "    ")) {
+          if (doc->len)
+            g_string_append_c(doc, '\n');
+          g_string_append(doc, g_strstrip((gchar*)dline + 4));
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  g_message("describe %s special variable type=%s value=%s doc=%s",
+      symbol, declared_type ? declared_type : "(unknown)",
+      value ? value : "(unknown)", doc ? doc->str : "");
+  g_free(declared_type);
+  g_free(value);
+  if (doc)
+    g_string_free(doc, TRUE);
+}
+
+static void project_handle_compiled_function(const gchar *symbol,
+    GPtrArray *section) {
+  gchar *lambda_list = NULL;
+  GString *doc = NULL;
+  for (guint i = 1; i < section->len; i++) {
+    const gchar *line = g_ptr_array_index(section, i);
+    if (g_str_has_prefix(line, "  Lambda-list:")) {
+      g_free(lambda_list);
+      lambda_list = g_strdup(g_strstrip((gchar*)line + 14));
+    } else if (g_str_has_prefix(line, "  Documentation:")) {
+      if (!doc)
+        doc = g_string_new(NULL);
+      for (guint j = i + 1; j < section->len; j++) {
+        const gchar *dline = g_ptr_array_index(section, j);
+        if (g_str_has_prefix(dline, "    ")) {
+          if (doc->len)
+            g_string_append_c(doc, '\n');
+          g_string_append(doc, g_strstrip((gchar*)dline + 4));
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  g_message("describe %s compiled function lambda=%s doc=%s", symbol,
+      lambda_list ? lambda_list : "(unknown)", doc ? doc->str : "");
+  g_free(lambda_list);
+  if (doc)
+    g_string_free(doc, TRUE);
+}
+
+static void project_on_describe(Interaction *interaction, gpointer user_data) {
+  DescribeData *data = user_data;
+  gchar *out = NULL;
+  g_mutex_lock(&interaction->lock);
+  if (interaction->output)
+    out = g_strdup(interaction->output);
+  g_mutex_unlock(&interaction->lock);
+  if (out) {
+    gchar **lines = g_strsplit(out, "\n", -1);
+    GPtrArray *sections = g_ptr_array_new_with_free_func((GDestroyNotify)g_ptr_array_unref);
+    GPtrArray *current = NULL;
+    for (guint i = 0; lines[i]; i++) {
+      if (lines[i][0] != ' ' && lines[i][0] != '\0') {
+        current = g_ptr_array_new_with_free_func(g_free);
+        g_ptr_array_add(sections, current);
+      }
+      if (current)
+        g_ptr_array_add(current, g_strdup(lines[i]));
+    }
+    g_strfreev(lines);
+    for (guint s = 1; s < sections->len; s++) {
+      GPtrArray *section = g_ptr_array_index(sections, s);
+      if (section->len == 0)
+        continue;
+      const gchar *first_line = g_ptr_array_index(section, 0);
+      if (g_str_has_suffix(first_line, "names a special variable:")) {
+        project_handle_special_variable(data->symbol, section);
+      } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
+        project_handle_compiled_function(data->symbol, section);
+      } else {
+        g_message("describe %s ignoring section: %s", data->symbol, first_line);
+      }
+    }
+    g_ptr_array_free(sections, TRUE);
+  } else {
+    g_message("describe %s no output", data->symbol);
+  }
+  project_unref(data->project);
+  g_free(data->package_name);
+  g_free(data->symbol);
+  g_free(data);
+  interaction_clear(interaction);
+  g_free(interaction);
+  g_free(out);
 }
 
 Project *project_new(ReplSession *repl) {
   g_debug("project_new");
   Project *self = project_init();
+  self->repl = repl ? repl_session_ref(repl) : NULL;
   TextProvider *provider = string_text_provider_new("");
   project_add_file(self, provider, NULL, "unnamed.lisp", PROJECT_FILE_LIVE);
   text_provider_unref(provider);
-  if (repl) {
-    project_request_package(self, repl, "COMMON-LISP");
-    project_request_package(self, repl, "COMMON-LISP-USER");
+  if (self->repl) {
+    project_request_package(self, "COMMON-LISP");
+    project_request_package(self, "COMMON-LISP-USER");
   }
   return self;
 }
