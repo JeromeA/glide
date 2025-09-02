@@ -14,11 +14,13 @@ struct _Preferences {
   gchar   *last_file;
   gint     cursor_position;
   GList   *recent_projects;
+  gboolean auto_save;
   gint     refcnt;
 };
 
 static void preferences_load(Preferences *self) {
   g_debug("preferences_load %s", self->filename);
+  self->auto_save = FALSE;
   GKeyFile *key_file = g_key_file_new();
   if (g_key_file_load_from_file(key_file, self->filename, G_KEY_FILE_NONE, NULL)) {
     char *sdk = g_key_file_get_string(key_file, "General", "sdk", NULL);
@@ -71,9 +73,12 @@ static void preferences_load(Preferences *self) {
   }
 
   g_key_file_free(key_file);
+  self->auto_save = TRUE;
 }
 
 static void preferences_save(Preferences *self) {
+  if (!self->auto_save)
+    return;
   g_debug("preferences_save project_file=%s", self->project_file);
   /* Ensure that the configuration directory exists */
   char *dir = g_path_get_dirname(self->filename);
@@ -141,6 +146,7 @@ preferences_new(const gchar *config_dir)
   self->window_height = 600;
   self->project_view_width = 200;
   self->cursor_position = 0;
+  self->auto_save = TRUE;
   preferences_load(self);
   return self;
 }

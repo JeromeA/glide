@@ -140,6 +140,31 @@ test_set_window_size(void)
 }
 
 static void
+test_load_does_not_save(void)
+{
+  gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
+  gchar *cfgdir = g_build_filename(tmpdir, "glide", NULL);
+  g_mkdir_with_parents(cfgdir, 0700);
+  gchar *file = g_build_filename(cfgdir, "preferences.ini", NULL);
+  g_file_set_contents(file, "[General]\nsdk=foo\n", -1, NULL);
+  GStatBuf before;
+  GStatBuf after;
+  g_stat(file, &before);
+  g_usleep(1000000);
+  Preferences *prefs = preferences_new(tmpdir);
+  g_stat(file, &after);
+  g_assert_cmpint(before.st_mtime, ==, after.st_mtime);
+  g_assert_cmpstr(preferences_get_sdk(prefs), ==, "foo");
+  preferences_unref(prefs);
+  g_remove(file);
+  g_rmdir(cfgdir);
+  g_rmdir(tmpdir);
+  g_free(file);
+  g_free(cfgdir);
+  g_free(tmpdir);
+}
+
+static void
 test_recent_projects(void)
 {
   gchar *tmpdir = g_dir_make_tmp("prefs-test-XXXXXX", NULL);
@@ -181,15 +206,16 @@ test_recent_projects(void)
 int
 main(int argc, char *argv[])
 {
-    g_test_init(&argc, &argv, NULL);
+  g_test_init(&argc, &argv, NULL);
 
-    g_test_add_func("/preferences/defaults", test_defaults);
-    g_test_add_func("/preferences/set_sdk", test_set_sdk);
-    g_test_add_func("/preferences/set_project_dir", test_set_project_dir);
-    g_test_add_func("/preferences/set_project_view_width", test_set_project_view_width);
-    g_test_add_func("/preferences/set_window_size", test_set_window_size);
-    g_test_add_func("/preferences/recent_projects", test_recent_projects);
+  g_test_add_func("/preferences/defaults", test_defaults);
+  g_test_add_func("/preferences/set_sdk", test_set_sdk);
+  g_test_add_func("/preferences/set_project_dir", test_set_project_dir);
+  g_test_add_func("/preferences/set_project_view_width", test_set_project_view_width);
+  g_test_add_func("/preferences/set_window_size", test_set_window_size);
+  g_test_add_func("/preferences/load_does_not_save", test_load_does_not_save);
+  g_test_add_func("/preferences/recent_projects", test_recent_projects);
 
-    return g_test_run();
+  return g_test_run();
 }
 
