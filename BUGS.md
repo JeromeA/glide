@@ -218,3 +218,9 @@ Initialization now disables auto-saving while preferences are loaded, avoiding u
 Editing a file reindexed the whole project and wiped out symbol information from other files.
 `project_file_changed` now scans existing indexes and removes only entries originating from the
 modified file, keeping definitions from untouched files intact.
+
+## Packages were unsorted in project view
+
+Packages in the project viewer appeared in arbitrary order because the project
+did not sort package names before populating the tree. The package list is now
+sorted alphabetically so entries appear in order.
