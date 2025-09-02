@@ -6,7 +6,7 @@
 
 ## Coding Conventions
 
-- Use glib idioms and patterns whenever possible
+- Use glib/gtk idioms and patterns whenever possible
 - Use 2 space indentation
 - No space after function names in function calls.
 - Unused parameters should be in `/*comments*/`.
@@ -16,11 +16,12 @@
 - Never assume a name is local (the INLINE version compiles all .c files in one translation unit), so even
 enum values should always have a prefix.
 - Wrap at 120 characters, and migrate existing code to that style when you touch it.
+- All the code should assume to be on the UI thread. So, if a code is a workers on its own thread, it should call any
+callback through g_main_context_invoke().
 
 ## OO
 
 - All DI should happen in main.c, there should be no call to an `xxx_new()` in any other file.
-- All dependencies should be based on interfaces, to allow for easy mocking.
 - Use GObject when needed to interface with an API that requires it, but prefer light OO patterns otherwise.
 
 ## Testing
