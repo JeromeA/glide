@@ -207,3 +207,8 @@ ensuring the tree store updates on the UI thread.
 `editor_test` invoked `gtk_source_buffer_undo` on a new buffer even though the undo manager had no actions, causing a
 GtkSourceView assertion. The test now avoids calling `gtk_source_buffer_undo` and simply verifies the undo stack is
 empty, so pristine buffers no longer crash.
+
+## Preferences saved during load
+
+Loading preferences invoked the setter functions, which saved the configuration file for each key.
+Initialization now disables auto-saving while preferences are loaded, avoiding unnecessary writes.
