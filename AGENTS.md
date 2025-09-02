@@ -17,7 +17,8 @@
 enum values should always have a prefix.
 - Wrap at 120 characters, and migrate existing code to that style when you touch it.
 - All the code should assume to be on the UI thread. So, if a code is a workers on its own thread, it should call any
-callback through g_main_context_invoke().
+callback through g_main_context_invoke(). If a callback is doing UI work (basically any file that includes gtk.h),
+it should start with an assert to ensure it's on the UI thread.
 
 ## OO
 
