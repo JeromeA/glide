@@ -48,8 +48,68 @@ static void test_analyse(void) {
   project_unref(project);
 }
 
+static void test_nested_defpackage(void) {
+  const gchar *text =
+    "(defpackage :top)\n"
+    "(let () (defpackage :inner))";
+  TextProvider *provider = string_text_provider_new(text);
+  LispLexer *lexer = lisp_lexer_new(provider);
+  lisp_lexer_lex(lexer);
+  LispParser *parser = lisp_parser_new();
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  lisp_parser_parse(parser, tokens, NULL);
+  Node *ast = (Node*)lisp_parser_get_ast(parser);
+
+  Project *project = project_new(NULL);
+  analyse_ast(project, ast);
+
+  g_assert_nonnull(project_get_package(project, "TOP"));
+  g_assert_null(project_get_package(project, "INNER"));
+
+  Node *let_expr = g_array_index(ast->children, Node*, 1);
+  Node *inner_expr = g_array_index(let_expr->children, Node*, 2);
+  Node *inner_name = g_array_index(inner_expr->children, Node*, 1);
+  g_assert(node_is(inner_name, SDT_PACKAGE_DEF));
+
+  lisp_parser_free(parser);
+  lisp_lexer_free(lexer);
+  text_provider_unref(provider);
+  project_unref(project);
+}
+
+static void test_nested_defun(void) {
+  const gchar *text =
+    "(defun top ())\n"
+    "(let () (defun inner ()))";
+  TextProvider *provider = string_text_provider_new(text);
+  LispLexer *lexer = lisp_lexer_new(provider);
+  lisp_lexer_lex(lexer);
+  LispParser *parser = lisp_parser_new();
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  lisp_parser_parse(parser, tokens, NULL);
+  Node *ast = (Node*)lisp_parser_get_ast(parser);
+
+  Project *project = project_new(NULL);
+  analyse_ast(project, ast);
+
+  g_assert_nonnull(project_get_function(project, "TOP"));
+  g_assert_null(project_get_function(project, "INNER"));
+
+  Node *let_expr = g_array_index(ast->children, Node*, 1);
+  Node *inner_expr = g_array_index(let_expr->children, Node*, 2);
+  Node *inner_name = g_array_index(inner_expr->children, Node*, 1);
+  g_assert(node_is(inner_name, SDT_FUNCTION_DEF));
+
+  lisp_parser_free(parser);
+  lisp_lexer_free(lexer);
+  text_provider_unref(provider);
+  project_unref(project);
+}
+
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/analyse/basic", test_analyse);
+  g_test_add_func("/analyse/nested-defpackage", test_nested_defpackage);
+  g_test_add_func("/analyse/nested-defun", test_nested_defun);
   return g_test_run();
 }
