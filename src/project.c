@@ -97,11 +97,11 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
     const Node *ast = lisp_parser_get_ast(parser);
     if (ast && ast->children && ast->children->len > 0) {
       Node *expr = g_array_index(ast->children, Node*, 0);
+      analyse_defpackage(project, expr, NULL);
       Node *name_node = (expr->children && expr->children->len > 1) ?
         g_array_index(expr->children, Node*, 1) : NULL;
       const gchar *pkg_name = node_get_name(name_node);
       if (pkg_name) {
-        analyse_defpackage(project, expr, NULL);
         g_debug("project_on_package_definition built package %s", pkg_name);
         Package *pkg = project_get_package(project, pkg_name);
         if (pkg && project->repl) {
