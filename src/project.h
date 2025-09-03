@@ -30,7 +30,6 @@ void           project_remove_file(Project *self, ProjectFile *file);
 void           project_file_changed(Project *self, ProjectFile *file);
 void           project_file_loaded(Project *self, ProjectFile *file);
 void           project_file_removed(Project *self, ProjectFile *file);
-void           project_index_add(Project *self, Node *node);
 GHashTable    *project_get_index(Project *self, StringDesignatorType sd_type);
 void           project_add_package(Project *self, Package *package);
 Package       *project_get_package(Project *self, const gchar *name);

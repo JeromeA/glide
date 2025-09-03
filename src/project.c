@@ -8,18 +8,12 @@
 #include "interaction.h"
 #include "asdf.h"
 #include "util.h"
+#include "project_index.h"
 #include <glib-object.h>
 
 struct _Project {
   GPtrArray *files; /* ProjectFile* */
-  GHashTable *function_defs; /* name -> GPtrArray* Node* */
-  GHashTable *function_uses;
-  GHashTable *variable_defs;
-  GHashTable *variable_uses;
-  GHashTable *package_defs;
-  GHashTable *package_uses;
-  GHashTable *packages; /* name -> Package* */
-  GHashTable *functions; /* name -> Function* */
+  ProjectIndex *index;
   ProjectFileLoadedCb file_loaded_cb;
   gpointer file_loaded_data;
   ProjectFileRemovedCb file_removed_cb;
@@ -32,10 +26,6 @@ struct _Project {
   gint refcnt;
 };
 
-static void project_index_clear(Project *self);
-static void project_index_node(Project *self, const Node *node);
-static void project_index_walk(Project *self, const Node *node);
-static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type);
 static void project_on_package_definition(Interaction *interaction, gpointer user_data);
 static void project_on_describe(Interaction *interaction, gpointer user_data);
 static void project_request_package(Project *self, const gchar *name);
@@ -46,14 +36,7 @@ static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
   self->refcnt = 1;
   self->files = g_ptr_array_new_with_free_func((GDestroyNotify)project_file_free);
-  self->function_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
-  self->function_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
-  self->variable_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
-  self->variable_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
-  self->package_defs = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
-  self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
-  self->packages = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)package_unref);
-  self->functions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)function_unref);
+  self->index = project_index_new();
   self->asdf = asdf_new();
   self->repl = NULL;
   self->path = NULL;
@@ -63,15 +46,7 @@ static Project *project_init(void) {
 }
 
 static void project_free(Project *self) {
-  project_index_clear(self);
-  g_clear_pointer(&self->function_defs, g_hash_table_unref);
-  g_clear_pointer(&self->function_uses, g_hash_table_unref);
-  g_clear_pointer(&self->variable_defs, g_hash_table_unref);
-  g_clear_pointer(&self->variable_uses, g_hash_table_unref);
-  g_clear_pointer(&self->package_defs, g_hash_table_unref);
-  g_clear_pointer(&self->package_uses, g_hash_table_unref);
-  g_clear_pointer(&self->packages, g_hash_table_unref);
-  g_clear_pointer(&self->functions, g_hash_table_unref);
+  g_clear_pointer(&self->index, project_index_free);
   if (self->files)
     g_ptr_array_free(self->files, TRUE);
   g_clear_object(&self->asdf);
@@ -325,12 +300,12 @@ void project_remove_file(Project *self, ProjectFile *file) {
       break;
     }
   }
-  project_index_clear(self);
+  project_index_clear(self->index);
   for (guint i = 0; i < self->files->len; i++) {
     ProjectFile *f = g_ptr_array_index(self->files, i);
     const Node *a = lisp_parser_get_ast(project_file_get_parser(f));
     if (a)
-      project_index_walk(self, a);
+      project_index_walk(self->index, a);
   }
 }
 
@@ -346,62 +321,15 @@ ProjectFile *project_get_file(Project *self, guint index) {
   return g_ptr_array_index(self->files, index);
 }
 
-static GHashTable *project_index_table(Project *self, StringDesignatorType sd_type) {
-  switch(sd_type) {
-    case SDT_FUNCTION_DEF: return self->function_defs;
-    case SDT_FUNCTION_USE: return self->function_uses;
-    case SDT_VAR_DEF: return self->variable_defs;
-    case SDT_VAR_USE: return self->variable_uses;
-    case SDT_PACKAGE_DEF: return self->package_defs;
-    case SDT_PACKAGE_USE: return self->package_uses;
-    default: return NULL;
-  }
-}
-
-static void project_index_clear(Project *self) {
-  GHashTable *tables[] = { self->function_defs, self->function_uses,
-    self->variable_defs, self->variable_uses, self->package_defs,
-    self->package_uses };
-  for (guint t = 0; t < G_N_ELEMENTS(tables); t++)
-    if (tables[t])
-      g_hash_table_remove_all(tables[t]);
-  if (self->packages)
-    g_hash_table_remove_all(self->packages);
-  if (self->functions)
-    g_hash_table_remove_all(self->functions);
-}
-
-static void project_index_add_to(GHashTable *table, const gchar *name, Node *node) {
-  if (!table || !name || !node) return;
-  GPtrArray *arr = g_hash_table_lookup(table, name);
-  if (!arr) {
-    arr = g_ptr_array_new_with_free_func((GDestroyNotify)node_unref);
-    g_hash_table_insert(table, g_strdup(name), arr);
-  }
-  g_ptr_array_add(arr, node_ref(node));
-}
-
-void project_index_add(Project *self, Node *node) {
-  if (!self || !node || !node->sd_type)
-    return;
-  GHashTable *table = project_index_table(self, node->sd_type);
-  if (!table) return;
-  const gchar *name = node_get_name(node);
-  project_index_add_to(table, name, node);
-}
-
 GHashTable *project_get_index(Project *self, StringDesignatorType sd_type) {
   g_return_val_if_fail(self != NULL, NULL);
-  return project_index_table(self, sd_type);
+  return project_index_get(self->index, sd_type);
 }
 
 void project_add_package(Project *self, Package *package) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(package != NULL);
-  const gchar *name = package_get_name(package);
-  if (!name) return;
-  g_debug("project_add_package %s", name);
-  g_hash_table_replace(self->packages, g_strdup(name), package_ref(package));
+  project_index_add_package(self->index, package);
   if (self->package_added_cb)
     self->package_added_cb(self, package, self->package_added_data);
 }
@@ -409,26 +337,24 @@ void project_add_package(Project *self, Package *package) {
 void project_add_function(Project *self, Function *function) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(function != NULL);
-  const gchar *name = function_get_name(function);
-  if (!name) return;
-  g_hash_table_replace(self->functions, g_strdup(name), function_ref(function));
+  project_index_add_function(self->index, function);
 }
 
 Function *project_get_function(Project *self, const gchar *name) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(name != NULL, NULL);
-  return g_hash_table_lookup(self->functions, name);
+  return project_index_get_function(self->index, name);
 }
 
 Package *project_get_package(Project *self, const gchar *name) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(name != NULL, NULL);
-  return g_hash_table_lookup(self->packages, name);
+  return project_index_get_package(self->index, name);
 }
 
 gchar **project_get_package_names(Project *self, guint *length) {
   g_return_val_if_fail(self != NULL, NULL);
-  return (gchar **) g_hash_table_get_keys_as_array(self->packages, length);
+  return project_index_get_package_names(self->index, length);
 }
 
 void project_set_asdf(Project *self, Asdf *asdf) {
@@ -458,7 +384,7 @@ void project_set_path(Project *self, const gchar *path) {
 void project_clear(Project *self) {
   g_return_if_fail(self != NULL);
   g_debug("project_clear");
-  project_index_clear(self);
+  project_index_clear(self->index);
   if (self->files) {
     for (guint i = 0; i < self->files->len; i++) {
       ProjectFile *file = g_ptr_array_index(self->files, i);
@@ -466,81 +392,9 @@ void project_clear(Project *self) {
     }
     g_ptr_array_set_size(self->files, 0);
   }
-  g_hash_table_remove_all(self->packages);
-  g_hash_table_remove_all(self->functions);
   Asdf *asdf = asdf_new();
   project_set_asdf(self, asdf);
   g_object_unref(asdf);
-}
-
-static void project_index_node(Project *self, const Node *node) {
-  if (!node || !node->sd_type) return;
-  project_index_add(self, (Node*)node);
-}
-
-static void project_index_walk(Project *self, const Node *node) {
-  if (!node) return;
-  project_index_node(self, node);
-  if (node->children)
-    for (guint i = 0; i < node->children->len; i++)
-      project_index_walk(self, g_array_index(node->children, Node*, i));
-}
-
-static void project_index_remove_from_table(GHashTable *table, ProjectFile *file) {
-  if (!table) return;
-  GHashTableIter iter;
-  g_hash_table_iter_init(&iter, table);
-  gpointer key, value;
-  while (g_hash_table_iter_next(&iter, &key, &value)) {
-    GPtrArray *arr = value;
-    for (guint i = 0; i < arr->len; ) {
-      Node *node = g_ptr_array_index(arr, i);
-      if (node->file == file)
-        g_ptr_array_remove_index(arr, i);
-      else
-        i++;
-    }
-    if (arr->len == 0)
-      g_hash_table_iter_remove(&iter);
-  }
-}
-
-static void project_index_remove_file(Project *self, ProjectFile *file) {
-  GHashTable *tables[] = { self->function_defs, self->function_uses,
-    self->variable_defs, self->variable_uses, self->package_defs,
-    self->package_uses };
-  for (guint t = 0; t < G_N_ELEMENTS(tables); t++)
-    project_index_remove_from_table(tables[t], file);
-}
-
-static void project_functions_remove_file(Project *self, ProjectFile *file) {
-  if (!self->functions) return;
-  GHashTableIter iter;
-  g_hash_table_iter_init(&iter, self->functions);
-  gpointer key, value;
-  while (g_hash_table_iter_next(&iter, &key, &value)) {
-    Function *fn = value;
-    const Node *sym = function_get_symbol(fn);
-    if (sym && sym->file == file)
-      g_hash_table_iter_remove(&iter);
-  }
-}
-
-static void project_packages_remove_file(Project *self, ProjectFile *file) {
-  if (!self->packages || !self->package_defs) return;
-  GHashTableIter iter;
-  g_hash_table_iter_init(&iter, self->package_defs);
-  gpointer key, value;
-  while (g_hash_table_iter_next(&iter, &key, &value)) {
-    GPtrArray *arr = value;
-    for (guint i = 0; i < arr->len; i++) {
-      Node *node = g_ptr_array_index(arr, i);
-      if (node->file == file) {
-        g_hash_table_remove(self->packages, key);
-        break;
-      }
-    }
-  }
 }
 
 void project_file_changed(Project *self, ProjectFile *file) {
@@ -549,9 +403,7 @@ void project_file_changed(Project *self, ProjectFile *file) {
   g_debug("project_file_changed path=%s", project_file_get_path(file));
   if (!project_file_get_lexer(file) || !project_file_get_parser(file))
     return;
-  project_packages_remove_file(self, file);
-  project_index_remove_file(self, file);
-  project_functions_remove_file(self, file);
+  project_index_remove_file(self->index, file);
   LispLexer *lexer = project_file_get_lexer(file);
   LispParser *parser = project_file_get_parser(file);
   lisp_lexer_lex(lexer);
@@ -561,7 +413,7 @@ void project_file_changed(Project *self, ProjectFile *file) {
   if (ast)
     analyse_ast(self, (Node*)ast);
   if (ast)
-    project_index_walk(self, ast);
+    project_index_walk(self->index, ast);
 }
 
 Project *project_ref(Project *self) {
