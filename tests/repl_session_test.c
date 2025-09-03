@@ -47,8 +47,45 @@ static void test_eval(void) {
   status_service_free(status_service);
 }
 
+static void test_ignore_compilation_comment(void) {
+  Process *proc = process_new("/bin/true");
+  ReplProcess *rp = repl_process_new(proc);
+  process_unref(proc);
+  StatusService *status_service = status_service_new();
+  ReplSession *sess = repl_session_new(rp, status_service);
+  repl_process_unref(rp);
+  Interaction interaction;
+  interaction_init(&interaction, "42");
+  repl_session_eval(sess, &interaction);
+  guint32 tag = 0;
+  int tries = 0;
+  while (tries++ < 50) {
+    g_mutex_lock(&interaction.lock);
+    if (interaction.status == INTERACTION_RUNNING) {
+      tag = interaction.tag;
+      g_mutex_unlock(&interaction.lock);
+      break;
+    }
+    g_mutex_unlock(&interaction.lock);
+    g_usleep(100000);
+  }
+  gchar *payload = g_strdup_printf("; wrote tmp.fasl\n(result %u 42)\n", tag);
+  GString *msg = g_string_new(payload);
+  g_free(payload);
+  repl_session_on_message(msg, sess);
+  g_string_free(msg, TRUE);
+  g_mutex_lock(&interaction.lock);
+  g_assert_cmpint(interaction.status, ==, INTERACTION_OK);
+  g_assert_cmpstr(interaction.result, ==, "42");
+  g_mutex_unlock(&interaction.lock);
+  interaction_clear(&interaction);
+  repl_session_unref(sess);
+  status_service_free(status_service);
+}
+
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/repl_session/eval", test_eval);
+  g_test_add_func("/repl_session/ignore_compilation_comment", test_ignore_compilation_comment);
   return g_test_run();
 }

@@ -156,6 +156,18 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
   ReplSession *self = user_data ? (ReplSession*)user_data : NULL;
   const char *str = msg->str;
   g_debug_160(1, "ReplSession.on_message ", str);
+  while (*str && *str != '(') {
+    if (*str == ';') {
+      const char *nl = strchr(str, '\n');
+      if (!nl)
+        return;
+      str = nl + 1;
+    } else {
+      str++;
+    }
+  }
+  if (*str != '(')
+    return;
   ReplSessionCallback updated_cb = NULL;
   gpointer updated_cb_data = NULL;
   InteractionCallback done_cb = NULL;
