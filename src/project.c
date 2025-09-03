@@ -227,36 +227,34 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
   if (interaction->output)
     out = g_strdup(interaction->output);
   g_mutex_unlock(&interaction->lock);
-  if (out) {
-    gchar **lines = g_strsplit(out, "\n", -1);
-    GPtrArray *sections = g_ptr_array_new_with_free_func((GDestroyNotify)g_ptr_array_unref);
-    GPtrArray *current = NULL;
-    for (guint i = 0; lines[i]; i++) {
-      if (lines[i][0] != ' ' && lines[i][0] != '\0') {
-        current = g_ptr_array_new_with_free_func(g_free);
-        g_ptr_array_add(sections, current);
-      }
-      if (current)
-        g_ptr_array_add(current, g_strdup(lines[i]));
+  g_return_if_fail(out);
+  gchar **lines = g_strsplit(out, "\n", -1);
+  GPtrArray *sections = g_ptr_array_new_with_free_func((GDestroyNotify)g_ptr_array_unref);
+  GPtrArray *current = NULL;
+  for (guint i = 0; lines[i]; i++) {
+    if (lines[i][0] != ' ' && lines[i][0] != '\0') {
+      current = g_ptr_array_new_with_free_func(g_free);
+      g_ptr_array_add(sections, current);
     }
-    g_strfreev(lines);
-    for (guint s = 1; s < sections->len; s++) {
-      GPtrArray *section = g_ptr_array_index(sections, s);
-      if (section->len == 0)
-        continue;
-      const gchar *first_line = g_ptr_array_index(section, 0);
-      if (g_str_has_suffix(first_line, "names a special variable:")) {
-        project_handle_special_variable(data->symbol, section);
-      } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
-        project_handle_compiled_function(data->symbol, section);
-      } else {
-        g_message("describe %s ignoring section: %s", data->symbol, first_line);
-      }
-    }
-    g_ptr_array_free(sections, TRUE);
-  } else {
-    g_message("describe %s no output", data->symbol);
+    if (current)
+      g_ptr_array_add(current, g_strdup(lines[i]));
   }
+  g_strfreev(lines);
+  for (guint s = 1; s < sections->len; s++) {
+    GPtrArray *section = g_ptr_array_index(sections, s);
+    if (section->len == 0)
+      continue;
+    const gchar *first_line = g_ptr_array_index(section, 0);
+    g_message("describe %s section: %s", data->symbol, first_line);
+    if (g_str_has_suffix(first_line, "names a special variable:")) {
+      project_handle_special_variable(data->symbol, section);
+    } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
+      project_handle_compiled_function(data->symbol, section);
+    } else {
+      g_debug("describe %s ignoring section: %s", data->symbol, first_line);
+    }
+  }
+  g_ptr_array_free(sections, TRUE);
   project_unref(data->project);
   g_free(data->package_name);
   g_free(data->symbol);
