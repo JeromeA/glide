@@ -155,7 +155,7 @@ void repl_session_set_interaction_updated_cb(ReplSession *self, ReplSessionCallb
 void repl_session_on_message(GString *msg, gpointer user_data) {
   ReplSession *self = user_data ? (ReplSession*)user_data : NULL;
   const char *str = msg->str;
-  g_debug_160(1, "ReplSession.on_message ", str);
+  g_debug_160(2, "ReplSession.on_message ", str);
   while (*str && *str != '(') {
     if (*str == ';') {
       const char *nl = strchr(str, '\n');
@@ -185,7 +185,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strstr(start, "\")");
       if (end) {
         gchar *text = g_strndup(start, end - start);
-        g_debug_160(1, "ReplSession.on_message stdout: ", text);
+        g_debug_160(2, "ReplSession.on_message stdout: ", text);
         gchar *old = NULL;
         g_mutex_lock(&interaction->lock);
         old = interaction->output;
@@ -207,7 +207,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strstr(start, "\")");
       if (end) {
         gchar *text = g_strndup(start, end - start);
-        g_debug_160(1, "ReplSession.on_message stderr: ", text);
+        g_debug_160(2, "ReplSession.on_message stderr: ", text);
         gchar *old = NULL;
         g_mutex_lock(&interaction->lock);
         old = interaction->output;
@@ -229,7 +229,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strrchr(start, ')');
       if (end) {
         gchar *res = g_strndup(start, end - start);
-        g_debug_160(1, "ReplSession.on_message result: ", res);
+        g_debug_160(2, "ReplSession.on_message result: ", res);
         g_mutex_lock(&interaction->lock);
         interaction->result = g_strdup(res);
         interaction->status = INTERACTION_OK;
@@ -252,7 +252,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strrchr(start, '"');
       if (end) {
         gchar *err = g_strndup(start, end - start);
-        g_debug_160(1, "ReplSession.on_message error: ", err);
+        g_debug_160(2, "ReplSession.on_message error: ", err);
         g_mutex_lock(&interaction->lock);
         interaction->error = g_strdup(err);
         interaction->status = INTERACTION_ERROR;
