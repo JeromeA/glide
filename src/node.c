@@ -40,6 +40,12 @@ gboolean node_is(const Node *node, StringDesignatorType t) {
   return node && node->sd_type == t;
 }
 
+gboolean node_is_toplevel(const Node *node) {
+  g_assert(node);
+  g_assert(node->parent);
+  return node->parent->parent == NULL;
+}
+
 const gchar *node_sd_type_to_string(StringDesignatorType sd_type) {
   switch(sd_type) {
     case SDT_VAR_DEF: return "VarDef";

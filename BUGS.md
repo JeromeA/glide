@@ -247,3 +247,16 @@ returning a result. `ReplSession` interpreted these lines as unknown messages
 and logged warnings. The handler now skips leading comment lines so only the
 subsequent s-expression is processed. A regression test ensures these comments
 are ignored.
+
+## Nested `defpackage` added package
+
+`analyse-defpackage` registered packages even when the form was nested inside
+other expressions. The analyser now only adds packages to the project when the
+`defpackage` appears at the top level, leaving nested forms unregistered while
+still tagging their symbols.
+
+## Nested `defun` added function
+
+`analyse_defun` registered functions even when the form appeared inside other
+expressions. Functions are now added only when the `defun` is at the top level,
+while nested definitions are still analysed but not recorded in the project.

@@ -69,7 +69,8 @@ void analyse_defpackage(Project *project, Node *expr, const gchar *context) {
     }
   }
 
-  project_add_package(project, pkg);
+  if (node_is_toplevel(expr))
+    project_add_package(project, pkg);
   package_unref(pkg);
 }
 
