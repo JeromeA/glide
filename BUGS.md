@@ -260,3 +260,10 @@ still tagging their symbols.
 `analyse_defun` registered functions even when the form appeared inside other
 expressions. Functions are now added only when the `defun` is at the top level,
 while nested definitions are still analysed but not recorded in the project.
+
+## Package definition parsing only logged errors
+
+`project_on_package_definition` treated invalid REPL output as debug messages,
+making protocol bugs easy to miss. The handler now asserts that a result,
+parsable AST and package name are always returned, turning these conditions
+into detectable failures during development.

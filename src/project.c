@@ -81,56 +81,48 @@ static void project_free(Project *self) {
 }
 
 static void project_on_package_definition(Interaction *interaction, gpointer user_data) {
+  g_debug("project_on_package_definition entry");
   Project *project = user_data;
   gchar *res = NULL;
   g_mutex_lock(&interaction->lock);
   if (interaction->result)
     res = g_strdup(interaction->result);
   g_mutex_unlock(&interaction->lock);
-  if (res) {
-    TextProvider *provider = string_text_provider_new(res);
-    LispLexer *lexer = lisp_lexer_new(provider);
-    lisp_lexer_lex(lexer);
-    GArray *tokens = lisp_lexer_get_tokens(lexer);
-    LispParser *parser = lisp_parser_new();
-    lisp_parser_parse(parser, tokens, NULL);
-    const Node *ast = lisp_parser_get_ast(parser);
-    if (ast && ast->children && ast->children->len > 0) {
-      Node *expr = g_array_index(ast->children, Node*, 0);
-      analyse_defpackage(project, expr, NULL);
-      Node *name_node = (expr->children && expr->children->len > 1) ?
-        g_array_index(expr->children, Node*, 1) : NULL;
-      const gchar *pkg_name = node_get_name(name_node);
-      if (pkg_name) {
-        g_debug("project_on_package_definition built package %s", pkg_name);
-        Package *pkg = project_get_package(project, pkg_name);
-        if (pkg && project->repl) {
-          GHashTable *exports = package_get_exports(pkg);
-          if (exports) {
-            GHashTableIter iter;
-            g_hash_table_iter_init(&iter, exports);
-            gpointer key, value;
-            gint count = 0;
-            while (count < 10 && g_hash_table_iter_next(&iter, &key, &value)) {
-              const gchar *sym = key;
-              project_request_describe(project, pkg_name, sym);
-              count++;
-            }
-            (void)value;
-          }
-        }
-      } else {
-        g_debug_160(1, "project_on_package_definition failed, missing name in ", res);
+  g_assert(res);
+  TextProvider *provider = string_text_provider_new(res);
+  LispLexer *lexer = lisp_lexer_new(provider);
+  lisp_lexer_lex(lexer);
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  LispParser *parser = lisp_parser_new();
+  lisp_parser_parse(parser, tokens, NULL);
+  const Node *ast = lisp_parser_get_ast(parser);
+  g_assert(ast && ast->children && ast->children->len > 0);
+  Node *expr = g_array_index(ast->children, Node*, 0);
+  analyse_defpackage(project, expr, NULL);
+  Node *name_node = (expr->children && expr->children->len > 1) ?
+    g_array_index(expr->children, Node*, 1) : NULL;
+  const gchar *pkg_name = node_get_name(name_node);
+  g_assert(pkg_name);
+  g_debug("project_on_package_definition built package %s", pkg_name);
+  Package *pkg = project_get_package(project, pkg_name);
+  if (pkg && project->repl) {
+    GHashTable *exports = package_get_exports(pkg);
+    if (exports) {
+      GHashTableIter iter;
+      g_hash_table_iter_init(&iter, exports);
+      gpointer key, value;
+      gint count = 0;
+      while (count < 10 && g_hash_table_iter_next(&iter, &key, &value)) {
+        const gchar *sym = key;
+        project_request_describe(project, pkg_name, sym);
+        count++;
       }
-    } else {
-      g_debug_160(1, "project_on_package_definition failed to parse ", res);
+      (void)value;
     }
-    lisp_parser_free(parser);
-    lisp_lexer_free(lexer);
-    text_provider_unref(provider);
-  } else {
-    g_debug("project_on_package_definition no result");
   }
+  lisp_parser_free(parser);
+  lisp_lexer_free(lexer);
+  text_provider_unref(provider);
   project_unref(project);
   interaction_clear(interaction);
   g_free(interaction);
