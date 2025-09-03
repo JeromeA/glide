@@ -239,3 +239,11 @@ added only `../src/` to ASDF's registry. Running the binary outside the `tests`
 directory left ASDF unable to find `glide.asd`. The test now checks both
 `../src/` and `src/`, registering whichever exists so it works from any
 directory.
+
+## Compilation comments treated as unknown messages
+
+SBCL occasionally emits compilation comments beginning with `;` before
+returning a result. `ReplSession` interpreted these lines as unknown messages
+and logged warnings. The handler now skips leading comment lines so only the
+subsequent s-expression is processed. A regression test ensures these comments
+are ignored.
