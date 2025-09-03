@@ -14,13 +14,15 @@
 - fix all compilation warnings.
 - If you're fixing a bug, add an entry to BUGS.md.
 - Never assume a name is local (the INLINE version compiles all .c files in one translation unit), so even
-enum values should always have a prefix.
+  enum values should always have a prefix.
 - Wrap at 120 characters, and migrate existing code to that style when you touch it.
 - All the code should assume to be on the UI thread. So, if a code is a workers on its own thread, it should call any
-callback through g_main_context_invoke(). If a callback is doing UI work (basically any file that includes gtk.h),
-it should start with an assert to ensure it's on the UI thread.
+  callback through g_main_context_invoke(). If a callback is doing UI work (basically any file that includes gtk.h),
+  it should start with an assert to ensure it's on the UI thread.
 - There should be g_debug entries for all operations that are advanced enough that they could fail (with their result or
   failure), so that reading the logs gives a good idea of what happened.
+- When a check fail, a return or return NULL is never enough, it should at least be a g_debug, and almost always be a
+  g_return_val_if_fail(), 
 
 ## OO
 
