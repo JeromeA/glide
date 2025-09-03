@@ -9,7 +9,9 @@ static void test_eval(void) {
   const gchar *argv[] = {
     "sbcl", "--noinform",
     "--eval", "(require :asdf)",
-    "--eval", "(pushnew (truename \"../src/\") asdf:*central-registry*)",
+    "--eval", "(let ((p (probe-file \"../src/\"))) (when p (pushnew p asdf:*central-registry*)))",
+    "--eval", "(let ((p (probe-file \"src/\"))) (when p (pushnew p asdf:*central-registry*)))",
+    "--eval", "(setf *load-verbose* nil *compile-verbose* nil)",
     "--eval", "(require :glide)",
     "--eval", "(glide:start-server)",
     NULL

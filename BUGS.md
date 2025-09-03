@@ -231,3 +231,11 @@ sorted alphabetically so entries appear in order.
 also removed packages known to the project but defined elsewhere like
 `COMMON-LISP`. The fix removes packages defined by the file being unindexed
 before clearing its package definitions so external packages remain.
+
+## `repl_session_test` required running from tests directory
+
+Executing `repl_session_test` from the repository root failed because the test
+added only `../src/` to ASDF's registry. Running the binary outside the `tests`
+directory left ASDF unable to find `glide.asd`. The test now checks both
+`../src/` and `src/`, registering whichever exists so it works from any
+directory.
