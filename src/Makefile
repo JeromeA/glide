@@ -34,6 +34,7 @@ SOURCES += \
   package.c \
   node.c \
   lisp_parser_view.c \
+  project_index.c \
   project.c \
   project_file.c \
   gtk_text_provider.c \
