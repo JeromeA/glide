@@ -3,5 +3,5 @@
 int
 get_verbosity(void)
 {
-  return 1;
+  return 2;
 }
