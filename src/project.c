@@ -132,6 +132,7 @@ static void project_request_describe(Project *self, const gchar *pkg_name,
   g_return_if_fail(self->repl);
   g_return_if_fail(pkg_name);
   g_return_if_fail(symbol);
+  g_debug("project_request_describe pkg=%s symbol=%s", pkg_name, symbol);
   gchar *expr = g_strdup_printf("(describe '%s:%s)", pkg_name, symbol);
   Interaction *interaction = g_new0(Interaction, 1);
   interaction_init(interaction, expr);
@@ -150,6 +151,7 @@ static void project_request_describe(Project *self, const gchar *pkg_name,
 
 static void project_handle_special_variable(const gchar *symbol,
     GPtrArray *section) {
+  g_debug("project_handle_special_variable symbol=%s", symbol);
   gchar *declared_type = NULL;
   gchar *value = NULL;
   GString *doc = NULL;
@@ -187,6 +189,7 @@ static void project_handle_special_variable(const gchar *symbol,
 
 static void project_handle_compiled_function(const gchar *symbol,
     GPtrArray *section) {
+  g_debug("project_handle_compiled_function symbol=%s", symbol);
   gchar *lambda_list = NULL;
   GString *doc = NULL;
   for (guint i = 1; i < section->len; i++) {
@@ -218,6 +221,7 @@ static void project_handle_compiled_function(const gchar *symbol,
 
 static void project_on_describe(Interaction *interaction, gpointer user_data) {
   DescribeData *data = user_data;
+  g_debug("project_on_describe symbol=%s", data->symbol);
   gchar *out = NULL;
   g_mutex_lock(&interaction->lock);
   if (interaction->output)
