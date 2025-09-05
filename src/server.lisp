@@ -7,8 +7,14 @@
   ((label :initarg :label)
    (id :initarg :id)))
 
-(defmethod sb-gray:stream-write-string ((s repl-stream) string &optional start end)
-  (format *real-standard-output* "(~a ~a ~S)~%" (slot-value s 'label) (slot-value s 'id) string))
+(defmethod sb-gray:stream-write-string ((s repl-stream) string &optional (start 0) end)
+  (let ((segment (if (and (= start 0) (null end))
+                     string
+                     (subseq string start end))))
+    (format *real-standard-output* "(~a ~a ~S)~%"
+            (slot-value s 'label)
+            (slot-value s 'id)
+            segment)))
 
 (defmethod sb-gray:stream-write-char ((s repl-stream) char)
   (format *real-standard-output* "(~a ~a ~S)~%" (slot-value s 'label) (slot-value s 'id) (string char)))
