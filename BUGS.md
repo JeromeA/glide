@@ -267,3 +267,12 @@ while nested definitions are still analysed but not recorded in the project.
 making protocol bugs easy to miss. The handler now asserts that a result,
 parsable AST and package name are always returned, turning these conditions
 into detectable failures during development.
+
+## Process output padded with NUL bytes
+
+`sb-gray:stream-write-string` ignored its `start` and `end` arguments and wrote
+the entire buffer back to Glide. SBCL supplied fixed-size strings padded with
+`\0` bytes beyond the requested slice, so each message ballooned to 256 bytes
+of output filled with NUL characters. The method now respects the slice before
+forwarding, preventing padded NULs from ever reaching `Process` or
+`ReplProcess`.
