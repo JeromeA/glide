@@ -13,7 +13,9 @@ struct _ProjectIndex {
   GHashTable *package_uses;
   GHashTable *packages; /* name -> Package* */
   GHashTable *functions; /* name -> Function* */
+  GHashTable *functions_by_package; /* package -> name->Function* */
   GHashTable *variables; /* name -> documentation */
+  GHashTable *variables_by_package; /* package -> name->doc */
 };
 
 static GHashTable *project_index_table(ProjectIndex *self, StringDesignatorType sd_type);
@@ -31,7 +33,11 @@ ProjectIndex *project_index_new(void) {
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->packages = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)package_unref);
   self->functions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)function_unref);
+  self->functions_by_package = g_hash_table_new_full(g_str_hash, g_str_equal,
+      g_free, (GDestroyNotify)g_hash_table_unref);
   self->variables = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+  self->variables_by_package = g_hash_table_new_full(g_str_hash, g_str_equal,
+      g_free, (GDestroyNotify)g_hash_table_unref);
   return self;
 }
 
@@ -46,7 +52,9 @@ void project_index_free(ProjectIndex *self) {
   g_clear_pointer(&self->package_uses, g_hash_table_unref);
   g_clear_pointer(&self->packages, g_hash_table_unref);
   g_clear_pointer(&self->functions, g_hash_table_unref);
+  g_clear_pointer(&self->functions_by_package, g_hash_table_unref);
   g_clear_pointer(&self->variables, g_hash_table_unref);
+  g_clear_pointer(&self->variables_by_package, g_hash_table_unref);
   g_free(self);
 }
 
@@ -102,8 +110,12 @@ void project_index_clear(ProjectIndex *self) {
     g_hash_table_remove_all(self->packages);
   if (self->functions)
     g_hash_table_remove_all(self->functions);
+  if (self->functions_by_package)
+    g_hash_table_remove_all(self->functions_by_package);
   if (self->variables)
     g_hash_table_remove_all(self->variables);
+  if (self->variables_by_package)
+    g_hash_table_remove_all(self->variables_by_package);
 }
 
 static void project_index_remove_from_table(GHashTable *table, ProjectFile *file) {
@@ -141,6 +153,26 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
       const Node *sym = function_get_symbol(fn);
       if (sym && sym->file == file)
         g_hash_table_iter_remove(&iter);
+    }
+  }
+
+  if (self->functions_by_package) {
+    GHashTableIter piter;
+    g_hash_table_iter_init(&piter, self->functions_by_package);
+    gpointer pkey, pvalue;
+    while (g_hash_table_iter_next(&piter, &pkey, &pvalue)) {
+      GHashTable *tbl = pvalue;
+      GHashTableIter iter;
+      g_hash_table_iter_init(&iter, tbl);
+      gpointer nkey, nvalue;
+      while (g_hash_table_iter_next(&iter, &nkey, &nvalue)) {
+        Function *fn = nvalue;
+        const Node *sym = function_get_symbol(fn);
+        if (sym && sym->file == file)
+          g_hash_table_iter_remove(&iter);
+      }
+      if (g_hash_table_size(tbl) == 0)
+        g_hash_table_iter_remove(&piter);
     }
   }
 
@@ -186,6 +218,16 @@ void project_index_add_function(ProjectIndex *self, Function *function) {
   const gchar *name = function_get_name(function);
   if (!name) return;
   g_hash_table_replace(self->functions, g_strdup(name), function_ref(function));
+  const gchar *pkg = function_get_package(function);
+  if (pkg) {
+    GHashTable *tbl = g_hash_table_lookup(self->functions_by_package, pkg);
+    if (!tbl) {
+      tbl = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
+          (GDestroyNotify)function_unref);
+      g_hash_table_insert(self->functions_by_package, g_strdup(pkg), tbl);
+    }
+    g_hash_table_replace(tbl, g_strdup(name), function_ref(function));
+  }
 }
 
 Function *project_index_get_function(ProjectIndex *self, const gchar *name) {
@@ -194,15 +236,44 @@ Function *project_index_get_function(ProjectIndex *self, const gchar *name) {
   return g_hash_table_lookup(self->functions, name);
 }
 
-void project_index_add_variable(ProjectIndex *self, const gchar *name, const gchar *doc) {
+gchar **project_index_get_function_names(ProjectIndex *self,
+    const gchar *package, guint *length) {
+  g_return_val_if_fail(self != NULL, NULL);
+  g_return_val_if_fail(package != NULL, NULL);
+  GHashTable *tbl = g_hash_table_lookup(self->functions_by_package, package);
+  if (!tbl)
+    return NULL;
+  return (gchar**)g_hash_table_get_keys_as_array(tbl, length);
+}
+
+void project_index_add_variable(ProjectIndex *self, const gchar *package,
+    const gchar *name, const gchar *doc) {
   g_return_if_fail(self != NULL);
+  g_return_if_fail(package != NULL);
   g_return_if_fail(name != NULL);
-  g_hash_table_replace(self->variables, g_strdup(name), doc ? g_strdup(doc) : NULL);
+  g_hash_table_replace(self->variables, g_strdup(name),
+      doc ? g_strdup(doc) : NULL);
+  GHashTable *tbl = g_hash_table_lookup(self->variables_by_package, package);
+  if (!tbl) {
+    tbl = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
+    g_hash_table_insert(self->variables_by_package, g_strdup(package), tbl);
+  }
+  g_hash_table_replace(tbl, g_strdup(name), doc ? g_strdup(doc) : NULL);
 }
 
 const gchar *project_index_get_variable(ProjectIndex *self, const gchar *name) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(name != NULL, NULL);
   return g_hash_table_lookup(self->variables, name);
+}
+
+gchar **project_index_get_variable_names(ProjectIndex *self,
+    const gchar *package, guint *length) {
+  g_return_val_if_fail(self != NULL, NULL);
+  g_return_val_if_fail(package != NULL, NULL);
+  GHashTable *tbl = g_hash_table_lookup(self->variables_by_package, package);
+  if (!tbl)
+    return NULL;
+  return (gchar**)g_hash_table_get_keys_as_array(tbl, length);
 }
 
