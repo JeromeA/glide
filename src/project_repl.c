@@ -1,0 +1,226 @@
+#include "project_repl.h"
+#include "project_priv.h"
+#include "string_text_provider.h"
+#include "analyse_defpackage.h"
+#include "lisp_lexer.h"
+#include "lisp_parser.h"
+#include "repl_session.h"
+#include "interaction.h"
+#include "util.h"
+
+static void project_on_package_definition(Interaction *interaction, gpointer user_data);
+static void project_on_describe(Interaction *interaction, gpointer user_data);
+static void project_handle_special_variable(const gchar *symbol,
+    GPtrArray *section);
+static void project_handle_compiled_function(const gchar *symbol,
+    GPtrArray *section);
+
+typedef struct {
+  Project *project;
+  gchar *package_name;
+  gchar *symbol;
+} DescribeData;
+
+void project_request_package(Project *self, const gchar *name) {
+  g_return_if_fail(self);
+  g_return_if_fail(self->repl);
+  g_return_if_fail(name);
+  gchar *expr = g_strdup_printf("(glide:package-definition \"%s\")", name);
+  Interaction *interaction = g_new0(Interaction, 1);
+  interaction_init(interaction, expr);
+  g_mutex_lock(&interaction->lock);
+  interaction->type = INTERACTION_INTERNAL;
+  interaction->done_cb = project_on_package_definition;
+  interaction->done_cb_data = project_ref(self);
+  g_mutex_unlock(&interaction->lock);
+  repl_session_eval(self->repl, interaction);
+  g_free(expr);
+}
+
+void project_request_describe(Project *self, const gchar *pkg_name,
+    const gchar *symbol) {
+  g_return_if_fail(self);
+  g_return_if_fail(self->repl);
+  g_return_if_fail(pkg_name);
+  g_return_if_fail(symbol);
+  g_debug("project_request_describe pkg=%s symbol=%s", pkg_name, symbol);
+  gchar *expr = g_strdup_printf("(describe '%s:%s)", pkg_name, symbol);
+  Interaction *interaction = g_new0(Interaction, 1);
+  interaction_init(interaction, expr);
+  g_mutex_lock(&interaction->lock);
+  interaction->type = INTERACTION_INTERNAL;
+  DescribeData *data = g_new0(DescribeData, 1);
+  data->project = project_ref(self);
+  data->package_name = g_strdup(pkg_name);
+  data->symbol = g_strdup(symbol);
+  interaction->done_cb = project_on_describe;
+  interaction->done_cb_data = data;
+  g_mutex_unlock(&interaction->lock);
+  repl_session_eval(self->repl, interaction);
+  g_free(expr);
+}
+
+static void project_on_package_definition(Interaction *interaction, gpointer user_data) {
+  g_debug("project_on_package_definition entry");
+  Project *project = user_data;
+  gchar *res = NULL;
+  g_mutex_lock(&interaction->lock);
+  if (interaction->result)
+    res = g_strdup(interaction->result);
+  g_mutex_unlock(&interaction->lock);
+  g_assert(res);
+  TextProvider *provider = string_text_provider_new(res);
+  LispLexer *lexer = lisp_lexer_new(provider);
+  lisp_lexer_lex(lexer);
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  LispParser *parser = lisp_parser_new();
+  lisp_parser_parse(parser, tokens, NULL);
+  const Node *ast = lisp_parser_get_ast(parser);
+  g_assert(ast && ast->children && ast->children->len > 0);
+  Node *expr = g_array_index(ast->children, Node*, 0);
+  analyse_defpackage(project, expr, NULL);
+  Node *name_node = (expr->children && expr->children->len > 1) ?
+    g_array_index(expr->children, Node*, 1) : NULL;
+  const gchar *pkg_name = node_get_name(name_node);
+  g_assert(pkg_name);
+  g_debug("project_on_package_definition built package %s", pkg_name);
+  Package *pkg = project_get_package(project, pkg_name);
+  if (pkg && project->repl) {
+    GHashTable *exports = package_get_exports(pkg);
+    if (exports) {
+      GHashTableIter iter;
+      g_hash_table_iter_init(&iter, exports);
+      gpointer key, value;
+      gint count = 0;
+      while (count < 10 && g_hash_table_iter_next(&iter, &key, &value)) {
+        const gchar *sym = key;
+        project_request_describe(project, pkg_name, sym);
+        count++;
+      }
+      (void)value;
+    }
+  }
+  lisp_parser_free(parser);
+  lisp_lexer_free(lexer);
+  text_provider_unref(provider);
+  project_unref(project);
+  interaction_clear(interaction);
+  g_free(interaction);
+  g_free(res);
+}
+
+static void project_handle_special_variable(const gchar *symbol,
+    GPtrArray *section) {
+  g_debug("project_handle_special_variable symbol=%s", symbol);
+  gchar *declared_type = NULL;
+  gchar *value = NULL;
+  GString *doc = NULL;
+  for (guint i = 1; i < section->len; i++) {
+    const gchar *line = g_ptr_array_index(section, i);
+    if (g_str_has_prefix(line, "  Declared type:")) {
+      g_free(declared_type);
+      declared_type = g_strdup(g_strstrip((gchar*)line + 15));
+    } else if (g_str_has_prefix(line, "  Value:")) {
+      g_free(value);
+      value = g_strdup(g_strstrip((gchar*)line + 7));
+    } else if (g_str_has_prefix(line, "  Documentation:")) {
+      if (!doc)
+        doc = g_string_new(NULL);
+      for (guint j = i + 1; j < section->len; j++) {
+        const gchar *dline = g_ptr_array_index(section, j);
+        if (g_str_has_prefix(dline, "    ")) {
+          if (doc->len)
+            g_string_append_c(doc, '\n');
+          g_string_append(doc, g_strstrip((gchar*)dline + 4));
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  g_message("describe %s special variable type=%s value=%s doc=%s",
+      symbol, declared_type ? declared_type : "(unknown)",
+      value ? value : "(unknown)", doc ? doc->str : "");
+  g_free(declared_type);
+  g_free(value);
+  if (doc)
+    g_string_free(doc, TRUE);
+}
+
+static void project_handle_compiled_function(const gchar *symbol,
+    GPtrArray *section) {
+  g_debug("project_handle_compiled_function symbol=%s", symbol);
+  gchar *lambda_list = NULL;
+  GString *doc = NULL;
+  for (guint i = 1; i < section->len; i++) {
+    const gchar *line = g_ptr_array_index(section, i);
+    if (g_str_has_prefix(line, "  Lambda-list:")) {
+      g_free(lambda_list);
+      lambda_list = g_strdup(g_strstrip((gchar*)line + 14));
+    } else if (g_str_has_prefix(line, "  Documentation:")) {
+      if (!doc)
+        doc = g_string_new(NULL);
+      for (guint j = i + 1; j < section->len; j++) {
+        const gchar *dline = g_ptr_array_index(section, j);
+        if (g_str_has_prefix(dline, "    ")) {
+          if (doc->len)
+            g_string_append_c(doc, '\n');
+          g_string_append(doc, g_strstrip((gchar*)dline + 4));
+        } else {
+          break;
+        }
+      }
+    }
+  }
+  g_message("describe %s compiled function lambda=%s doc=%s", symbol,
+      lambda_list ? lambda_list : "(unknown)", doc ? doc->str : "");
+  g_free(lambda_list);
+  if (doc)
+    g_string_free(doc, TRUE);
+}
+
+static void project_on_describe(Interaction *interaction, gpointer user_data) {
+  DescribeData *data = user_data;
+  g_debug("project_on_describe symbol=%s", data->symbol);
+  gchar *out = NULL;
+  g_mutex_lock(&interaction->lock);
+  if (interaction->output)
+    out = g_strdup(interaction->output);
+  g_mutex_unlock(&interaction->lock);
+  g_return_if_fail(out);
+  gchar **lines = g_strsplit(out, "\n", -1);
+  GPtrArray *sections = g_ptr_array_new_with_free_func((GDestroyNotify)g_ptr_array_unref);
+  GPtrArray *current = NULL;
+  for (guint i = 0; lines[i]; i++) {
+    if (lines[i][0] != ' ' && lines[i][0] != '\0') {
+      current = g_ptr_array_new_with_free_func(g_free);
+      g_ptr_array_add(sections, current);
+    }
+    if (current)
+      g_ptr_array_add(current, g_strdup(lines[i]));
+  }
+  g_strfreev(lines);
+  for (guint s = 1; s < sections->len; s++) {
+    GPtrArray *section = g_ptr_array_index(sections, s);
+    if (section->len == 0)
+      continue;
+    const gchar *first_line = g_ptr_array_index(section, 0);
+    g_message("describe %s section: %s", data->symbol, first_line);
+    if (g_str_has_suffix(first_line, "names a special variable:")) {
+      project_handle_special_variable(data->symbol, section);
+    } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
+      project_handle_compiled_function(data->symbol, section);
+    } else {
+      g_debug("describe %s ignoring section: %s", data->symbol, first_line);
+    }
+  }
+  g_ptr_array_free(sections, TRUE);
+  project_unref(data->project);
+  g_free(data->package_name);
+  g_free(data->symbol);
+  g_free(data);
+  interaction_clear(interaction);
+  g_free(interaction);
+  g_free(out);
+}
+

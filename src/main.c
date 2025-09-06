@@ -33,6 +33,7 @@
 #include "project_file.c"
 #include "project_index.c"
 #include "project.c"
+#include "project_repl.c"
 #include "repl_process.c"
 #include "repl_session.c"
 #include "reloc.c"
