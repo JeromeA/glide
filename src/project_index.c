@@ -31,6 +31,7 @@ ProjectIndex *project_index_new(void) {
   self->package_uses = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)g_ptr_array_unref);
   self->packages = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)package_unref);
   self->functions = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, (GDestroyNotify)function_unref);
+  self->variables = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
   return self;
 }
 
@@ -45,6 +46,7 @@ void project_index_free(ProjectIndex *self) {
   g_clear_pointer(&self->package_uses, g_hash_table_unref);
   g_clear_pointer(&self->packages, g_hash_table_unref);
   g_clear_pointer(&self->functions, g_hash_table_unref);
+  g_clear_pointer(&self->variables, g_hash_table_unref);
   g_free(self);
 }
 
@@ -100,6 +102,8 @@ void project_index_clear(ProjectIndex *self) {
     g_hash_table_remove_all(self->packages);
   if (self->functions)
     g_hash_table_remove_all(self->functions);
+  if (self->variables)
+    g_hash_table_remove_all(self->variables);
 }
 
 static void project_index_remove_from_table(GHashTable *table, ProjectFile *file) {
@@ -188,5 +192,17 @@ Function *project_index_get_function(ProjectIndex *self, const gchar *name) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(name != NULL, NULL);
   return g_hash_table_lookup(self->functions, name);
+}
+
+void project_index_add_variable(ProjectIndex *self, const gchar *name, const gchar *doc) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(name != NULL);
+  g_hash_table_replace(self->variables, g_strdup(name), doc ? g_strdup(doc) : NULL);
+}
+
+const gchar *project_index_get_variable(ProjectIndex *self, const gchar *name) {
+  g_return_val_if_fail(self != NULL, NULL);
+  g_return_val_if_fail(name != NULL, NULL);
+  return g_hash_table_lookup(self->variables, name);
 }
 
