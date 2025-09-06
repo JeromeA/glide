@@ -136,6 +136,38 @@ project_view_populate_store(ProjectView *self)
           PROJECT_VIEW_COL_OBJECT,
           project_get_package(self->project, name),
           -1);
+      GtkTreeIter grandchild;
+      guint fn = 0;
+      gchar **fnames = project_get_function_names(self->project, name, &fn);
+      if (fnames) {
+        g_qsort_with_data(fnames, fn, sizeof(gchar *), compare_names, NULL);
+        for (guint j = 0; j < fn; j++) {
+          const gchar *fname = fnames[j];
+          gtk_tree_store_append(self->store, &grandchild, &child);
+          gtk_tree_store_set(self->store, &grandchild,
+              PROJECT_VIEW_COL_TEXT, fname,
+              PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_FUNCTION,
+              PROJECT_VIEW_COL_OBJECT,
+              project_get_function(self->project, fname),
+              -1);
+        }
+        g_free(fnames);
+      }
+      guint vn = 0;
+      gchar **vnames = project_get_variable_names(self->project, name, &vn);
+      if (vnames) {
+        g_qsort_with_data(vnames, vn, sizeof(gchar *), compare_names, NULL);
+        for (guint j = 0; j < vn; j++) {
+          const gchar *vname = vnames[j];
+          gtk_tree_store_append(self->store, &grandchild, &child);
+          gtk_tree_store_set(self->store, &grandchild,
+              PROJECT_VIEW_COL_TEXT, vname,
+              PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_VARIABLE,
+              PROJECT_VIEW_COL_OBJECT, NULL,
+              -1);
+        }
+        g_free(vnames);
+      }
     }
     g_free(names);
   }

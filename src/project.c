@@ -114,16 +114,30 @@ Function *project_get_function(Project *self, const gchar *name) {
   return project_index_get_function(self->index, name);
 }
 
-void project_add_variable(Project *self, const gchar *name, const gchar *doc) {
+gchar **project_get_function_names(Project *self, const gchar *package,
+    guint *length) {
+  g_return_val_if_fail(self != NULL, NULL);
+  return project_index_get_function_names(self->index, package, length);
+}
+
+void project_add_variable(Project *self, const gchar *package,
+    const gchar *name, const gchar *doc) {
   g_return_if_fail(self != NULL);
+  g_return_if_fail(package != NULL);
   g_return_if_fail(name != NULL);
-  project_index_add_variable(self->index, name, doc);
+  project_index_add_variable(self->index, package, name, doc);
 }
 
 const gchar *project_get_variable(Project *self, const gchar *name) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(name != NULL, NULL);
   return project_index_get_variable(self->index, name);
+}
+
+gchar **project_get_variable_names(Project *self, const gchar *package,
+    guint *length) {
+  g_return_val_if_fail(self != NULL, NULL);
+  return project_index_get_variable_names(self->index, package, length);
 }
 
 Package *project_get_package(Project *self, const gchar *name) {

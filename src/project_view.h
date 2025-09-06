@@ -22,7 +22,9 @@ typedef enum {
   PROJECT_VIEW_KIND_SRC,
   PROJECT_VIEW_KIND_COMPONENT,
   PROJECT_VIEW_KIND_PACKAGES,
-  PROJECT_VIEW_KIND_PACKAGE
+  PROJECT_VIEW_KIND_PACKAGE,
+  PROJECT_VIEW_KIND_FUNCTION,
+  PROJECT_VIEW_KIND_VARIABLE
 } ProjectViewKind;
 GtkWidget *project_view_new(Asdf *asdf, App *app);
 void project_view_select_file(ProjectView *self, const gchar *file);

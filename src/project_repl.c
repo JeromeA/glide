@@ -11,7 +11,7 @@
 static void project_on_package_definition(Interaction *interaction, gpointer user_data);
 static void project_on_describe(Interaction *interaction, gpointer user_data);
 static void project_handle_special_variable(Project *project,
-    const gchar *symbol, GPtrArray *section);
+    const gchar *package, const gchar *symbol, GPtrArray *section);
 static void project_handle_compiled_function(Project *project,
     const gchar *package, const gchar *symbol, GPtrArray *section);
 
@@ -110,7 +110,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
 }
 
 static void project_handle_special_variable(Project *project,
-    const gchar *symbol, GPtrArray *section) {
+    const gchar *package, const gchar *symbol, GPtrArray *section) {
   g_debug("project_handle_special_variable symbol=%s", symbol);
   gchar *declared_type = NULL;
   gchar *value = NULL;
@@ -141,7 +141,7 @@ static void project_handle_special_variable(Project *project,
   g_message("describe %s special variable type=%s value=%s doc=%s",
       symbol, declared_type ? declared_type : "(unknown)",
       value ? value : "(unknown)", doc ? doc->str : "");
-  project_add_variable(project, symbol, doc ? doc->str : NULL);
+  project_add_variable(project, package, symbol, doc ? doc->str : NULL);
   g_free(declared_type);
   g_free(value);
   if (doc)
@@ -212,7 +212,8 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
     const gchar *first_line = g_ptr_array_index(section, 0);
     g_message("describe %s section: %s", data->symbol, first_line);
     if (g_str_has_suffix(first_line, "names a special variable:")) {
-      project_handle_special_variable(data->project, data->symbol, section);
+      project_handle_special_variable(data->project, data->package_name,
+          data->symbol, section);
     } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
       project_handle_compiled_function(data->project, data->package_name,
           data->symbol, section);
