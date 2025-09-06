@@ -13,6 +13,7 @@ struct _ProjectIndex {
   GHashTable *package_uses;
   GHashTable *packages; /* name -> Package* */
   GHashTable *functions; /* name -> Function* */
+  GHashTable *variables; /* name -> documentation */
 };
 
 static GHashTable *project_index_table(ProjectIndex *self, StringDesignatorType sd_type);
