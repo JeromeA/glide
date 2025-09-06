@@ -36,6 +36,7 @@ SOURCES += \
   lisp_parser_view.c \
   project_index.c \
   project.c \
+  project_repl.c \
   project_file.c \
   gtk_text_provider.c \
   string_text_provider.c \
