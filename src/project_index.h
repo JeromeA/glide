@@ -23,3 +23,7 @@ gchar       **project_index_get_package_names(ProjectIndex *self, guint *length)
 void          project_index_add_function(ProjectIndex *self, Function *function);
 Function     *project_index_get_function(ProjectIndex *self, const gchar *name);
 
+void          project_index_add_variable(ProjectIndex *self, const gchar *name,
+    const gchar *doc);
+const gchar  *project_index_get_variable(ProjectIndex *self, const gchar *name);
+

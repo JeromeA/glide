@@ -10,10 +10,10 @@
 
 static void project_on_package_definition(Interaction *interaction, gpointer user_data);
 static void project_on_describe(Interaction *interaction, gpointer user_data);
-static void project_handle_special_variable(const gchar *symbol,
-    GPtrArray *section);
-static void project_handle_compiled_function(const gchar *symbol,
-    GPtrArray *section);
+static void project_handle_special_variable(Project *project,
+    const gchar *symbol, GPtrArray *section);
+static void project_handle_compiled_function(Project *project,
+    const gchar *package, const gchar *symbol, GPtrArray *section);
 
 typedef struct {
   Project *project;
@@ -109,8 +109,8 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   g_free(res);
 }
 
-static void project_handle_special_variable(const gchar *symbol,
-    GPtrArray *section) {
+static void project_handle_special_variable(Project *project,
+    const gchar *symbol, GPtrArray *section) {
   g_debug("project_handle_special_variable symbol=%s", symbol);
   gchar *declared_type = NULL;
   gchar *value = NULL;
@@ -141,14 +141,15 @@ static void project_handle_special_variable(const gchar *symbol,
   g_message("describe %s special variable type=%s value=%s doc=%s",
       symbol, declared_type ? declared_type : "(unknown)",
       value ? value : "(unknown)", doc ? doc->str : "");
+  project_add_variable(project, symbol, doc ? doc->str : NULL);
   g_free(declared_type);
   g_free(value);
   if (doc)
     g_string_free(doc, TRUE);
 }
 
-static void project_handle_compiled_function(const gchar *symbol,
-    GPtrArray *section) {
+static void project_handle_compiled_function(Project *project,
+    const gchar *package, const gchar *symbol, GPtrArray *section) {
   g_debug("project_handle_compiled_function symbol=%s", symbol);
   gchar *lambda_list = NULL;
   GString *doc = NULL;
@@ -174,6 +175,10 @@ static void project_handle_compiled_function(const gchar *symbol,
   }
   g_message("describe %s compiled function lambda=%s doc=%s", symbol,
       lambda_list ? lambda_list : "(unknown)", doc ? doc->str : "");
+  Function *function = function_new(NULL, NULL, doc ? doc->str : NULL,
+      NULL, FUNCTION_KIND_FUNCTION, symbol, package);
+  project_add_function(project, function);
+  function_unref(function);
   g_free(lambda_list);
   if (doc)
     g_string_free(doc, TRUE);
@@ -207,9 +212,10 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
     const gchar *first_line = g_ptr_array_index(section, 0);
     g_message("describe %s section: %s", data->symbol, first_line);
     if (g_str_has_suffix(first_line, "names a special variable:")) {
-      project_handle_special_variable(data->symbol, section);
+      project_handle_special_variable(data->project, data->symbol, section);
     } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
-      project_handle_compiled_function(data->symbol, section);
+      project_handle_compiled_function(data->project, data->package_name,
+          data->symbol, section);
     } else {
       g_debug("describe %s ignoring section: %s", data->symbol, first_line);
     }
