@@ -217,17 +217,17 @@ static void test_remove_file(void)
   project_unref(project);
 }
 
-static void on_pkg_added(Project * /*project*/, Package * /*package*/, gpointer user_data)
+static void on_project_changed(Project * /*project*/, gpointer user_data)
 {
   int *count = user_data;
   (*count)++;
 }
 
-static void test_package_added_cb(void)
+static void test_project_changed_cb(void)
 {
   Project *project = project_new(NULL);
   int count = 0;
-  project_set_package_added_cb(project, on_pkg_added, &count);
+  project_set_changed_cb(project, on_project_changed, &count);
   Package *pkg = package_new("FOO");
   project_add_package(project, pkg);
   package_unref(pkg);
@@ -249,6 +249,6 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/incremental_index", test_incremental_index);
   g_test_add_func("/project/relative_path", test_relative_path);
   g_test_add_func("/project/remove_file", test_remove_file);
-  g_test_add_func("/project/package_added_cb", test_package_added_cb);
+  g_test_add_func("/project/project_changed_cb", test_project_changed_cb);
   return g_test_run();
 }

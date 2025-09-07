@@ -26,8 +26,8 @@ static void project_view_populate_store(ProjectView *self);
 static gboolean filename_matches(const gchar *component, const gchar *file);
 static gchar *get_selected_component(ProjectView *self);
 static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data);
-static gboolean dispatch_package_added(gpointer data);
-static void on_package_added(Project *project, Package *package, gpointer user_data);
+static gboolean dispatch_project_changed(gpointer data);
+static void on_project_changed(Project *project, gpointer user_data);
 static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
 static GdkPixbuf *load_icon(const gchar *filename);
 
@@ -75,7 +75,7 @@ project_view_dispose(GObject *object)
   ProjectView *self = PROJECT_VIEW(object);
   g_clear_object(&self->asdf);
   if (self->project)
-    project_set_package_added_cb(self->project, NULL, NULL);
+    project_set_changed_cb(self->project, NULL, NULL);
   g_clear_pointer(&self->project, project_unref);
   g_clear_object(&self->app);
   g_clear_object(&self->store);
@@ -244,7 +244,7 @@ project_view_new(Asdf *asdf, App *app)
   self->app = app ? g_object_ref(app) : NULL;
   self->project = app ? project_ref(app_get_project(app)) : NULL;
   if (self->project)
-    project_set_package_added_cb(self->project, on_package_added, self);
+    project_set_changed_cb(self->project, on_project_changed, self);
   project_view_populate_store(self);
   return GTK_WIDGET(self);
 }
@@ -297,7 +297,7 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
 }
 
 static gboolean
-dispatch_package_added(gpointer data)
+dispatch_project_changed(gpointer data)
 {
   g_assert(g_main_context_is_owner(g_main_context_default()));
   ProjectView *self = PROJECT_VIEW(data);
@@ -307,10 +307,10 @@ dispatch_package_added(gpointer data)
 }
 
 static void
-on_package_added(Project * /*project*/, Package * /*package*/, gpointer user_data)
+on_project_changed(Project * /*project*/, gpointer user_data)
 {
   ProjectView *self = PROJECT_VIEW(user_data);
-  g_main_context_invoke(NULL, dispatch_package_added, g_object_ref(self));
+  g_main_context_invoke(NULL, dispatch_project_changed, g_object_ref(self));
 }
 
 static gboolean
