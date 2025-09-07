@@ -1,4 +1,5 @@
 #include "project_view.h"
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #include "project_file.h"
 #include "app.h"
 #include "file_new.h"
@@ -12,6 +13,11 @@ struct _ProjectView {
   Project *project;
   App *app;
   GtkTreeStore *store;
+  GdkPixbuf *icon_folder;
+  GdkPixbuf *icon_function;
+  GdkPixbuf *icon_package;
+  GdkPixbuf *icon_variable;
+  GdkPixbuf *icon_lisp;
 };
 
 G_DEFINE_TYPE(ProjectView, project_view, GTK_TYPE_TREE_VIEW)
@@ -23,25 +29,44 @@ static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpoint
 static gboolean dispatch_package_added(gpointer data);
 static void on_package_added(Project *project, Package *package, gpointer user_data);
 static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
+static GdkPixbuf *load_icon(const gchar *filename);
 
 static void
 project_view_init(ProjectView *self)
 {
-  GtkCellRenderer *renderer;
+  GtkCellRenderer *icon_renderer;
+  GtkCellRenderer *text_renderer;
+  GtkTreeViewColumn *column;
 
   self->asdf = NULL;
   self->project = NULL;
   self->app = NULL;
   self->store = gtk_tree_store_new(PROJECT_VIEW_N_COLS,
-      G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER);
+      GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
 
-  renderer = gtk_cell_renderer_text_new();
-  gtk_tree_view_insert_column_with_attributes(GTK_TREE_VIEW(self), -1, NULL,
-      renderer, "text", PROJECT_VIEW_COL_TEXT, NULL);
+  column = gtk_tree_view_column_new();
+  /* Use a single column with icon and text renderers so the icon
+     appears to the left of the label. */
+  icon_renderer = gtk_cell_renderer_pixbuf_new();
+  gtk_tree_view_column_pack_start(column, icon_renderer, FALSE);
+  gtk_tree_view_column_add_attribute(column, icon_renderer, "pixbuf",
+      PROJECT_VIEW_COL_ICON);
+
+  text_renderer = gtk_cell_renderer_text_new();
+  gtk_tree_view_column_pack_start(column, text_renderer, TRUE);
+  gtk_tree_view_column_add_attribute(column, text_renderer, "text",
+      PROJECT_VIEW_COL_TEXT);
+  gtk_tree_view_append_column(GTK_TREE_VIEW(self), column);
   gtk_tree_view_set_headers_visible(GTK_TREE_VIEW(self), FALSE);
   g_signal_connect(self, "button-press-event",
       G_CALLBACK(on_button_press), self);
+
+  self->icon_folder = load_icon("icon-folder.svg");
+  self->icon_function = load_icon("icon-function.svg");
+  self->icon_package = load_icon("icon-package.svg");
+  self->icon_variable = load_icon("icon-variable.svg");
+  self->icon_lisp = load_icon("icon-lisp.svg");
 }
 
 static void
@@ -54,6 +79,11 @@ project_view_dispose(GObject *object)
   g_clear_pointer(&self->project, project_unref);
   g_clear_object(&self->app);
   g_clear_object(&self->store);
+  g_clear_object(&self->icon_folder);
+  g_clear_object(&self->icon_function);
+  g_clear_object(&self->icon_package);
+  g_clear_object(&self->icon_variable);
+  g_clear_object(&self->icon_lisp);
   G_OBJECT_CLASS(project_view_parent_class)->dispose(object);
 }
 
@@ -72,6 +102,29 @@ compare_names(gconstpointer a, gconstpointer b, gpointer /*user_data*/)
   return g_strcmp0(sa, sb);
 }
 
+static GdkPixbuf *
+load_icon(const gchar *filename)
+{
+  g_return_val_if_fail(filename != NULL, NULL);
+  GError *error = NULL;
+  GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(filename, 16, 16,
+      TRUE, &error);
+  if (pixbuf) {
+    g_debug("Loaded icon %s", filename);
+    return pixbuf;
+  }
+  g_clear_error(&error);
+  gchar *path = g_build_filename("src", filename, NULL);
+  pixbuf = gdk_pixbuf_new_from_file_at_scale(path, 16, 16, TRUE, &error);
+  if (pixbuf)
+    g_debug("Loaded icon %s", path);
+  else
+    g_warning("Failed to load %s: %s", path, error->message);
+  g_clear_error(&error);
+  g_free(path);
+  return pixbuf;
+}
+
 static void
 project_view_populate_store(ProjectView *self)
 {
@@ -84,6 +137,7 @@ project_view_populate_store(ProjectView *self)
 
   gtk_tree_store_append(self->store, &root, NULL);
   gtk_tree_store_set(self->store, &root,
+      PROJECT_VIEW_COL_ICON, self->icon_folder,
       PROJECT_VIEW_COL_TEXT, basename,
       PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_ROOT,
       PROJECT_VIEW_COL_OBJECT, self->project,
@@ -92,6 +146,7 @@ project_view_populate_store(ProjectView *self)
 
   gtk_tree_store_append(self->store, &iter, &root);
   gtk_tree_store_set(self->store, &iter,
+      PROJECT_VIEW_COL_ICON, self->icon_folder,
       PROJECT_VIEW_COL_TEXT, "src",
       PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC,
       PROJECT_VIEW_COL_OBJECT, self->project,
@@ -111,6 +166,7 @@ project_view_populate_store(ProjectView *self)
     }
     gtk_tree_store_append(self->store, &child, &iter);
     gtk_tree_store_set(self->store, &child,
+        PROJECT_VIEW_COL_ICON, self->icon_lisp,
         PROJECT_VIEW_COL_TEXT, comp,
         PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_COMPONENT,
         PROJECT_VIEW_COL_OBJECT, pf,
@@ -119,6 +175,7 @@ project_view_populate_store(ProjectView *self)
 
   gtk_tree_store_append(self->store, &iter, &root);
   gtk_tree_store_set(self->store, &iter,
+      PROJECT_VIEW_COL_ICON, self->icon_folder,
       PROJECT_VIEW_COL_TEXT, "packages",
       PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_PACKAGES,
       PROJECT_VIEW_COL_OBJECT, NULL,
@@ -131,6 +188,7 @@ project_view_populate_store(ProjectView *self)
       const gchar *name = names[i];
       gtk_tree_store_append(self->store, &child, &iter);
       gtk_tree_store_set(self->store, &child,
+          PROJECT_VIEW_COL_ICON, self->icon_package,
           PROJECT_VIEW_COL_TEXT, name,
           PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_PACKAGE,
           PROJECT_VIEW_COL_OBJECT,
@@ -145,6 +203,7 @@ project_view_populate_store(ProjectView *self)
           const gchar *fname = fnames[j];
           gtk_tree_store_append(self->store, &grandchild, &child);
           gtk_tree_store_set(self->store, &grandchild,
+              PROJECT_VIEW_COL_ICON, self->icon_function,
               PROJECT_VIEW_COL_TEXT, fname,
               PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_FUNCTION,
               PROJECT_VIEW_COL_OBJECT,
@@ -161,6 +220,7 @@ project_view_populate_store(ProjectView *self)
           const gchar *vname = vnames[j];
           gtk_tree_store_append(self->store, &grandchild, &child);
           gtk_tree_store_set(self->store, &grandchild,
+              PROJECT_VIEW_COL_ICON, self->icon_variable,
               PROJECT_VIEW_COL_TEXT, vname,
               PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_VARIABLE,
               PROJECT_VIEW_COL_OBJECT, NULL,
