@@ -15,8 +15,8 @@ static Project *project_init(void) {
   self->asdf = asdf_new();
   self->repl = NULL;
   self->path = NULL;
-  self->package_added_cb = NULL;
-  self->package_added_data = NULL;
+  self->changed_cb = NULL;
+  self->changed_data = NULL;
   return self;
 }
 
@@ -55,6 +55,8 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
 
   g_ptr_array_add(self->files, file);
 
+  project_changed(self);
+
   return file;
 }
 
@@ -75,6 +77,8 @@ void project_remove_file(Project *self, ProjectFile *file) {
     if (a)
       project_index_walk(self->index, a);
   }
+
+  project_changed(self);
 }
 
 guint project_get_file_count(Project *self) {
@@ -98,14 +102,14 @@ void project_add_package(Project *self, Package *package) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(package != NULL);
   project_index_add_package(self->index, package);
-  if (self->package_added_cb)
-    self->package_added_cb(self, package, self->package_added_data);
+  project_changed(self);
 }
 
 void project_add_function(Project *self, Function *function) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(function != NULL);
   project_index_add_function(self->index, function);
+  project_changed(self);
 }
 
 Function *project_get_function(Project *self, const gchar *name) {
@@ -126,6 +130,7 @@ void project_add_variable(Project *self, const gchar *package,
   g_return_if_fail(package != NULL);
   g_return_if_fail(name != NULL);
   project_index_add_variable(self->index, package, name, doc);
+  project_changed(self);
 }
 
 const gchar *project_get_variable(Project *self, const gchar *name) {
@@ -189,6 +194,7 @@ void project_clear(Project *self) {
   Asdf *asdf = asdf_new();
   project_set_asdf(self, asdf);
   g_object_unref(asdf);
+  project_changed(self);
 }
 
 void project_file_changed(Project *self, ProjectFile *file) {
@@ -208,6 +214,7 @@ void project_file_changed(Project *self, ProjectFile *file) {
     analyse_ast(self, (Node*)ast);
   if (ast)
     project_index_walk(self->index, ast);
+  project_changed(self);
 }
 
 Project *project_ref(Project *self) {
@@ -234,6 +241,7 @@ void project_file_loaded(Project *self, ProjectFile *file) {
   g_return_if_fail(file != NULL);
   if (self->file_loaded_cb)
     self->file_loaded_cb(self, file, self->file_loaded_data);
+  project_changed(self);
 }
 
 void project_set_file_removed_cb(Project *self, ProjectFileRemovedCb cb, gpointer user_data) {
@@ -249,9 +257,16 @@ void project_file_removed(Project *self, ProjectFile *file) {
     self->file_removed_cb(self, file, self->file_removed_data);
 }
 
-void project_set_package_added_cb(Project *self, ProjectPackageAddedCb cb, gpointer user_data) {
+void project_set_changed_cb(Project *self, ProjectChangedCb cb, gpointer user_data) {
   g_return_if_fail(self != NULL);
-  self->package_added_cb = cb;
-  self->package_added_data = user_data;
+  self->changed_cb = cb;
+  self->changed_data = user_data;
+}
+
+void project_changed(Project *self) {
+  g_return_if_fail(self != NULL);
+  g_debug("project_changed");
+  if (self->changed_cb)
+    self->changed_cb(self, self->changed_data);
 }
 
