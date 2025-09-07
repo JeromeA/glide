@@ -55,7 +55,7 @@
 #include "status_service.h"
 #include "util.h"
 
-static int verbosity = 2;
+static int verbosity = 1;
 
 int
 get_verbosity(void)
