@@ -148,7 +148,7 @@ project_view_populate_store(ProjectView *self)
   gtk_tree_store_set(self->store, &iter,
       PROJECT_VIEW_COL_ICON, self->icon_folder,
       PROJECT_VIEW_COL_TEXT, "src",
-      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC,
+      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC_FOLDER,
       PROJECT_VIEW_COL_OBJECT, self->project,
       -1);
   for (guint i = 0; i < asdf_get_component_count(self->asdf); i++) {
@@ -168,7 +168,7 @@ project_view_populate_store(ProjectView *self)
     gtk_tree_store_set(self->store, &child,
         PROJECT_VIEW_COL_ICON, self->icon_lisp,
         PROJECT_VIEW_COL_TEXT, comp,
-        PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_COMPONENT,
+        PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC,
         PROJECT_VIEW_COL_OBJECT, pf,
         -1);
   }
@@ -265,7 +265,7 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
         gint kind = 0;
         gtk_tree_model_get(model, &iter, PROJECT_VIEW_COL_KIND, &kind, -1);
         GtkWidget *menu = NULL;
-        if (kind == PROJECT_VIEW_KIND_COMPONENT) {
+        if (kind == PROJECT_VIEW_KIND_SRC) {
           menu = gtk_menu_new();
           GtkWidget *rename = gtk_menu_item_new_with_label("Rename file");
           g_signal_connect(rename, "activate", G_CALLBACK(file_rename), self->app);
@@ -273,7 +273,7 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
           GtkWidget *del = gtk_menu_item_new_with_label("Delete file");
           g_signal_connect(del, "activate", G_CALLBACK(file_delete), self->app);
           gtk_menu_shell_append(GTK_MENU_SHELL(menu), del);
-        } else if (kind == PROJECT_VIEW_KIND_ROOT || kind == PROJECT_VIEW_KIND_SRC) {
+        } else if (kind == PROJECT_VIEW_KIND_ROOT || kind == PROJECT_VIEW_KIND_SRC_FOLDER) {
           menu = gtk_menu_new();
           GtkWidget *newf = gtk_menu_item_new_with_label("New file");
           g_signal_connect(newf, "activate", G_CALLBACK(file_new), self->app);
@@ -339,7 +339,7 @@ get_selected_component(ProjectView *self)
     return NULL;
   gint kind = 0;
   gtk_tree_model_get(model, &iter, PROJECT_VIEW_COL_KIND, &kind, -1);
-  if (kind != PROJECT_VIEW_KIND_COMPONENT)
+  if (kind != PROJECT_VIEW_KIND_SRC)
     return NULL;
   gchar *comp = NULL;
   gtk_tree_model_get(model, &iter, PROJECT_VIEW_COL_TEXT, &comp, -1);
@@ -368,7 +368,7 @@ project_view_select_file(ProjectView *self, const gchar *file)
   do {
     gint kind = 0;
     gtk_tree_model_get(model, &iter, PROJECT_VIEW_COL_KIND, &kind, -1);
-    if (kind == PROJECT_VIEW_KIND_SRC) {
+    if (kind == PROJECT_VIEW_KIND_SRC_FOLDER) {
       if (gtk_tree_model_iter_children(model, &child, &iter)) {
         do {
           gchar *comp = NULL;
