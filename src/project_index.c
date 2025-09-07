@@ -78,6 +78,7 @@ static void project_index_add_to(GHashTable *table, const gchar *name, Node *nod
     g_hash_table_insert(table, g_strdup(name), arr);
   }
   g_ptr_array_add(arr, node_ref(node));
+  g_debug("Index: added %s as %s", name, node_sd_type_to_string(node->sd_type));
 }
 
 static void project_index_node(ProjectIndex *self, const Node *node) {
@@ -103,19 +104,33 @@ void project_index_clear(ProjectIndex *self) {
   GHashTable *tables[] = { self->function_defs, self->function_uses,
     self->variable_defs, self->variable_uses, self->package_defs,
     self->package_uses };
+  const gchar *names[] = { "function defs", "function uses",
+    "variable defs", "variable uses", "package defs", "package uses" };
   for (guint t = 0; t < G_N_ELEMENTS(tables); t++)
-    if (tables[t])
+    if (tables[t]) {
       g_hash_table_remove_all(tables[t]);
-  if (self->packages)
+      g_debug("Index: cleared %s", names[t]);
+    }
+  if (self->packages) {
     g_hash_table_remove_all(self->packages);
-  if (self->functions)
+    g_debug("Index: cleared packages");
+  }
+  if (self->functions) {
     g_hash_table_remove_all(self->functions);
-  if (self->functions_by_package)
+    g_debug("Index: cleared functions");
+  }
+  if (self->functions_by_package) {
     g_hash_table_remove_all(self->functions_by_package);
-  if (self->variables)
+    g_debug("Index: cleared functions by package");
+  }
+  if (self->variables) {
     g_hash_table_remove_all(self->variables);
-  if (self->variables_by_package)
+    g_debug("Index: cleared variables");
+  }
+  if (self->variables_by_package) {
     g_hash_table_remove_all(self->variables_by_package);
+    g_debug("Index: cleared variables by package");
+  }
 }
 
 static void project_index_remove_from_table(GHashTable *table, ProjectFile *file) {
@@ -127,13 +142,17 @@ static void project_index_remove_from_table(GHashTable *table, ProjectFile *file
     GPtrArray *arr = value;
     for (guint i = 0; i < arr->len; ) {
       Node *n = g_ptr_array_index(arr, i);
-      if (n->file == file)
+      if (n->file == file) {
+        g_debug("Index: removed %s as %s", (const gchar*)key,
+            node_sd_type_to_string(n->sd_type));
         g_ptr_array_remove_index(arr, i);
-      else
+      } else
         i++;
     }
-    if (arr->len == 0)
+    if (arr->len == 0) {
+      g_debug("Index: removed entry %s", (const gchar*)key);
       g_hash_table_iter_remove(&iter);
+    }
   }
 }
 
@@ -151,8 +170,10 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
     while (g_hash_table_iter_next(&iter, &key, &value)) {
       Function *fn = value;
       const Node *sym = function_get_symbol(fn);
-      if (sym && sym->file == file)
+      if (sym && sym->file == file) {
+        g_debug("Index: removed function %s", (const gchar*)key);
         g_hash_table_iter_remove(&iter);
+      }
     }
   }
 
@@ -168,11 +189,17 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
       while (g_hash_table_iter_next(&iter, &nkey, &nvalue)) {
         Function *fn = nvalue;
         const Node *sym = function_get_symbol(fn);
-        if (sym && sym->file == file)
+        if (sym && sym->file == file) {
+          g_debug("Index: removed function %s from package %s",
+              (const gchar*)nkey, (const gchar*)pkey);
           g_hash_table_iter_remove(&iter);
+        }
       }
-      if (g_hash_table_size(tbl) == 0)
+      if (g_hash_table_size(tbl) == 0) {
+        g_debug("Index: removed package %s from functions index",
+            (const gchar*)pkey);
         g_hash_table_iter_remove(&piter);
+      }
     }
   }
 
@@ -185,6 +212,7 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
       for (guint i = 0; i < arr->len; i++) {
         Node *n = g_ptr_array_index(arr, i);
         if (n->file == file) {
+          g_debug("Index: removed package %s", (const gchar*)key);
           g_hash_table_remove(self->packages, key);
           break;
         }
@@ -199,6 +227,7 @@ void project_index_add_package(ProjectIndex *self, Package *package) {
   const gchar *name = package_get_name(package);
   if (!name) return;
   g_hash_table_replace(self->packages, g_strdup(name), package_ref(package));
+  g_debug("Index: added package %s", name);
 }
 
 Package *project_index_get_package(ProjectIndex *self, const gchar *name) {
@@ -218,6 +247,7 @@ void project_index_add_function(ProjectIndex *self, Function *function) {
   const gchar *name = function_get_name(function);
   if (!name) return;
   g_hash_table_replace(self->functions, g_strdup(name), function_ref(function));
+  g_debug("Index: added function %s", name);
   const gchar *pkg = function_get_package(function);
   if (pkg) {
     GHashTable *tbl = g_hash_table_lookup(self->functions_by_package, pkg);
@@ -227,6 +257,7 @@ void project_index_add_function(ProjectIndex *self, Function *function) {
       g_hash_table_insert(self->functions_by_package, g_strdup(pkg), tbl);
     }
     g_hash_table_replace(tbl, g_strdup(name), function_ref(function));
+    g_debug("Index: added function %s to package %s", name, pkg);
   }
 }
 
@@ -253,12 +284,14 @@ void project_index_add_variable(ProjectIndex *self, const gchar *package,
   g_return_if_fail(name != NULL);
   g_hash_table_replace(self->variables, g_strdup(name),
       doc ? g_strdup(doc) : NULL);
+  g_debug("Index: added variable %s", name);
   GHashTable *tbl = g_hash_table_lookup(self->variables_by_package, package);
   if (!tbl) {
     tbl = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
     g_hash_table_insert(self->variables_by_package, g_strdup(package), tbl);
   }
   g_hash_table_replace(tbl, g_strdup(name), doc ? g_strdup(doc) : NULL);
+  g_debug("Index: added variable %s to package %s", name, package);
 }
 
 const gchar *project_index_get_variable(ProjectIndex *self, const gchar *name) {
