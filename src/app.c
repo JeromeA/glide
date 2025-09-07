@@ -304,7 +304,7 @@ on_project_view_selection_changed(GtkTreeSelection *selection, gpointer data)
   gtk_tree_model_get(model, &iter,
       PROJECT_VIEW_COL_KIND, &kind,
       -1);
-  if (kind != PROJECT_VIEW_KIND_COMPONENT)
+  if (kind != PROJECT_VIEW_KIND_SRC)
     return;
 
   ProjectFile *file = NULL;
