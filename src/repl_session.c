@@ -266,7 +266,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       }
     }
   } else {
-    g_message("ReplSession.on_message unknown message: %s", str);
+    g_debug_160(1, "ReplSession.on_message unknown message: ", str);
   }
   g_mutex_unlock(&self->lock);
   if (updated_cb)
