@@ -299,15 +299,20 @@ on_project_view_selection_changed(GtkTreeSelection *selection, gpointer data)
   GtkTreeIter iter;
   if (!gtk_tree_selection_get_selected(selection, &model, &iter))
     return;
+
   gint kind = 0;
-  gpointer obj = NULL;
   gtk_tree_model_get(model, &iter,
       PROJECT_VIEW_COL_KIND, &kind,
-      PROJECT_VIEW_COL_OBJECT, &obj,
       -1);
-  if (kind != PROJECT_VIEW_KIND_COMPONENT || !obj)
+  if (kind != PROJECT_VIEW_KIND_COMPONENT)
     return;
-  ProjectFile *file = obj;
+
+  ProjectFile *file = NULL;
+  gtk_tree_model_get(model, &iter,
+      PROJECT_VIEW_COL_OBJECT, &file,
+      -1);
+  if (!file)
+    return;
   guint count = project_get_file_count(self->project);
   for (guint i = 0; i < count; i++) {
     if (project_get_file(self->project, i) == file) {

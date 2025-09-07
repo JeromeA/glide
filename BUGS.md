@@ -276,3 +276,11 @@ the entire buffer back to Glide. SBCL supplied fixed-size strings padded with
 of output filled with NUL characters. The method now respects the slice before
 forwarding, preventing padded NULs from ever reaching `Process` or
 `ReplProcess`.
+
+## Project view selection leaked strings
+
+Selecting rows in the project viewer leaked memory because the selection handler
+retrieved the object's value before verifying the row type. `gtk_tree_model_get`
+duplicated the underlying data for non-component rows, and the copies were never
+freed. The handler now queries the row kind first and only fetches the object
+for component rows, closing the leak.
