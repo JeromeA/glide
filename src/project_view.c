@@ -19,6 +19,7 @@ struct _ProjectView {
   GdkPixbuf *icon_package;
   GdkPixbuf *icon_variable;
   GdkPixbuf *icon_lisp;
+  guint project_changed_source;
 };
 
 G_DEFINE_TYPE(ProjectView, project_view, GTK_TYPE_TREE_VIEW)
@@ -28,6 +29,7 @@ static gboolean filename_matches(const gchar *component, const gchar *file);
 static gchar *get_selected_component(ProjectView *self);
 static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data);
 static gboolean dispatch_project_changed(gpointer data);
+static gboolean schedule_project_changed(gpointer data);
 static void on_project_changed(Project *project, gpointer user_data);
 static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
 static GdkPixbuf *load_icon(const gchar *filename);
@@ -68,6 +70,7 @@ project_view_init(ProjectView *self)
   self->icon_package = load_icon("icon-package.svg");
   self->icon_variable = load_icon("icon-variable.svg");
   self->icon_lisp = load_icon("icon-lisp.svg");
+  self->project_changed_source = 0;
 }
 
 static void
@@ -85,6 +88,10 @@ project_view_dispose(GObject *object)
   g_clear_object(&self->icon_package);
   g_clear_object(&self->icon_variable);
   g_clear_object(&self->icon_lisp);
+  if (self->project_changed_source) {
+    g_source_remove(self->project_changed_source);
+    self->project_changed_source = 0;
+  }
   G_OBJECT_CLASS(project_view_parent_class)->dispose(object);
 }
 
@@ -302,8 +309,25 @@ dispatch_project_changed(gpointer data)
 {
   g_assert(g_main_context_is_owner(g_main_context_default()));
   ProjectView *self = PROJECT_VIEW(data);
+  self->project_changed_source = 0;
+  LOG(1, "ProjectView.dispatch_project_changed update started");
   project_view_populate_store(self);
   g_object_unref(self);
+  return FALSE;
+}
+
+static gboolean
+schedule_project_changed(gpointer data)
+{
+  g_assert(g_main_context_is_owner(g_main_context_default()));
+  ProjectView *self = PROJECT_VIEW(data);
+  if (!self->project_changed_source) {
+    LOG(1, "ProjectView.schedule_project_changed armed");
+    self->project_changed_source = g_timeout_add(10, dispatch_project_changed, data);
+  } else {
+    LOG(1, "ProjectView.schedule_project_changed ignored");
+    g_object_unref(self);
+  }
   return FALSE;
 }
 
@@ -311,7 +335,7 @@ static void
 on_project_changed(Project * /*project*/, gpointer user_data)
 {
   ProjectView *self = PROJECT_VIEW(user_data);
-  g_main_context_invoke(NULL, dispatch_project_changed, g_object_ref(self));
+  g_main_context_invoke(NULL, schedule_project_changed, g_object_ref(self));
 }
 
 static gboolean

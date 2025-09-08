@@ -284,3 +284,10 @@ retrieved the object's value before verifying the row type. `gtk_tree_model_get`
 duplicated the underlying data for non-component rows, and the copies were never
 freed. The handler now queries the row kind first and only fetches the object
 for component rows, closing the leak.
+
+## Project view repopulated on each change
+
+`ProjectView` refreshed its tree store immediately whenever the project
+signalled a change. Rapid successive signals therefore triggered redundant
+updates. The callback now starts a 10 ms timer and performs the refresh once it
+fires, coalescing intermediate signals.
