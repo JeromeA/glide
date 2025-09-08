@@ -19,8 +19,8 @@
 - All the code should assume to be on the UI thread. So, if a code is a workers on its own thread, it should call any
   callback through g_main_context_invoke(). If a callback is doing UI work (basically any file that includes gtk.h),
   it should start with an assert to ensure it's on the UI thread.
-- There should be g_debug entries for all operations that are advanced enough that they could fail (with their result or
-  failure), so that reading the logs gives a good idea of what happened.
+- There should be LOG and LOG_LONG entries for all operations that are advanced enough that they could fail (with
+  their result or failure), so that reading the logs gives a good idea of what happened.
 - When a check fail, a return or return NULL is never enough, it should at least be a g_debug, and almost always be a
   g_return_val_if_fail(), 
 
