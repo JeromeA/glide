@@ -6,6 +6,7 @@
 #include "file_add.h"
 #include "file_delete.h"
 #include "file_rename.h"
+#include "util.h"
 
 struct _ProjectView {
   GtkTreeView parent_instance;
@@ -110,14 +111,14 @@ load_icon(const gchar *filename)
   GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file_at_scale(filename, 16, 16,
       TRUE, &error);
   if (pixbuf) {
-    g_debug("Loaded icon %s", filename);
+    LOG(1, "Loaded icon %s", filename);
     return pixbuf;
   }
   g_clear_error(&error);
   gchar *path = g_build_filename("src", filename, NULL);
   pixbuf = gdk_pixbuf_new_from_file_at_scale(path, 16, 16, TRUE, &error);
   if (pixbuf)
-    g_debug("Loaded icon %s", path);
+    LOG(1, "Loaded icon %s", path);
   else
     g_warning("Failed to load %s: %s", path, error->message);
   g_clear_error(&error);

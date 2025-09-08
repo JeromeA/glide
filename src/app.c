@@ -58,7 +58,7 @@ app_activate (GApplication *app)
 {
   App *self = GLIDE_APP(app);
 
-  g_debug("App.activate");
+  LOG(1, "App.activate");
 
   /*--------------------------------------------------------------*
    *  Build the UI (this is almost a verbatim move from app.c)    *
@@ -144,7 +144,7 @@ app_activate (GApplication *app)
 static void
 app_startup (GApplication *app)
 {
-  g_debug("App.startup");
+  LOG(1, "App.startup");
   /* Chain up first */
   G_APPLICATION_CLASS (app_parent_class)->startup (app);
   actions_init(GLIDE_APP(app));
@@ -155,7 +155,7 @@ app_dispose (GObject *object)
 {
   App *self = GLIDE_APP(object);
 
-  g_debug("App.dispose");
+  LOG(1, "App.dispose");
 
   if (self->project) {
     project_unref(self->project);
@@ -176,7 +176,7 @@ app_dispose (GObject *object)
 static void
 app_class_init (AppClass *klass)
 {
-  g_debug("App.class_init");
+  LOG(1, "App.class_init");
   GApplicationClass *app_class = G_APPLICATION_CLASS (klass);
   GObjectClass      *obj_class = G_OBJECT_CLASS (klass);
 
@@ -188,7 +188,7 @@ app_class_init (AppClass *klass)
 static void
 app_init (App *self)
 {
-  g_debug("App.init");
+  LOG(1, "App.init");
   /* Everything that needs only the *instance* goes here */
   self->preferences = NULL;
   self->glide = NULL;
@@ -204,7 +204,7 @@ app_init (App *self)
 STATIC App *
 app_new (Preferences *prefs, ReplSession *glide, Project *project, StatusService *status_service)
 {
-  g_debug("App.new");
+  LOG(1, "App.new");
   g_return_val_if_fail (glide, NULL);
 
   App *self = g_object_new (GLIDE_TYPE,
@@ -224,7 +224,7 @@ app_new (Preferences *prefs, ReplSession *glide, Project *project, StatusService
 STATIC Editor *
 app_get_editor(App *self)
 {
-  g_debug("App.get_editor");
+  LOG(1, "App.get_editor");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   if (!self->notebook)
     return NULL;
@@ -396,7 +396,7 @@ app_set_recent_menu(App *self, GMenu *menu)
 STATIC void
 app_quit (App *self)
 {
-  g_debug("App.quit");
+  LOG(1, "App.quit");
   g_return_if_fail (GLIDE_IS_APP (self));
   g_application_quit (G_APPLICATION (self));
 }
@@ -404,7 +404,7 @@ app_quit (App *self)
 STATIC void
 app_on_quit (App *self)
 {
-  g_debug("App.on_quit");
+  LOG(1, "App.on_quit");
   g_return_if_fail (GLIDE_IS_APP (self));
   Preferences *prefs = app_get_preferences(self);
   ProjectFile *pf = app_get_current_file(self);

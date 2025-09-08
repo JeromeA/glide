@@ -42,7 +42,8 @@
 #include "string_text_provider.c"
 #include "text_provider.c"
 #undef g_debug
-#define g_debug(...) do { } while (0)
+#define LOG(level, ...) do { } while (0)
+#define LOG_LONG(level, str, data) do { } while (0)
 #endif
 
 #include "app.h"
@@ -58,7 +59,7 @@
 int
 main (int argc, char *argv[])
 {
-  g_debug("Main.main");
+  LOG(1, "Main.main");
   relocate();
 
   Preferences *prefs = preferences_new (g_get_user_config_dir ());

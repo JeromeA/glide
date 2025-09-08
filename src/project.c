@@ -31,7 +31,7 @@ static void project_free(Project *self) {
 }
 
 Project *project_new(ReplSession *repl) {
-  g_debug("project_new");
+  LOG(1, "project_new");
   Project *self = project_init();
   self->repl = repl ? repl_session_ref(repl) : NULL;
   TextProvider *provider = string_text_provider_new("");
@@ -49,7 +49,7 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(provider, NULL);
 
-  g_debug("project_add_file path=%s state=%d", path ? path : "(null)", state);
+  LOG(1, "project_add_file path=%s state=%d", path ? path : "(null)", state);
 
   ProjectFile *file = project_file_new(self, provider, buffer, path, state);
 
@@ -158,7 +158,7 @@ gchar **project_get_package_names(Project *self, guint *length) {
 
 void project_set_asdf(Project *self, Asdf *asdf) {
   g_return_if_fail(self != NULL);
-  g_debug("project_set_asdf %p", asdf);
+  LOG(1, "project_set_asdf %p", asdf);
   if (self->asdf)
     g_object_unref(self->asdf);
   self->asdf = asdf ? g_object_ref(asdf) : NULL;
@@ -182,7 +182,7 @@ void project_set_path(Project *self, const gchar *path) {
 
 void project_clear(Project *self) {
   g_return_if_fail(self != NULL);
-  g_debug("project_clear");
+  LOG(1, "project_clear");
   project_index_clear(self->index);
   if (self->files) {
     for (guint i = 0; i < self->files->len; i++) {
@@ -200,7 +200,7 @@ void project_clear(Project *self) {
 void project_file_changed(Project *self, ProjectFile *file) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
-  g_debug("project_file_changed path=%s", project_file_get_path(file));
+  LOG(1, "project_file_changed path=%s", project_file_get_path(file));
   if (!project_file_get_lexer(file) || !project_file_get_parser(file))
     return;
   project_index_remove_file(self->index, file);
@@ -265,7 +265,7 @@ void project_set_changed_cb(Project *self, ProjectChangedCb cb, gpointer user_da
 
 void project_changed(Project *self) {
   g_return_if_fail(self != NULL);
-  g_debug("project_changed");
+  LOG(1, "project_changed");
   if (self->changed_cb)
     self->changed_cb(self, self->changed_data);
 }
