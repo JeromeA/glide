@@ -90,7 +90,7 @@ interaction_row_update(InteractionRow *row, Interaction *interaction)
   error = g_strdup(interaction->error);
   result = g_strdup(interaction->result);
   g_mutex_unlock(&interaction->lock);
-  g_debug("InteractionsView.row_update %s", expression);
+  LOG(1, "InteractionsView.row_update %s", expression);
   set_text_view(GTK_BOX(row->box), &row->expression,
       expression, NULL, FALSE);
   set_text_view(GTK_BOX(row->box), &row->output,
@@ -116,7 +116,7 @@ interaction_row_ensure(InteractionsView *self, Interaction *interaction)
     g_mutex_lock(&interaction->lock);
     expr = g_strdup(interaction->expression);
     g_mutex_unlock(&interaction->lock);
-    g_debug("InteractionsView.interaction_row_ensure creating row for %s", expr);
+    LOG(1, "InteractionsView.interaction_row_ensure creating row for %s", expr);
     row = g_new0(InteractionRow, 1);
     row->frame = gtk_frame_new(NULL);
     gtk_widget_set_margin_start(row->frame, 5);
@@ -156,7 +156,7 @@ dispatch_interaction_added(gpointer data)
   expr = g_strdup(interaction->expression);
   type = interaction->type;
   g_mutex_unlock(&interaction->lock);
-  g_debug("InteractionsView.on_interaction_added %s", expr);
+  LOG(1, "InteractionsView.on_interaction_added %s", expr);
   if (type != INTERACTION_USER)
     goto out;
   InteractionRow *row = interaction_row_ensure(self, interaction);
@@ -179,7 +179,7 @@ dispatch_interaction_updated(gpointer data)
   g_mutex_lock(&interaction->lock);
   expr = g_strdup(interaction->expression);
   g_mutex_unlock(&interaction->lock);
-  g_debug("InteractionsView.on_interaction_updated %s", expr);
+  LOG(1, "InteractionsView.on_interaction_updated %s", expr);
   InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
@@ -192,7 +192,7 @@ dispatch_interaction_updated(gpointer data)
 static void
 interactions_view_finalize(GObject *obj)
 {
-  g_debug("InteractionsView.finalize");
+  LOG(1, "InteractionsView.finalize");
   InteractionsView *self = GLIDE_INTERACTIONS_VIEW(obj);
   if (self->session) {
     repl_session_set_interaction_added_cb(self->session, NULL, NULL);
@@ -207,7 +207,7 @@ interactions_view_finalize(GObject *obj)
 static void
 interactions_view_class_init(InteractionsViewClass *klass)
 {
-  g_debug("InteractionsView.class_init");
+  LOG(1, "InteractionsView.class_init");
   GObjectClass *obj = G_OBJECT_CLASS(klass);
   obj->finalize = interactions_view_finalize;
 }
@@ -215,7 +215,7 @@ interactions_view_class_init(InteractionsViewClass *klass)
 static void
 interactions_view_init(InteractionsView *self)
 {
-  g_debug("InteractionsView.init");
+  LOG(1, "InteractionsView.init");
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self),
       GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(self),
@@ -250,7 +250,7 @@ interactions_view_init(InteractionsView *self)
 InteractionsView *
 interactions_view_new(ReplSession *session)
 {
-  g_debug("InteractionsView.new");
+  LOG(1, "InteractionsView.new");
   g_return_val_if_fail(session, NULL);
   InteractionsView *self = g_object_new(INTERACTIONS_VIEW_TYPE, NULL);
   self->session = repl_session_ref(session);

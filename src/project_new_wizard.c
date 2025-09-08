@@ -74,7 +74,7 @@ static void name_changed(GtkEditable */*editable*/, gpointer user_data) {
 }
 
 void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
-  g_debug("project_new_wizard");
+  LOG(1, "project_new_wizard");
   App *app = data;
   GtkWidget *dialog = gtk_dialog_new_with_buttons("New Project", NULL,
       GTK_DIALOG_MODAL,
@@ -116,14 +116,14 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
 
   gtk_widget_show_all(dialog);
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-    g_debug("project_new_wizard accepted");
+    LOG(1, "project_new_wizard accepted");
     const gchar *name = gtk_entry_get_text(GTK_ENTRY(name_entry));
     const gchar *loc_text = gtk_entry_get_text(GTK_ENTRY(loc_entry));
     gchar *pref_dir = g_path_get_dirname(loc_text);
     preferences_set_project_dir(prefs, pref_dir);
     g_free(pref_dir);
     gchar *dir = expand_home(loc_text);
-    g_debug("creating project in %s", dir);
+    LOG(1, "creating project in %s", dir);
     g_mkdir_with_parents(dir, 0755);
     gchar *unnamed = g_build_filename(dir, "unnamed.lisp", NULL);
     g_file_set_contents(unnamed, "", -1, NULL);

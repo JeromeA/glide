@@ -108,7 +108,7 @@ gboolean project_file_load(ProjectFile *file) {
   g_return_val_if_fail(file != NULL, FALSE);
 
   const gchar *path = project_file_get_path(file);
-  g_debug("project_file_load path=%s", path ? path : "(null)");
+  LOG(1, "project_file_load path=%s", path ? path : "(null)");
   if (!path)
     return FALSE;
 

@@ -197,7 +197,7 @@ actions_init(App *self)
 gboolean
 on_quit_delete_event(GtkWidget * /*widget*/, GdkEvent * /*event*/, gpointer data)
 {
-  g_debug("Actions.on_quit_delete_event");
+  LOG(1, "Actions.on_quit_delete_event");
   app_on_quit(GLIDE_APP(data));
   return TRUE;
 }
@@ -256,7 +256,7 @@ app_maybe_save_all(App *self)
 gboolean
 app_close_project(App *self, gboolean forget_project)
 {
-  g_debug("Actions.app_close_project forget=%d", forget_project);
+  LOG(1, "Actions.app_close_project forget=%d", forget_project);
   g_return_val_if_fail(GLIDE_IS_APP(self), FALSE);
   if (!app_maybe_save_all(self))
     return FALSE;

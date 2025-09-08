@@ -21,7 +21,7 @@ void
 on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
 {
   App *self = (App *) data;
-  g_debug("Evaluate.on_evaluate_toplevel");
+  LOG(1, "Evaluate.on_evaluate_toplevel");
   g_return_if_fail(GLIDE_IS_APP(self));
   Editor *view = app_get_editor(self);
   GtkSourceBuffer *source_buffer = editor_get_buffer(view);
@@ -36,7 +36,7 @@ on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
   gsize end_offset;
   if (!editor_get_toplevel_range(view, offset, &start_offset,
       &end_offset)) {
-    g_debug("Evaluate.on_evaluate_toplevel: nothing to evaluate");
+    LOG(1, "Evaluate.on_evaluate_toplevel: nothing to evaluate");
     return;
   }
 
@@ -49,12 +49,12 @@ on_evaluate_toplevel(GtkWidget * /*item*/, gpointer data) /* actually App* */
   gchar *expr = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(source_buffer),
       &start_iter, &end_iter, FALSE);
   if (!expr || *expr == '\0') {
-    g_debug("Evaluate.on_evaluate_toplevel: nothing to evaluate");
+    LOG(1, "Evaluate.on_evaluate_toplevel: nothing to evaluate");
     g_free(expr);
     return;
   }
 
-  g_debug("Evaluate.on_evaluate_toplevel expr: %s", expr);
+  LOG(1, "Evaluate.on_evaluate_toplevel expr: %s", expr);
 
   ReplSession *glide = app_get_glide(self);
   if (glide) {
@@ -73,7 +73,7 @@ void
 on_evaluate_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
 {
   App *self = (App *) data;
-  g_debug("Evaluate.on_evaluate_selection");
+  LOG(1, "Evaluate.on_evaluate_selection");
   g_return_if_fail(GLIDE_IS_APP(self));
   Editor *view = app_get_editor(self);
   GtkSourceBuffer *source_buffer = editor_get_buffer(view);
@@ -81,19 +81,19 @@ on_evaluate_selection(GtkWidget * /*item*/, gpointer data) /* actually App* */
   GtkTextIter end_iter;
   if (!gtk_text_buffer_get_selection_bounds(GTK_TEXT_BUFFER(source_buffer),
       &start_iter, &end_iter)) {
-    g_debug("Evaluate.on_evaluate_selection: nothing to evaluate");
+    LOG(1, "Evaluate.on_evaluate_selection: nothing to evaluate");
     return;
   }
 
   gchar *expr = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(source_buffer),
       &start_iter, &end_iter, FALSE);
   if (!expr || *expr == '\0') {
-    g_debug("Evaluate.on_evaluate_selection: nothing to evaluate");
+    LOG(1, "Evaluate.on_evaluate_selection: nothing to evaluate");
     g_free(expr);
     return;
   }
 
-  g_debug("Evaluate.on_evaluate_selection expr: %s", expr);
+  LOG(1, "Evaluate.on_evaluate_selection expr: %s", expr);
 
   ReplSession *glide = app_get_glide(self);
   if (glide) {

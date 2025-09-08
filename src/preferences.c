@@ -20,7 +20,7 @@ struct _Preferences {
 };
 
 static void preferences_load(Preferences *self) {
-  g_debug("preferences_load %s", self->filename);
+  LOG(1, "preferences_load %s", self->filename);
   self->auto_save = FALSE;
   GKeyFile *key_file = g_key_file_new();
   if (g_key_file_load_from_file(key_file, self->filename, G_KEY_FILE_NONE, NULL)) {
@@ -33,7 +33,7 @@ static void preferences_load(Preferences *self) {
 
     char *proj = g_key_file_get_string(key_file, "General", "project_file", NULL);
     if (proj) {
-      g_debug("preferences_load project_file %s", proj);
+      LOG(1, "preferences_load project_file %s", proj);
       preferences_set_project_file(self, proj);
       g_free(proj);
     }
@@ -80,7 +80,7 @@ static void preferences_load(Preferences *self) {
 static void preferences_save(Preferences *self) {
   if (!self->auto_save)
     return;
-  g_debug("preferences_save project_file=%s", self->project_file);
+  LOG(1, "preferences_save project_file=%s", self->project_file);
   /* Ensure that the configuration directory exists */
   char *dir = g_path_get_dirname(self->filename);
   if (g_mkdir_with_parents(dir, 0700) != 0 && errno != EEXIST) {
@@ -169,7 +169,7 @@ const gchar *preferences_get_project_file(Preferences *self) {
 }
 
 void preferences_set_project_file(Preferences *self, const gchar *file) {
-  g_debug("preferences_set_project_file %s", file);
+  LOG(1, "preferences_set_project_file %s", file);
   if (g_strcmp0(self->project_file, file) != 0) {
     g_free(self->project_file);
     self->project_file = g_strdup(file);
@@ -227,7 +227,7 @@ const gchar *preferences_get_last_file(Preferences *self) {
 }
 
 void preferences_set_last_file(Preferences *self, const gchar *file) {
-  g_debug("preferences_set_last_file %s", file);
+  LOG(1, "preferences_set_last_file %s", file);
   if (g_strcmp0(self->last_file, file) != 0) {
     g_free(self->last_file);
     self->last_file = g_strdup(file);

@@ -43,7 +43,7 @@ void project_request_describe(Project *self, const gchar *pkg_name,
   g_return_if_fail(self->repl);
   g_return_if_fail(pkg_name);
   g_return_if_fail(symbol);
-  g_debug("project_request_describe pkg=%s symbol=%s", pkg_name, symbol);
+  LOG(1, "project_request_describe pkg=%s symbol=%s", pkg_name, symbol);
   gchar *expr = g_strdup_printf("(describe '%s:%s)", pkg_name, symbol);
   Interaction *interaction = g_new0(Interaction, 1);
   interaction_init(interaction, expr);
@@ -61,7 +61,7 @@ void project_request_describe(Project *self, const gchar *pkg_name,
 }
 
 static void project_on_package_definition(Interaction *interaction, gpointer user_data) {
-  g_debug("project_on_package_definition entry");
+  LOG(1, "project_on_package_definition entry");
   Project *project = user_data;
   gchar *res = NULL;
   g_mutex_lock(&interaction->lock);
@@ -83,7 +83,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
     g_array_index(expr->children, Node*, 1) : NULL;
   const gchar *pkg_name = node_get_name(name_node);
   g_assert(pkg_name);
-  g_debug("project_on_package_definition built package %s", pkg_name);
+  LOG(1, "project_on_package_definition built package %s", pkg_name);
   Package *pkg = project_get_package(project, pkg_name);
   if (pkg && project->repl) {
     GHashTable *exports = package_get_exports(pkg);
@@ -109,7 +109,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
 
 static void project_handle_special_variable(Project *project,
     const gchar *package, const gchar *symbol, GPtrArray *section) {
-  g_debug("project_handle_special_variable symbol=%s", symbol);
+  LOG(1, "project_handle_special_variable symbol=%s", symbol);
   gchar *declared_type = NULL;
   gchar *value = NULL;
   GString *doc = NULL;
@@ -136,10 +136,10 @@ static void project_handle_special_variable(Project *project,
       }
     }
   }
-  g_debug("describe %s special variable type=%s value=%s", symbol,
+  LOG(1, "describe %s special variable type=%s value=%s", symbol,
       declared_type ? declared_type : "(unknown)",
       value ? value : "(unknown)");
-  g_debug_160(1, "↳ doc: ", doc ? doc->str : "");
+  LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
   project_add_variable(project, package, symbol, doc ? doc->str : NULL);
   g_free(declared_type);
   g_free(value);
@@ -149,7 +149,7 @@ static void project_handle_special_variable(Project *project,
 
 static void project_handle_compiled_function(Project *project,
     const gchar *package, const gchar *symbol, GPtrArray *section) {
-  g_debug("project_handle_compiled_function symbol=%s", symbol);
+  LOG(1, "project_handle_compiled_function symbol=%s", symbol);
   gchar *lambda_list = NULL;
   GString *doc = NULL;
   for (guint i = 1; i < section->len; i++) {
@@ -172,9 +172,9 @@ static void project_handle_compiled_function(Project *project,
       }
     }
   }
-  g_debug("describe %s compiled function lambda=%s", symbol,
+  LOG(1, "describe %s compiled function lambda=%s", symbol,
       lambda_list ? lambda_list : "(unknown)");
-  g_debug_160(1, "↳ doc: ", doc ? doc->str : "");
+  LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
   Function *function = function_new(NULL, NULL, doc ? doc->str : NULL,
       NULL, FUNCTION_KIND_FUNCTION, symbol, package);
   project_add_function(project, function);
@@ -186,7 +186,7 @@ static void project_handle_compiled_function(Project *project,
 
 static void project_on_describe(Interaction *interaction, gpointer user_data) {
   DescribeData *data = user_data;
-  g_debug("project_on_describe symbol=%s", data->symbol);
+  LOG(1, "project_on_describe symbol=%s", data->symbol);
   gchar *out = NULL;
   g_mutex_lock(&interaction->lock);
   if (interaction->output)
@@ -210,7 +210,7 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
     if (section->len == 0)
       continue;
     const gchar *first_line = g_ptr_array_index(section, 0);
-    g_debug("describe %s section: %s", data->symbol, first_line);
+    LOG(1, "describe %s section: %s", data->symbol, first_line);
     if (g_str_has_suffix(first_line, "names a special variable:")) {
       project_handle_special_variable(data->project, data->package_name,
           data->symbol, section);
@@ -218,7 +218,7 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
       project_handle_compiled_function(data->project, data->package_name,
           data->symbol, section);
     } else {
-      g_debug("describe %s ignoring section: %s", data->symbol, first_line);
+      LOG(1, "describe %s ignoring section: %s", data->symbol, first_line);
     }
   }
   g_ptr_array_free(sections, TRUE);

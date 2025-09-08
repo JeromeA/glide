@@ -198,13 +198,13 @@ find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
   gtk_text_buffer_get_end_iter (buffer, &end_iter);
   gsize len = gtk_text_iter_get_offset (&end_iter);
 
-  g_debug ("find_parent_range start=%zu end=%zu", start, end);
+  LOG(1, "find_parent_range start=%zu end=%zu", start, end);
 
   LispParser *parser = project_file_get_parser (file);
   const Node *ast = lisp_parser_get_ast (parser);
   const Node *node = find_node_containing_range (ast, start, end, len);
   if (!node) {
-    g_debug ("no node found");
+    LOG(1, "no node found");
     return FALSE;
   }
 
@@ -213,7 +213,7 @@ find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
   const Node *parent = node->parent;
 
   while (node_start == start && node_end == end && parent) {
-    g_debug ("parent has same range [%zu,%zu), climbing", node_start, node_end);
+    LOG(1, "parent has same range [%zu,%zu), climbing", node_start, node_end);
     node = parent;
     node_start = node->start_token ? node->start_token->start_offset : 0;
     node_end = node->end_token ? node->end_token->end_offset : len;
@@ -222,18 +222,18 @@ find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
 
   if (node_start == start && node_end == end) {
     if (start == 0 && end == len) {
-      g_debug ("at buffer range, cannot extend");
+      LOG(1, "at buffer range, cannot extend");
       return FALSE;
     }
     *new_start = 0;
     *new_end = len;
-    g_debug ("extending to buffer [%zu,%zu)", *new_start, *new_end);
+    LOG(1, "extending to buffer [%zu,%zu)", *new_start, *new_end);
     return TRUE;
   }
 
   *new_start = node_start;
   *new_end = node_end;
-  g_debug ("new range [%zu,%zu)", *new_start, *new_end);
+  LOG(1, "new range [%zu,%zu)", *new_start, *new_end);
   return TRUE;
 }
 
@@ -261,7 +261,7 @@ editor_extend_selection (Editor *self)
   gsize start = gtk_text_iter_get_offset (&it_start);
   gsize end = gtk_text_iter_get_offset (&it_end);
 
-  g_debug ("extend_selection start=%zu end=%zu stack_len=%u", start, end,
+  LOG(1, "extend_selection start=%zu end=%zu stack_len=%u", start, end,
       self->selection_stack->len);
 
   if (self->selection_stack->len == 0) {
@@ -272,7 +272,7 @@ editor_extend_selection (Editor *self)
   gsize new_start = start;
   gsize new_end = end;
   if (!find_parent_range (buffer, self->file, start, end, &new_start, &new_end)) {
-    g_debug ("no parent range found, resetting");
+    LOG(1, "no parent range found, resetting");
     SelectionRange orig = g_array_index (self->selection_stack, SelectionRange, 0);
     select_range (buffer, orig.start, orig.end);
     g_array_set_size (self->selection_stack, 0);
@@ -282,7 +282,7 @@ editor_extend_selection (Editor *self)
   SelectionRange new_range = { new_start, new_end };
   g_array_append_val (self->selection_stack, new_range);
   select_range (buffer, new_start, new_end);
-  g_debug ("selection extended to [%zu,%zu)", new_start, new_end);
+  LOG(1, "selection extended to [%zu,%zu)", new_start, new_end);
 }
 
 void
