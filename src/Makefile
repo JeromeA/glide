@@ -80,7 +80,7 @@ app-cov: $(COV_OBJECTS)
 :$(CC) -fprofile-arcs -ftest-coverage $^ -o $@ $(LDLIBS)
 
 app-full: $(FULL_OBJECTS)
-:$(CC) $^ -o $@ $(LDLIBS) -fsanitize=address
+:$(CC) -fsanitize=address $^ -o $@ $(LDLIBS)
 
 app-reloc: $(RELOC_OBJECTS)
 :$(CC) $^ -o $@ $(LDLIBS)
@@ -111,8 +111,9 @@ cov: app-cov
 run-full: app-full
 :LSAN_OPTIONS="suppressions=${PWD}/lsan.supp" \
 :ASAN_OPTIONS="detect_leaks=1:abort_on_error=1" \
-:G_MESSAGES_DEBUG=all \
 :./app-full
+
+# :G_MESSAGES_DEBUG=all \
 
 clean:
 :rm -rf $(CLEANABLES)
