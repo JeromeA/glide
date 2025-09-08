@@ -91,11 +91,9 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
       GHashTableIter iter;
       g_hash_table_iter_init(&iter, exports);
       gpointer key, value;
-      gint count = 0;
-      while (count < 10 && g_hash_table_iter_next(&iter, &key, &value)) {
+      while (g_hash_table_iter_next(&iter, &key, &value)) {
         const gchar *sym = key;
         project_request_describe(project, pkg_name, sym);
-        count++;
       }
       (void)value;
     }

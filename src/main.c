@@ -55,14 +55,6 @@
 #include "status_service.h"
 #include "util.h"
 
-static int verbosity = 1;
-
-int
-get_verbosity(void)
-{
-  return verbosity;
-}
-
 int
 main (int argc, char *argv[])
 {

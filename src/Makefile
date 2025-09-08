@@ -59,7 +59,7 @@ RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
 CLEANABLES += $(TARGETS) $(COV_OBJECTS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm *.gcda *.gcno out/ coverage.info
 
 app-cov $(COV_OBJECTS): CFLAGS += -g -DDEBUG -fprofile-arcs -ftest-coverage
-app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG -fsanitize=address -fno-omit-frame-pointer
+app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG -fsanitize=address -fno-omit-frame-pointer -pg
 app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
 
 all: $(TARGETS)
@@ -80,7 +80,7 @@ app-cov: $(COV_OBJECTS)
 :$(CC) -fprofile-arcs -ftest-coverage $^ -o $@ $(LDLIBS)
 
 app-full: $(FULL_OBJECTS)
-:$(CC) -fsanitize=address $^ -o $@ $(LDLIBS)
+:$(CC) -fsanitize=address -pg $^ -o $@ $(LDLIBS)
 
 app-reloc: $(RELOC_OBJECTS)
 :$(CC) $^ -o $@ $(LDLIBS)
