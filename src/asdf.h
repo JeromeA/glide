@@ -22,7 +22,7 @@ void asdf_rename_component(Asdf *self, const gchar *old_file, const gchar *new_f
 void asdf_add_dependency(Asdf *self, const gchar *dep);
 const gchar *asdf_get_dependency(Asdf *self, guint index);
 guint asdf_get_dependency_count(Asdf *self);
-char *asdf_to_string(Asdf *self);
+GString *asdf_to_string(Asdf *self);
 gboolean asdf_save(Asdf *self, const gchar *filename);
 
 G_END_DECLS

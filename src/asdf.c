@@ -224,7 +224,7 @@ static char *get_system_name(Asdf *self) {
   return base;
 }
 
-char *asdf_to_string(Asdf *self) {
+GString *asdf_to_string(Asdf *self) {
   g_return_val_if_fail(GLIDE_IS_ASDF(self), NULL);
   GString *out = g_string_new(NULL);
   gchar *name = get_system_name(self);
@@ -254,14 +254,14 @@ char *asdf_to_string(Asdf *self) {
     g_string_append(out, ")\n");
   }
   g_string_append(out, ")\n");
-  return g_string_free(out, FALSE);
+  return out;
 }
 
 gboolean asdf_save(Asdf *self, const gchar *filename) {
   g_return_val_if_fail(GLIDE_IS_ASDF(self), FALSE);
-  gchar *text = asdf_to_string(self);
-  gboolean ok = g_file_set_contents(filename, text, -1, NULL);
-  g_free(text);
+  GString *text = asdf_to_string(self);
+  gboolean ok = g_file_set_contents(filename, text->str, text->len, NULL);
+  g_string_free(text, TRUE);
   return ok;
 }
 
