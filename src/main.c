@@ -52,7 +52,6 @@
 #include "process.h"
 #include "repl_process.h"
 #include "repl_session.h"
-#include "project.h"
 #include "status_service.h"
 #include "util.h"
 
@@ -75,15 +74,13 @@ main (int argc, char *argv[])
   ReplProcess *repl_proc = repl_process_new(proc);
   StatusService *status_service = status_service_new();
   ReplSession *repl = repl_session_new(repl_proc, status_service);
-  Project *project = project_new(repl);
-  App *app     = app_new (prefs, repl, project, status_service);
+  App *app     = app_new (prefs, repl, status_service);
 
   int status = g_application_run (G_APPLICATION (app), argc, argv);
   g_object_unref(app);
   repl_session_unref(repl);
   repl_process_unref(repl_proc);
   process_unref(proc);
-  project_unref(project);
   status_service_free(status_service);
   preferences_unref(prefs);
   exit(status);
