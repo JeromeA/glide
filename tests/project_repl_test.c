@@ -19,6 +19,7 @@ static void test_describe(void) {
   Function *fn = NULL;
   const gchar *var_doc = NULL;
   for (int i = 0; i < 200; i++) {
+    g_main_context_iteration(NULL, FALSE);
     fn = project_get_function(project, "FOO");
     var_doc = project_get_variable(project, "*BAR*");
     if (fn && var_doc)
@@ -38,6 +39,10 @@ static void test_describe(void) {
 
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
+  GMainContext *ctx = g_main_context_default();
+  g_main_context_push_thread_default(ctx);
   g_test_add_func("/project_repl/describe", test_describe);
-  return g_test_run();
+  int ret = g_test_run();
+  g_main_context_pop_thread_default(ctx);
+  return ret;
 }

@@ -240,6 +240,8 @@ static void test_project_changed_cb(void)
 int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
+  GMainContext *ctx = g_main_context_default();
+  g_main_context_push_thread_default(ctx);
   g_test_add_func("/project/default_file", test_default_file);
   g_test_add_func("/project/parse_on_change", test_parse_on_change);
   g_test_add_func("/project/file_load", test_file_load);
@@ -250,5 +252,7 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/relative_path", test_relative_path);
   g_test_add_func("/project/remove_file", test_remove_file);
   g_test_add_func("/project/project_changed_cb", test_project_changed_cb);
-  return g_test_run();
+  int ret = g_test_run();
+  g_main_context_pop_thread_default(ctx);
+  return ret;
 }

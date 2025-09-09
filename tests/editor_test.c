@@ -29,7 +29,11 @@ int main(int argc, char *argv[])
 {
   g_test_init(&argc, &argv, NULL);
   have_display = gtk_init_check(&argc, &argv);
+  GMainContext *ctx = g_main_context_default();
+  g_main_context_push_thread_default(ctx);
   g_test_add_func("/editor/undo_pristine", test_undo_pristine);
-  return g_test_run();
+  int ret = g_test_run();
+  g_main_context_pop_thread_default(ctx);
+  return ret;
 }
 

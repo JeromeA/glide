@@ -23,6 +23,7 @@ ProjectFile *project_file_new(Project *project, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
   g_return_val_if_fail(project != NULL, NULL);
   g_return_val_if_fail(provider, NULL);
+  g_return_val_if_fail(glide_is_ui_thread(), NULL);
 
   ProjectFile *file = g_new0(ProjectFile, 1);
   file->project = project;
@@ -52,6 +53,7 @@ ProjectFileState project_file_get_state(ProjectFile *file) {
 
 void project_file_set_state(ProjectFile *file, ProjectFileState state) {
   g_return_if_fail(file != NULL);
+  g_return_if_fail(glide_is_ui_thread());
   file->state = state;
 }
 
@@ -59,6 +61,7 @@ void project_file_set_provider(ProjectFile *file, TextProvider *provider,
     GtkTextBuffer *buffer) {
   g_return_if_fail(file != NULL);
   g_return_if_fail(provider);
+  g_return_if_fail(glide_is_ui_thread());
   if (file->parser)
     lisp_parser_free(file->parser);
   if (file->lexer)
@@ -100,12 +103,14 @@ const gchar *project_file_get_path(ProjectFile *file) {
 
 void project_file_set_path(ProjectFile *file, const gchar *path) {
   g_return_if_fail(file != NULL);
+  g_return_if_fail(glide_is_ui_thread());
   g_free(file->path);
   file->path = path ? g_strdup(path) : NULL;
 }
 
 gboolean project_file_load(ProjectFile *file) {
   g_return_val_if_fail(file != NULL, FALSE);
+  g_return_val_if_fail(glide_is_ui_thread(), FALSE);
 
   const gchar *path = project_file_get_path(file);
   LOG(1, "project_file_load path=%s", path ? path : "(null)");
