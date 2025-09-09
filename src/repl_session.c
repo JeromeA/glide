@@ -22,7 +22,7 @@ struct _ReplSession {
 static volatile gint next_tag = 1;
 
 static gpointer repl_session_thread(gpointer data);
-static gchar *escape_string(const char *str) {
+static GString *escape_string(const char *str) {
   GString *out = g_string_new(NULL);
   for (const char *p = str; *p; p++) {
     switch (*p) {
@@ -31,7 +31,7 @@ static gchar *escape_string(const char *str) {
       default:    g_string_append_c(out, *p);
     }
   }
-  return g_string_free(out, FALSE);
+  return out;
 }
 
 ReplSession *repl_session_ref(ReplSession *self) {
@@ -111,15 +111,14 @@ static gpointer repl_session_thread(gpointer data) {
     if (added_cb)
       added_cb(self, interaction, added_cb_data);
     g_mutex_lock(&interaction->lock);
-    gchar *escaped = escape_string(interaction->expression->str);
+    GString *escaped = escape_string(interaction->expression->str);
     guint32 cmd_tag = interaction->tag;
     g_mutex_unlock(&interaction->lock);
-    gchar *cmd = g_strdup_printf("(glide:eval-and-capture %u \"%s\")\n",
-        cmd_tag, escaped);
-    GString *payload = g_string_new(cmd);
-    g_free(escaped);
+    GString *payload = g_string_new(NULL);
+    g_string_append_printf(payload,
+        "(glide:eval-and-capture %u \"%s\")\n", cmd_tag, escaped->str);
+    g_string_free(escaped, TRUE);
     g_free(expr);
-    g_free(cmd);
     LOG_LONG(1, "ReplSession.thread send ", payload->str);
     repl_process_send(self->proc, payload);
     g_string_free(payload, TRUE);
