@@ -147,7 +147,10 @@ app_startup (GApplication *app)
   LOG(1, "App.startup");
   /* Chain up first */
   G_APPLICATION_CLASS (app_parent_class)->startup (app);
-  actions_init(GLIDE_APP(app));
+  g_return_if_fail(glide_is_ui_thread());
+  App *self = GLIDE_APP(app);
+  self->project = project_new(self->glide);
+  actions_init(self);
 }
 
 static void
@@ -202,7 +205,7 @@ app_init (App *self)
 }
 
 STATIC App *
-app_new (Preferences *prefs, ReplSession *glide, Project *project, StatusService *status_service)
+app_new (Preferences *prefs, ReplSession *glide, StatusService *status_service)
 {
   LOG(1, "App.new");
   g_return_val_if_fail (glide, NULL);
@@ -215,7 +218,6 @@ app_new (Preferences *prefs, ReplSession *glide, Project *project, StatusService
 
   self->preferences    = preferences_ref(prefs);
   self->glide          = repl_session_ref(glide);
-  self->project        = project_ref(project);
   self->status_service = status_service;
   return self;
 }

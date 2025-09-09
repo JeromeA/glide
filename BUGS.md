@@ -298,3 +298,10 @@ fires, coalescing intermediate signals.
 an error. Pipes may legally return fewer bytes than requested, truncating data
 sent to child processes. The function now loops until the entire buffer is
 written so partial writes no longer lose input.
+
+## Project created off UI thread
+
+`Project` was instantiated in `main.c` before the GTK main loop owned the
+default context, causing `project_new` to fail its UI thread assertion.
+Creation now happens in `App.startup`, ensuring the project is constructed on
+the main thread.
