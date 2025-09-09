@@ -19,9 +19,9 @@ static void test_parse(void)
   g_assert_cmpstr(asdf_get_dependency(asdf, 0), ==, "dep1");
   g_assert_cmpstr(asdf_get_dependency(asdf, 1), ==, "dep2");
 
-  gchar *str = asdf_to_string(asdf);
-  g_assert_nonnull(strstr(str, "(:file \"a\")"));
-  g_free(str);
+  GString *str = asdf_to_string(asdf);
+  g_assert_nonnull(strstr(str->str, "(:file \"a\")"));
+  g_string_free(str, TRUE);
 
   g_object_unref(asdf);
   g_remove(file);
