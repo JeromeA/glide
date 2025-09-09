@@ -183,15 +183,16 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *start = endptr + 2;
       const char *end = strstr(start, "\")");
       if (end) {
-        gchar *text = g_strndup(start, end - start);
-        LOG_LONG(1, "ReplSession.on_message stdout: ", text);
+        GString *text = g_string_new_len(start, end - start);
+        LOG_LONG(1, "ReplSession.on_message stdout: ", text->str);
         g_mutex_lock(&interaction->lock);
         if (!interaction->output)
-          interaction->output = g_string_new(text);
-        else
-          g_string_append(interaction->output, text);
+          interaction->output = text;
+        else {
+          g_string_append_len(interaction->output, text->str, text->len);
+          g_string_free(text, TRUE);
+        }
         g_mutex_unlock(&interaction->lock);
-        g_free(text);
         updated_cb = self->updated_cb;
         updated_cb_data = self->updated_cb_data;
       }
@@ -205,15 +206,16 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *start = endptr + 2;
       const char *end = strstr(start, "\")");
       if (end) {
-        gchar *text = g_strndup(start, end - start);
-        LOG_LONG(1, "ReplSession.on_message stderr: ", text);
+        GString *text = g_string_new_len(start, end - start);
+        LOG_LONG(1, "ReplSession.on_message stderr: ", text->str);
         g_mutex_lock(&interaction->lock);
         if (!interaction->output)
-          interaction->output = g_string_new(text);
-        else
-          g_string_append(interaction->output, text);
+          interaction->output = text;
+        else {
+          g_string_append_len(interaction->output, text->str, text->len);
+          g_string_free(text, TRUE);
+        }
         g_mutex_unlock(&interaction->lock);
-        g_free(text);
         updated_cb = self->updated_cb;
         updated_cb_data = self->updated_cb_data;
       }
@@ -227,18 +229,19 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *start = endptr + 1;
       const char *end = strrchr(start, ')');
       if (end) {
-        gchar *res = g_strndup(start, end - start);
-        LOG_LONG(1, "ReplSession.on_message result: ", res);
+        GString *res = g_string_new_len(start, end - start);
+        LOG_LONG(1, "ReplSession.on_message result: ", res->str);
         g_mutex_lock(&interaction->lock);
         if (interaction->result)
-          g_string_assign(interaction->result, res);
+          g_string_assign(interaction->result, res->str);
         else
-          interaction->result = g_string_new(res);
+          interaction->result = res;
         interaction->status = INTERACTION_OK;
         done_cb = interaction->done_cb;
         done_cb_data = interaction->done_cb_data;
         g_mutex_unlock(&interaction->lock);
-        g_free(res);
+        if (interaction->result != res)
+          g_string_free(res, TRUE);
         updated_cb = self->updated_cb;
         updated_cb_data = self->updated_cb_data;
         finished = TRUE;
@@ -253,13 +256,13 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *start = endptr + 2;
       const char *end = strrchr(start, '"');
       if (end) {
-        gchar *err = g_strndup(start, end - start);
-        LOG_LONG(1, "ReplSession.on_message error: ", err);
+        GString *err = g_string_new_len(start, end - start);
+        LOG_LONG(1, "ReplSession.on_message error: ", err->str);
         g_mutex_lock(&interaction->lock);
         if (interaction->error)
-          g_string_assign(interaction->error, err);
+          g_string_assign(interaction->error, err->str);
         else
-          interaction->error = g_string_new(err);
+          interaction->error = err;
         interaction->status = INTERACTION_ERROR;
         updated_cb = self->updated_cb;
         updated_cb_data = self->updated_cb_data;
@@ -267,7 +270,8 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
         done_cb_data = interaction->done_cb_data;
         g_mutex_unlock(&interaction->lock);
         finished = TRUE;
-        g_free(err);
+        if (interaction->error != err)
+          g_string_free(err, TRUE);
       }
     }
   } else {
