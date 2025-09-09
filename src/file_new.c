@@ -1,5 +1,4 @@
 #include <gtk/gtk.h>
-#include <string.h>
 #include "file_new.h"
 #include "app.h"
 #include "project.h"
@@ -41,13 +40,13 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
           app_connect_editor(app, view);
         Asdf *asdf = project_get_asdf(project);
         const gchar *rel = project_file_get_relative_path(file);
-        gchar *comp = g_strdup(rel);
-        if (g_str_has_suffix(comp, ".lisp"))
-          comp[strlen(comp) - 5] = '\0';
-        asdf_add_component(asdf, comp);
+        GString *comp = g_string_new(rel);
+        if (g_str_has_suffix(comp->str, ".lisp"))
+          g_string_truncate(comp, comp->len - 5);
+        asdf_add_component(asdf, comp->str);
         asdf_save(asdf, asdf_get_filename(asdf));
         app_update_project_view(app);
-        g_free(comp);
+        g_string_free(comp, TRUE);
       }
       g_free(path);
       g_free(fname);
