@@ -7,6 +7,7 @@
 #include "repl_session.h"
 #include "interaction.h"
 #include "util.h"
+#include <string.h>
 
 static void project_on_package_definition(Interaction *interaction, gpointer user_data);
 static void project_on_describe(Interaction *interaction, gpointer user_data);
@@ -20,6 +21,94 @@ typedef struct {
   gchar *package_name;
   gchar *symbol;
 } DescribeData;
+
+typedef struct {
+  Project *project;
+  Node *expr;
+  LispParser *parser;
+  LispLexer *lexer;
+  TextProvider *provider;
+} PackageDefinitionData;
+
+typedef struct {
+  Project *project;
+  gchar *package;
+  gchar *symbol;
+  gchar *doc;
+} VariableData;
+
+typedef struct {
+  Project *project;
+  Function *function;
+} FunctionData;
+
+typedef struct {
+  Project *project;
+  gchar *package_name;
+  gchar *symbol;
+} DescribeRequestData;
+
+static gboolean add_package_cb(gpointer data) {
+  PackageDefinitionData *pd = data;
+  analyse_defpackage(pd->project, pd->expr, NULL);
+  lisp_parser_free(pd->parser);
+  lisp_lexer_free(pd->lexer);
+  text_provider_unref(pd->provider);
+  g_free(pd);
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean add_variable_cb(gpointer data) {
+  VariableData *vd = data;
+  project_add_variable(vd->project, vd->package, vd->symbol, vd->doc);
+  g_free(vd->package);
+  g_free(vd->symbol);
+  g_free(vd->doc);
+  g_free(vd);
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean add_function_cb(gpointer data) {
+  FunctionData *fd = data;
+  project_add_function(fd->project, fd->function);
+  function_unref(fd->function);
+  g_free(fd);
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean project_unref_cb(gpointer data) {
+  project_unref(data);
+  return G_SOURCE_REMOVE;
+}
+
+static gboolean request_describe_cb(gpointer data) {
+  DescribeRequestData *dd = data;
+  project_request_describe(dd->project, dd->package_name, dd->symbol);
+  g_free(dd->package_name);
+  g_free(dd->symbol);
+  g_free(dd);
+  return G_SOURCE_REMOVE;
+}
+
+static void collect_export_symbols(Node *expr, GPtrArray *out) {
+  if (!expr || !expr->children)
+    return;
+  for (guint i = 2; i < expr->children->len; i++) {
+    Node *option = g_array_index(expr->children, Node*, i);
+    if (!option || option->type != LISP_AST_NODE_TYPE_LIST || !option->children || option->children->len == 0)
+      continue;
+    Node *keyword_node = g_array_index(option->children, Node*, 0);
+    const gchar *keyword = node_get_name(keyword_node);
+    if (keyword && strcmp(keyword, "EXPORT") == 0) {
+      for (guint j = 1; j < option->children->len; j++) {
+        Node *sym = g_array_index(option->children, Node*, j);
+        const gchar *name = node_get_name(sym);
+        if (name)
+          g_ptr_array_add(out, g_strdup(name));
+      }
+    }
+  }
+}
 
 void project_request_package(Project *self, const gchar *name) {
   g_return_if_fail(self);
@@ -78,30 +167,30 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   const Node *ast = lisp_parser_get_ast(parser);
   g_assert(ast && ast->children && ast->children->len > 0);
   Node *expr = g_array_index(ast->children, Node*, 0);
-  analyse_defpackage(project, expr, NULL);
   Node *name_node = (expr->children && expr->children->len > 1) ?
     g_array_index(expr->children, Node*, 1) : NULL;
   const gchar *pkg_name = node_get_name(name_node);
   g_assert(pkg_name);
   LOG(1, "project_on_package_definition built package %s", pkg_name);
-  Package *pkg = project_get_package(project, pkg_name);
-  if (pkg && project->repl) {
-    GHashTable *exports = package_get_exports(pkg);
-    if (exports) {
-      GHashTableIter iter;
-      g_hash_table_iter_init(&iter, exports);
-      gpointer key, value;
-      while (g_hash_table_iter_next(&iter, &key, &value)) {
-        const gchar *sym = key;
-        project_request_describe(project, pkg_name, sym);
-      }
-      (void)value;
-    }
+  GPtrArray *exports = g_ptr_array_new_with_free_func(g_free);
+  collect_export_symbols(expr, exports);
+  PackageDefinitionData *pd = g_new0(PackageDefinitionData, 1);
+  pd->project = project;
+  pd->expr = expr;
+  pd->parser = parser;
+  pd->lexer = lexer;
+  pd->provider = provider;
+  g_main_context_invoke(NULL, add_package_cb, pd);
+  for (guint i = 0; i < exports->len; i++) {
+    const gchar *sym = g_ptr_array_index(exports, i);
+    DescribeRequestData *dd = g_new0(DescribeRequestData, 1);
+    dd->project = project;
+    dd->package_name = g_strdup(pkg_name);
+    dd->symbol = g_strdup(sym);
+    g_main_context_invoke(NULL, request_describe_cb, dd);
   }
-  lisp_parser_free(parser);
-  lisp_lexer_free(lexer);
-  text_provider_unref(provider);
-  project_unref(project);
+  g_main_context_invoke(NULL, project_unref_cb, project);
+  g_ptr_array_free(exports, TRUE);
   interaction_clear(interaction);
   g_free(interaction);
   g_free(res);
@@ -140,7 +229,12 @@ static void project_handle_special_variable(Project *project,
       declared_type ? declared_type : "(unknown)",
       value ? value : "(unknown)");
   LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
-  project_add_variable(project, package, symbol, doc ? doc->str : NULL);
+  VariableData *vd = g_new0(VariableData, 1);
+  vd->project = project;
+  vd->package = g_strdup(package);
+  vd->symbol = g_strdup(symbol);
+  vd->doc = doc ? g_strdup(doc->str) : NULL;
+  g_main_context_invoke(NULL, add_variable_cb, vd);
   g_free(declared_type);
   g_free(value);
   if (doc)
@@ -177,8 +271,10 @@ static void project_handle_compiled_function(Project *project,
   LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
   Function *function = function_new(NULL, NULL, doc ? doc->str : NULL,
       NULL, FUNCTION_KIND_FUNCTION, symbol, package);
-  project_add_function(project, function);
-  function_unref(function);
+  FunctionData *fd = g_new0(FunctionData, 1);
+  fd->project = project;
+  fd->function = function;
+  g_main_context_invoke(NULL, add_function_cb, fd);
   g_free(lambda_list);
   if (doc)
     g_string_free(doc, TRUE);
@@ -222,7 +318,7 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
     }
   }
   g_ptr_array_free(sections, TRUE);
-  project_unref(data->project);
+  g_main_context_invoke(NULL, project_unref_cb, data->project);
   g_free(data->package_name);
   g_free(data->symbol);
   g_free(data);

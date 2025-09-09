@@ -2,6 +2,11 @@
 
 #include <glib.h>
 
+static inline gboolean glide_is_ui_thread(void)
+{
+  return g_main_context_is_owner(g_main_context_default());
+}
+
 static inline void g_debug_long(const char *string, const char *msg)
 {
   char *escaped = g_strescape(msg, NULL);

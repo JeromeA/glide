@@ -108,8 +108,12 @@ static void test_nested_defun(void) {
 
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
+  GMainContext *ctx = g_main_context_default();
+  g_main_context_push_thread_default(ctx);
   g_test_add_func("/analyse/basic", test_analyse);
   g_test_add_func("/analyse/nested-defpackage", test_nested_defpackage);
   g_test_add_func("/analyse/nested-defun", test_nested_defun);
-  return g_test_run();
+  int ret = g_test_run();
+  g_main_context_pop_thread_default(ctx);
+  return ret;
 }

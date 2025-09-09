@@ -18,6 +18,19 @@ static void parse_symbols(Node *list, guint start,
   }
 }
 
+typedef struct {
+  Project *project;
+  Package *package;
+} AddPackageData;
+
+static gboolean add_package_cb(gpointer user_data) {
+  AddPackageData *data = user_data;
+  project_add_package(data->project, data->package);
+  package_unref(data->package);
+  g_free(data);
+  return G_SOURCE_REMOVE;
+}
+
 void analyse_defpackage(Project *project, Node *expr, const gchar *context) {
   if (!project || !expr || !expr->children || expr->children->len < 2) return;
 
@@ -69,8 +82,12 @@ void analyse_defpackage(Project *project, Node *expr, const gchar *context) {
     }
   }
 
-  if (node_is_toplevel(expr))
-    project_add_package(project, pkg);
+  if (node_is_toplevel(expr)) {
+    AddPackageData *data = g_new0(AddPackageData, 1);
+    data->project = project;
+    data->package = package_ref(pkg);
+    g_main_context_invoke(NULL, add_package_cb, data);
+  }
   package_unref(pkg);
 }
 

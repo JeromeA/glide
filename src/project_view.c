@@ -307,7 +307,7 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
 static gboolean
 dispatch_project_changed(gpointer data)
 {
-  g_assert(g_main_context_is_owner(g_main_context_default()));
+  g_assert(glide_is_ui_thread());
   ProjectView *self = PROJECT_VIEW(data);
   self->project_changed_source = 0;
   LOG(1, "ProjectView.dispatch_project_changed update started");
@@ -319,7 +319,7 @@ dispatch_project_changed(gpointer data)
 static gboolean
 schedule_project_changed(gpointer data)
 {
-  g_assert(g_main_context_is_owner(g_main_context_default()));
+  g_assert(glide_is_ui_thread());
   ProjectView *self = PROJECT_VIEW(data);
   if (!self->project_changed_source) {
     LOG(1, "ProjectView.schedule_project_changed armed");

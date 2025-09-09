@@ -44,6 +44,7 @@ ProjectIndex *project_index_new(void) {
 
 void project_index_free(ProjectIndex *self) {
   if (!self) return;
+  g_return_if_fail(glide_is_ui_thread());
   project_index_clear(self);
   g_clear_pointer(&self->function_defs, g_hash_table_unref);
   g_clear_pointer(&self->function_uses, g_hash_table_unref);
@@ -90,6 +91,7 @@ static void project_index_node(ProjectIndex *self, const Node *node) {
 }
 
 void project_index_walk(ProjectIndex *self, const Node *node) {
+  g_return_if_fail(glide_is_ui_thread());
   if (!node) return;
   project_index_node(self, node);
   if (node->children)
@@ -102,6 +104,7 @@ GHashTable *project_index_get(ProjectIndex *self, StringDesignatorType sd_type) 
 }
 
 void project_index_clear(ProjectIndex *self) {
+  g_return_if_fail(glide_is_ui_thread());
   GHashTable *tables[] = { self->function_defs, self->function_uses,
     self->variable_defs, self->variable_uses, self->package_defs,
     self->package_uses };
@@ -158,6 +161,7 @@ static void project_index_remove_from_table(GHashTable *table, ProjectFile *file
 }
 
 void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
+  g_return_if_fail(glide_is_ui_thread());
   GHashTable *tables[] = { self->function_defs, self->function_uses,
     self->variable_defs, self->variable_uses, self->package_defs,
     self->package_uses };
@@ -225,6 +229,7 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
 void project_index_add_package(ProjectIndex *self, Package *package) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(package != NULL);
+  g_return_if_fail(glide_is_ui_thread());
   const gchar *name = package_get_name(package);
   if (!name) return;
   g_hash_table_replace(self->packages, g_strdup(name), package_ref(package));
@@ -245,6 +250,7 @@ gchar **project_index_get_package_names(ProjectIndex *self, guint *length) {
 void project_index_add_function(ProjectIndex *self, Function *function) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(function != NULL);
+  g_return_if_fail(glide_is_ui_thread());
   const gchar *name = function_get_name(function);
   if (!name) return;
   g_hash_table_replace(self->functions, g_strdup(name), function_ref(function));
@@ -283,6 +289,7 @@ void project_index_add_variable(ProjectIndex *self, const gchar *package,
   g_return_if_fail(self != NULL);
   g_return_if_fail(package != NULL);
   g_return_if_fail(name != NULL);
+  g_return_if_fail(glide_is_ui_thread());
   g_hash_table_replace(self->variables, g_strdup(name),
       doc ? g_strdup(doc) : NULL);
   LOG(1, "Index: added variable %s", name);
