@@ -139,8 +139,8 @@ project_view_populate_store(ProjectView *self)
   GtkTreeIter root;
   GtkTreeIter iter;
   GtkTreeIter child;
-  const gchar *filename = asdf_get_filename(self->asdf);
-  gchar *basename = filename ? g_path_get_basename(filename) : g_strdup("");
+  const GString *filename = asdf_get_filename(self->asdf);
+  gchar *basename = filename ? g_path_get_basename(filename->str) : g_strdup("");
   gtk_tree_store_clear(self->store);
 
   gtk_tree_store_append(self->store, &root, NULL);
@@ -160,13 +160,13 @@ project_view_populate_store(ProjectView *self)
       PROJECT_VIEW_COL_OBJECT, self->project,
       -1);
   for (guint i = 0; i < asdf_get_component_count(self->asdf); i++) {
-    const gchar *comp = asdf_get_component(self->asdf, i);
+    const GString *comp = asdf_get_component(self->asdf, i);
     ProjectFile *pf = NULL;
     if (self->project) {
       for (guint j = 0; j < project_get_file_count(self->project); j++) {
         ProjectFile *f = project_get_file(self->project, j);
         const gchar *rel = project_file_get_relative_path(f);
-        if (filename_matches(comp, rel)) {
+        if (filename_matches(comp->str, rel)) {
           pf = f;
           break;
         }
@@ -175,7 +175,7 @@ project_view_populate_store(ProjectView *self)
     gtk_tree_store_append(self->store, &child, &iter);
     gtk_tree_store_set(self->store, &child,
         PROJECT_VIEW_COL_ICON, self->icon_lisp,
-        PROJECT_VIEW_COL_TEXT, comp,
+        PROJECT_VIEW_COL_TEXT, comp->str,
         PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC,
         PROJECT_VIEW_COL_OBJECT, pf,
         -1);

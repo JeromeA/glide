@@ -48,7 +48,10 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
         if (dot)
           *dot = '\0';
         Asdf *asdf = project_get_asdf(app_get_project(app));
-        asdf_rename_component(asdf, old_comp, new_comp);
+        GString *old_str = g_string_new(old_comp);
+        GString *new_str = g_string_new(new_comp);
+        asdf_rename_component(asdf, old_str, new_str);
+        g_string_free(old_str, TRUE);
         asdf_save(asdf, asdf_get_filename(asdf));
         app_update_project_view(app);
         LispSourceNotebook *notebook = app_get_notebook(app);

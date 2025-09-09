@@ -53,15 +53,16 @@ gboolean file_open_path(App *app, const gchar *filename) {
 
   gboolean is_asdf = g_str_has_suffix(filename, ".asd");
   if (is_asdf) {
-    Asdf *asdf = asdf_new_from_file(filename);
+    GString *fn = g_string_new(filename);
+    Asdf *asdf = asdf_new_from_file(fn);
     project_set_asdf(project, asdf);
     g_object_unref(asdf);
     gchar *base = g_path_get_dirname(filename);
     project_set_path(project, base);
     gchar *dir = g_strdup(base);
     for (guint i = 0; i < asdf_get_component_count(project_get_asdf(project)); i++) {
-      const gchar *comp = asdf_get_component(project_get_asdf(project), i);
-      gchar *path = g_build_filename(dir, comp, NULL);
+      const GString *comp = asdf_get_component(project_get_asdf(project), i);
+      gchar *path = g_build_filename(dir, comp->str, NULL);
       gchar *full = ensure_lisp_extension(path);
       g_free(path);
       TextProvider *provider = string_text_provider_new("");
