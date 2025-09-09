@@ -123,7 +123,7 @@ gboolean repl_process_send(ReplProcess *self, const GString *payload) {
   g_return_val_if_fail(self, FALSE);
   g_return_val_if_fail(payload, FALSE);
   LOG_LONG(1, "ReplProcess.send: ", payload->str);
-  gboolean success = process_write(self->proc, payload->str, payload->len);
+  gboolean success = process_write(self->proc, payload);
   if (!success) {
     g_warning("ReplProcess.send failed to write to process");
   }

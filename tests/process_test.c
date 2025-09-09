@@ -47,10 +47,14 @@ static void test_bc(void) {
   output = g_string_new(NULL);
   process_set_stdout_cb(p, on_out, NULL);
   process_start(p);
-  process_write(p, "1+2\n", -1);
+  GString *cmd = g_string_new("1+2\n");
+  process_write(p, cmd);
+  g_string_free(cmd, TRUE);
   g_usleep(100000);
   g_assert_nonnull(strstr(output->str, "3"));
-  process_write(p, "quit\n", -1);
+  cmd = g_string_new("quit\n");
+  process_write(p, cmd);
+  g_string_free(cmd, TRUE);
   process_unref(p);
   g_string_free(output, TRUE);
 }
@@ -59,9 +63,13 @@ static void test_no_callbacks(void) {
   Process *p = process_new("/usr/bin/bc");
   g_assert_nonnull(p);
   process_start(p);
-  process_write(p, "1+2\n", -1);
+  GString *cmd = g_string_new("1+2\n");
+  process_write(p, cmd);
+  g_string_free(cmd, TRUE);
   g_usleep(100000);
-  process_write(p, "quit\n", -1);
+  cmd = g_string_new("quit\n");
+  process_write(p, cmd);
+  g_string_free(cmd, TRUE);
   process_unref(p);
 }
 
@@ -76,11 +84,14 @@ static void test_lisp_no_padding(void) {
   output = g_string_new(NULL);
   process_set_stdout_cb(p, on_out, NULL);
   process_start(p);
-  process_write(p,
-      "(glide:eval-and-capture 1 \"(format t \"ok\")\")\n", -1);
+  GString *cmd = g_string_new("(glide:eval-and-capture 1 \"(format t \"ok\")\")\n");
+  process_write(p, cmd);
+  g_string_free(cmd, TRUE);
   g_usleep(300000);
   g_assert_null(memchr(output->str, '\0', output->len));
-  process_write(p, "(sb-ext:quit)\n", -1);
+  cmd = g_string_new("(sb-ext:quit)\n");
+  process_write(p, cmd);
+  g_string_free(cmd, TRUE);
   process_unref(p);
   g_string_free(output, TRUE);
 }
@@ -90,7 +101,9 @@ static void test_partial_write(void) {
   intercept_fd = 99;
   p.in_fd = intercept_fd;
   write_calls = 0;
-  gboolean ok = process_write(&p, "abcdef", 6);
+  GString *cmd = g_string_new_len("abcdef", 6);
+  gboolean ok = process_write(&p, cmd);
+  g_string_free(cmd, TRUE);
   g_assert_true(ok);
   g_assert_cmpint(write_calls, ==, 2);
   g_assert_cmpint(write_sizes[0], ==, 6);
