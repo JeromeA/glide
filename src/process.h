@@ -11,6 +11,6 @@ Process *process_new_from_argv(const gchar *const *argv);
 void     process_set_stdout_cb(Process *self, ProcessCallback cb, gpointer user_data);
 void     process_set_stderr_cb(Process *self, ProcessCallback cb, gpointer user_data);
 void     process_start(Process *self);
-gboolean process_write(Process *self, const gchar *data, gssize len);
+gboolean process_write(Process *self, const GString *data);
 Process *process_ref(Process *self);
 void     process_unref(Process *self);

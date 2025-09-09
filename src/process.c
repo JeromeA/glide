@@ -122,13 +122,14 @@ void process_start(Process *process) {
     process->err_thread = g_thread_new("process-stderr", stderr_thread, process);
 }
 
-gboolean process_write(Process *process, const gchar *data, gssize len) {
+gboolean process_write(Process *process, const GString *data) {
   g_return_val_if_fail(process, FALSE);
-  if (len < 0)
-    len = strlen(data);
+  g_return_val_if_fail(data, FALSE);
+  gssize len = data->len;
   gssize written = 0;
   while (written < len) {
-    ssize_t r = sys_write(process->in_fd, data + written, len - written);
+    ssize_t r = sys_write(process->in_fd,
+        data->str + written, len - written);
     if (r <= 0)
       return FALSE;
     written += r;
