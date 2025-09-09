@@ -291,3 +291,10 @@ for component rows, closing the leak.
 signalled a change. Rapid successive signals therefore triggered redundant
 updates. The callback now starts a 10 ms timer and performs the refresh once it
 fires, coalescing intermediate signals.
+
+## Process write could drop data
+
+`process_write` performed a single `write` call and considered any short write
+an error. Pipes may legally return fewer bytes than requested, truncating data
+sent to child processes. The function now loops until the entire buffer is
+written so partial writes no longer lose input.
