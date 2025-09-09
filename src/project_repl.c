@@ -66,7 +66,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   gchar *res = NULL;
   g_mutex_lock(&interaction->lock);
   if (interaction->result)
-    res = g_strdup(interaction->result);
+    res = g_strdup(interaction->result->str);
   g_mutex_unlock(&interaction->lock);
   g_assert(res);
   TextProvider *provider = string_text_provider_new(res);
@@ -190,7 +190,7 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
   gchar *out = NULL;
   g_mutex_lock(&interaction->lock);
   if (interaction->output)
-    out = g_strdup(interaction->output);
+    out = g_strdup(interaction->output->str);
   g_mutex_unlock(&interaction->lock);
   g_return_if_fail(out);
   gchar **lines = g_strsplit(out, "\n", -1);

@@ -36,7 +36,7 @@ static void test_eval(void) {
   }
   g_mutex_lock(&interaction.lock);
   InteractionStatus status = interaction.status;
-  gchar *result = g_strdup(interaction.result);
+  gchar *result = interaction.result ? g_strdup(interaction.result->str) : NULL;
   g_mutex_unlock(&interaction.lock);
   g_assert_cmpint(status, ==, INTERACTION_OK);
   g_assert_cmpstr(result, ==, "3");
@@ -76,7 +76,8 @@ static void test_ignore_compilation_comment(void) {
   g_string_free(msg, TRUE);
   g_mutex_lock(&interaction.lock);
   g_assert_cmpint(interaction.status, ==, INTERACTION_OK);
-  g_assert_cmpstr(interaction.result, ==, "42");
+  g_assert(interaction.result);
+  g_assert_cmpstr(interaction.result->str, ==, "42");
   g_mutex_unlock(&interaction.lock);
   interaction_clear(&interaction);
   repl_session_unref(sess);

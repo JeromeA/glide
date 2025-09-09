@@ -85,10 +85,10 @@ interaction_row_update(InteractionRow *row, Interaction *interaction)
   gchar *error;
   gchar *result;
   g_mutex_lock(&interaction->lock);
-  expression = g_strdup(interaction->expression);
-  output = g_strdup(interaction->output);
-  error = g_strdup(interaction->error);
-  result = g_strdup(interaction->result);
+  expression = interaction->expression ? g_strdup(interaction->expression->str) : NULL;
+  output = interaction->output ? g_strdup(interaction->output->str) : NULL;
+  error = interaction->error ? g_strdup(interaction->error->str) : NULL;
+  result = interaction->result ? g_strdup(interaction->result->str) : NULL;
   g_mutex_unlock(&interaction->lock);
   LOG(1, "InteractionsView.row_update %s", expression);
   set_text_view(GTK_BOX(row->box), &row->expression,
@@ -114,7 +114,7 @@ interaction_row_ensure(InteractionsView *self, Interaction *interaction)
   if (!row) {
     gchar *expr;
     g_mutex_lock(&interaction->lock);
-    expr = g_strdup(interaction->expression);
+    expr = interaction->expression ? g_strdup(interaction->expression->str) : NULL;
     g_mutex_unlock(&interaction->lock);
     LOG(1, "InteractionsView.interaction_row_ensure creating row for %s", expr);
     row = g_new0(InteractionRow, 1);
@@ -153,7 +153,7 @@ dispatch_interaction_added(gpointer data)
   gchar *expr;
   InteractionType type;
   g_mutex_lock(&interaction->lock);
-  expr = g_strdup(interaction->expression);
+  expr = interaction->expression ? g_strdup(interaction->expression->str) : NULL;
   type = interaction->type;
   g_mutex_unlock(&interaction->lock);
   LOG(1, "InteractionsView.on_interaction_added %s", expr);
@@ -177,7 +177,7 @@ dispatch_interaction_updated(gpointer data)
   Interaction *interaction = d->interaction;
   gchar *expr;
   g_mutex_lock(&interaction->lock);
-  expr = g_strdup(interaction->expression);
+  expr = interaction->expression ? g_strdup(interaction->expression->str) : NULL;
   g_mutex_unlock(&interaction->lock);
   LOG(1, "InteractionsView.on_interaction_updated %s", expr);
   InteractionRow *row = interaction_row_ensure(self, interaction);
