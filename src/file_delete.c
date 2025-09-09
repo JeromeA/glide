@@ -34,7 +34,9 @@ void file_delete(GtkWidget */*widget*/, gpointer data) {
     g_remove(path);
     Asdf *asdf = project_get_asdf(app_get_project(app));
     if (comp) {
-      asdf_remove_component(asdf, comp);
+      GString *comp_str = g_string_new(comp);
+      asdf_remove_component(asdf, comp_str);
+      g_string_free(comp_str, TRUE);
       asdf_save(asdf, asdf_get_filename(asdf));
       app_update_project_view(app);
     }

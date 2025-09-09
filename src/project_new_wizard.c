@@ -129,9 +129,10 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
     g_file_set_contents(unnamed, "", -1, NULL);
     gchar *name_asd = g_strdup_printf("%s.asd", name);
     gchar *asd_path = g_build_filename(dir, name_asd, NULL);
-    Asdf *asdf = asdf_new_from_file(asd_path);
-    asdf_add_component(asdf, "unnamed");
-    asdf_save(asdf, asd_path);
+    GString *asd_path_str = g_string_new(asd_path);
+    Asdf *asdf = asdf_new_from_file(asd_path_str);
+    asdf_add_component(asdf, g_string_new("unnamed"));
+    asdf_save(asdf, asdf_get_filename(asdf));
     g_object_unref(asdf);
     file_open_path(app, asd_path);
     g_free(unnamed);

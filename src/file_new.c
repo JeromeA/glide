@@ -43,10 +43,9 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
         GString *comp = g_string_new(rel);
         if (g_str_has_suffix(comp->str, ".lisp"))
           g_string_truncate(comp, comp->len - 5);
-        asdf_add_component(asdf, comp->str);
+        asdf_add_component(asdf, comp);
         asdf_save(asdf, asdf_get_filename(asdf));
         app_update_project_view(app);
-        g_string_free(comp, TRUE);
       }
       g_free(path);
       g_free(fname);

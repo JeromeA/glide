@@ -9,15 +9,16 @@ static void test_parse(void)
   const gchar *contents = "(defsystem \"foo\"\n  :description \"desc\"\n  :serial t\n  :components ((:file \"a\") (:file \"b\"))\n  :depends-on (\"dep1\" \"dep2\"))";
   g_file_set_contents(file, contents, -1, NULL);
 
-  Asdf *asdf = asdf_new_from_file(file);
-  g_assert_cmpstr(asdf_get_description(asdf), ==, "desc");
+  GString *file_str = g_string_new(file);
+  Asdf *asdf = asdf_new_from_file(file_str);
+  g_assert_cmpstr(asdf_get_description(asdf)->str, ==, "desc");
   g_assert_true(asdf_get_serial(asdf));
   g_assert_cmpuint(asdf_get_component_count(asdf), ==, 2);
-  g_assert_cmpstr(asdf_get_component(asdf, 0), ==, "a");
-  g_assert_cmpstr(asdf_get_component(asdf, 1), ==, "b");
+  g_assert_cmpstr(asdf_get_component(asdf, 0)->str, ==, "a");
+  g_assert_cmpstr(asdf_get_component(asdf, 1)->str, ==, "b");
   g_assert_cmpuint(asdf_get_dependency_count(asdf), ==, 2);
-  g_assert_cmpstr(asdf_get_dependency(asdf, 0), ==, "dep1");
-  g_assert_cmpstr(asdf_get_dependency(asdf, 1), ==, "dep2");
+  g_assert_cmpstr(asdf_get_dependency(asdf, 0)->str, ==, "dep1");
+  g_assert_cmpstr(asdf_get_dependency(asdf, 1)->str, ==, "dep2");
 
   GString *str = asdf_to_string(asdf);
   g_assert_nonnull(strstr(str->str, "(:file \"a\")"));
@@ -37,13 +38,15 @@ static void test_save(void)
 
   Asdf *asdf = asdf_new();
   asdf_set_serial(asdf, TRUE);
-  asdf_add_component(asdf, "a");
-  asdf_add_component(asdf, "b");
-  asdf_add_dependency(asdf, "dep1");
-  asdf_add_dependency(asdf, "dep2");
-  asdf_set_description(asdf, "desc");
+  asdf_add_component(asdf, g_string_new("a"));
+  asdf_add_component(asdf, g_string_new("b"));
+  asdf_add_dependency(asdf, g_string_new("dep1"));
+  asdf_add_dependency(asdf, g_string_new("dep2"));
+  asdf_set_description(asdf, g_string_new("desc"));
 
-  g_assert_true(asdf_save(asdf, out));
+  GString *out_str = g_string_new(out);
+  g_assert_true(asdf_save(asdf, out_str));
+  g_string_free(out_str, TRUE);
   g_assert_true(g_file_test(out, G_FILE_TEST_EXISTS));
 
   gchar *contents = NULL;
@@ -63,20 +66,25 @@ static void test_save(void)
 static void test_rename(void)
 {
   Asdf *asdf = asdf_new();
-  asdf_add_component(asdf, "old");
-  asdf_rename_component(asdf, "old", "new");
-  g_assert_cmpstr(asdf_get_component(asdf, 0), ==, "new");
+  asdf_add_component(asdf, g_string_new("old"));
+  GString *old = g_string_new("old");
+  GString *new = g_string_new("new");
+  asdf_rename_component(asdf, old, new);
+  g_string_free(old, TRUE);
+  g_assert_cmpstr(asdf_get_component(asdf, 0)->str, ==, "new");
   g_object_unref(asdf);
 }
 
 static void test_remove(void)
 {
   Asdf *asdf = asdf_new();
-  asdf_add_component(asdf, "a");
-  asdf_add_component(asdf, "b");
-  asdf_remove_component(asdf, "a");
+  asdf_add_component(asdf, g_string_new("a"));
+  asdf_add_component(asdf, g_string_new("b"));
+  GString *a = g_string_new("a");
+  asdf_remove_component(asdf, a);
+  g_string_free(a, TRUE);
   g_assert_cmpuint(asdf_get_component_count(asdf), ==, 1);
-  g_assert_cmpstr(asdf_get_component(asdf, 0), ==, "b");
+  g_assert_cmpstr(asdf_get_component(asdf, 0)->str, ==, "b");
   g_object_unref(asdf);
 }
 
