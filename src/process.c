@@ -126,7 +126,14 @@ gboolean process_write(Process *process, const gchar *data, gssize len) {
   g_return_val_if_fail(process, FALSE);
   if (len < 0)
     len = strlen(data);
-  return sys_write(process->in_fd, data, len) == len;
+  gssize written = 0;
+  while (written < len) {
+    ssize_t r = sys_write(process->in_fd, data + written, len - written);
+    if (r <= 0)
+      return FALSE;
+    written += r;
+  }
+  return TRUE;
 }
 
 Process *process_new_from_argv(const gchar *const *argv) {
