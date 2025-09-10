@@ -314,3 +314,9 @@ the callback is dispatched to the main loop. The UI thread then blocked in
 `dispatch_interaction_added` trying to take the same lock. The handler now
 ignores non‑user interactions so only UI‑visible interactions schedule a
 dispatch, preventing the deadlock.
+
+## Synchronous project file analysis blocked startup
+
+`project_file_changed` performed lexing and parsing on the UI thread, delaying
+application startup when loading projects. The heavy work now happens on a
+worker thread and applies results through the main loop.
