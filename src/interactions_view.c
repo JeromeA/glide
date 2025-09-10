@@ -151,18 +151,13 @@ dispatch_interaction_added(gpointer data)
   InteractionsView *self = d->self;
   Interaction *interaction = d->interaction;
   gchar *expr;
-  InteractionType type;
   g_mutex_lock(&interaction->lock);
   expr = interaction->expression ? g_strdup(interaction->expression->str) : NULL;
-  type = interaction->type;
   g_mutex_unlock(&interaction->lock);
   LOG(1, "InteractionsView.on_interaction_added %s", expr);
-  if (type != INTERACTION_USER)
-    goto out;
   InteractionRow *row = interaction_row_ensure(self, interaction);
   interaction_row_update(row, interaction);
   gtk_widget_show_all(row->frame);
-out:
   g_object_unref(self);
   g_free(expr);
   g_free(d);
@@ -262,6 +257,11 @@ interactions_view_new(ReplSession *session)
 static void
 on_interaction_added(ReplSession * /*session*/, Interaction *interaction, gpointer user_data)
 {
+  g_mutex_lock(&interaction->lock);
+  InteractionType type = interaction->type;
+  g_mutex_unlock(&interaction->lock);
+  if (type != INTERACTION_USER)
+    return;
   InteractionDispatch *d = g_new0(InteractionDispatch, 1);
   d->self = g_object_ref(GLIDE_INTERACTIONS_VIEW(user_data));
   d->interaction = interaction;
