@@ -305,3 +305,12 @@ written so partial writes no longer lose input.
 default context, causing `project_new` to fail its UI thread assertion.
 Creation now happens in `App.startup`, ensuring the project is constructed on
 the main thread.
+
+## Deadlock when adding internal interactions
+
+`InteractionsView` queued UI updates for every interaction. Internal
+interactions are processed on worker threads and can hold their mutex while
+the callback is dispatched to the main loop. The UI thread then blocked in
+`dispatch_interaction_added` trying to take the same lock. The handler now
+ignores non‑user interactions so only UI‑visible interactions schedule a
+dispatch, preventing the deadlock.
