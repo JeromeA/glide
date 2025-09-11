@@ -154,7 +154,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   Node *expr = g_array_index(ast->children, Node*, 0);
   Node *name_node = (expr->children && expr->children->len > 1) ?
     g_array_index(expr->children, Node*, 1) : NULL;
-  const gchar *pkg_name = node_get_name(name_node);
+  gchar *pkg_name = g_strdup(node_get_name(name_node));
   g_assert(pkg_name);
   LOG(1, "project_on_package_definition built package %s", pkg_name);
   GPtrArray *exports = g_ptr_array_new_with_free_func(g_free);
@@ -170,6 +170,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
     const gchar *sym = g_ptr_array_index(exports, i);
     project_request_describe(project, pkg_name, sym);
   }
+  g_free(pkg_name);
   g_main_context_invoke(NULL, project_unref_cb, project);
   g_ptr_array_free(exports, TRUE);
   interaction_clear(interaction);

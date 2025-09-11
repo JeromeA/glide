@@ -320,3 +320,11 @@ dispatch, preventing the deadlock.
 `project_file_changed` performed lexing and parsing on the UI thread, delaying
 application startup when loading projects. The heavy work now happens on a
 worker thread and applies results through the main loop.
+
+## Use-after-free in project_on_package_definition
+
+`project_on_package_definition` stored the package name pointer from the AST and
+scheduled `add_package_cb`, which destroyed the parser and its nodes. The loop
+describing exported symbols then dereferenced the freed pointer, corrupting the
+package name and crashing. The handler now duplicates the package name before
+queuing the callback and frees the copy after use.
