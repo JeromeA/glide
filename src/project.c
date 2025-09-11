@@ -256,7 +256,6 @@ void project_file_changed(Project *self, ProjectFile *file) {
 
 Project *project_ref(Project *self) {
   g_return_val_if_fail(self != NULL, NULL);
-  g_return_val_if_fail(glide_is_ui_thread(), NULL);
   g_atomic_int_inc(&self->refcnt);
   return self;
 }
@@ -264,7 +263,6 @@ Project *project_ref(Project *self) {
 void project_unref(Project *self) {
   if (!self)
     return;
-  g_return_if_fail(glide_is_ui_thread());
   if (g_atomic_int_dec_and_test(&self->refcnt))
     project_free(self);
 }
