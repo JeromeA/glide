@@ -42,12 +42,6 @@ typedef struct {
   Function *function;
 } FunctionData;
 
-typedef struct {
-  Project *project;
-  gchar *package_name;
-  gchar *symbol;
-} DescribeRequestData;
-
 static gboolean add_package_cb(gpointer data) {
   PackageDefinitionData *pd = data;
   analyse_defpackage(pd->project, pd->expr, NULL);
@@ -78,15 +72,6 @@ static gboolean add_function_cb(gpointer data) {
 
 static gboolean project_unref_cb(gpointer data) {
   project_unref(data);
-  return G_SOURCE_REMOVE;
-}
-
-static gboolean request_describe_cb(gpointer data) {
-  DescribeRequestData *dd = data;
-  project_request_describe(dd->project, dd->package_name, dd->symbol);
-  g_free(dd->package_name);
-  g_free(dd->symbol);
-  g_free(dd);
   return G_SOURCE_REMOVE;
 }
 
@@ -183,11 +168,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   g_main_context_invoke(NULL, add_package_cb, pd);
   for (guint i = 0; i < exports->len; i++) {
     const gchar *sym = g_ptr_array_index(exports, i);
-    DescribeRequestData *dd = g_new0(DescribeRequestData, 1);
-    dd->project = project;
-    dd->package_name = g_strdup(pkg_name);
-    dd->symbol = g_strdup(sym);
-    g_main_context_invoke(NULL, request_describe_cb, dd);
+    project_request_describe(project, pkg_name, sym);
   }
   g_main_context_invoke(NULL, project_unref_cb, project);
   g_ptr_array_free(exports, TRUE);
