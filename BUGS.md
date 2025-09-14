@@ -333,3 +333,9 @@ queuing the callback and frees the copy after use.
 
 `project_file_changed` parsed files on a worker thread while the UI could modify the buffer, producing
 inconsistent ASTs and indexes. The analysis now runs synchronously on the UI thread to avoid races.
+
+## Duplicate add_package_cb broke inline build
+
+The INLINE build includes every source file in a single translation unit. Two static functions were both named
+`add_package_cb`, so the compiler reported a redefinition error. Renaming the REPL callback to
+`analyse_defpackage_cb` restored unique names and allowed the inline version to compile.

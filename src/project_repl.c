@@ -42,7 +42,7 @@ typedef struct {
   Function *function;
 } FunctionData;
 
-static gboolean add_package_cb(gpointer data) {
+static gboolean analyse_defpackage_cb(gpointer data) {
   PackageDefinitionData *pd = data;
   analyse_defpackage(pd->project, pd->expr, NULL);
   lisp_parser_free(pd->parser);
@@ -165,7 +165,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   pd->parser = parser;
   pd->lexer = lexer;
   pd->provider = provider;
-  g_main_context_invoke(NULL, add_package_cb, pd);
+  g_main_context_invoke(NULL, analyse_defpackage_cb, pd);
   for (guint i = 0; i < exports->len; i++) {
     const gchar *sym = g_ptr_array_index(exports, i);
     project_request_describe(project, pkg_name, sym);
