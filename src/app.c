@@ -380,13 +380,6 @@ app_get_glide (App *self)
   return self->glide;
 }
 
-STATIC StatusService *
-app_get_status_service (App *self)
-{
-  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  return self->status_service;
-}
-
 void
 app_set_recent_menu(App *self, GMenu *menu)
 {

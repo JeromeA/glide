@@ -41,9 +41,6 @@
 #include "status_service.c"
 #include "string_text_provider.c"
 #include "text_provider.c"
-#undef g_debug
-#define LOG(level, ...) do { } while (0)
-#define LOG_LONG(level, str, data) do { } while (0)
 #endif
 
 #include "app.h"

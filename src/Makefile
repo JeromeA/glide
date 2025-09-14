@@ -46,9 +46,12 @@ SOURCES += \
   status_bar.c \
   status_service.c
 
+# SANITIZER = -fsanitize=address,undefined,bounds -fno-omit-frame-pointer
+VERBOSITY = -DVERBOSITY=0
+
 INCLUDE_DIRS := $(addprefix -I, $(VPATH))
 LIBS += gtk+-3.0
-CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS)
+CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS) $(VERBOSITY)
 LDLIBS += `pkg-config --libs $(LIBS)`
 
 TARGETS += app-full app-cov app-reloc app-gdb app
@@ -57,9 +60,6 @@ COV_OBJECTS = $(SOURCES:.c=.cov.o)
 FULL_OBJECTS = $(SOURCES:.c=.full.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
 CLEANABLES += $(TARGETS) $(COV_OBJECTS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm *.gcda *.gcno out/ coverage.info
-
-# SANITIZER = -fsanitize=address,undefined,bounds -fno-omit-frame-pointer
-VERBOSITY = -DVERBOSITY=0
 
 app-cov $(COV_OBJECTS): CFLAGS += -g -DDEBUG -fprofile-arcs -ftest-coverage
 app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG $(SANITIZER) $(VERBOSITY)
