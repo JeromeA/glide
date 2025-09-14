@@ -223,6 +223,17 @@ static void test_node_to_string(void) {
   parser_fixture_free(&fixture);
 }
 
+static void test_node_to_string_symbol_uppercase(void) {
+  ParserFixture fixture = parser_fixture_from_text("aaa");
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
+  g_assert_cmpint(ast->children->len, ==, 1);
+  const Node *sym = g_array_index(ast->children, Node*, 0);
+  gchar *s = node_to_string(sym);
+  g_assert_cmpstr(s, ==, "AAA");
+  g_free(s);
+  parser_fixture_free(&fixture);
+}
+
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
   g_test_add_func("/lisp_parser/empty_file", test_empty_file);
@@ -236,6 +247,7 @@ int main(int argc, char *argv[]) {
   g_test_add_func("/lisp_parser/extra_closing_paren", test_extra_closing_paren);
   g_test_add_func("/lisp_parser/comment", test_comment);
   g_test_add_func("/lisp_parser/node_to_string", test_node_to_string);
+  g_test_add_func("/lisp_parser/node_to_string_symbol", test_node_to_string_symbol_uppercase);
   return g_test_run();
 }
 

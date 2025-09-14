@@ -87,6 +87,10 @@ gchar *node_to_string(const Node *node) {
   if (!node)
     return NULL;
   if (!node->children || node->children->len == 0) {
+    if (node->type == LISP_AST_NODE_TYPE_SYMBOL_NAME ||
+        node->type == LISP_AST_NODE_TYPE_SYMBOL_PACKAGE) {
+      return node->start_token ? g_ascii_strup(node->start_token->text, -1) : NULL;
+    }
     return node->start_token ? g_strdup(node->start_token->text) : NULL;
   }
   if (node->type == LISP_AST_NODE_TYPE_LIST) {

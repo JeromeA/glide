@@ -261,6 +261,13 @@ still tagging their symbols.
 expressions. Functions are now added only when the `defun` is at the top level,
 while nested definitions are still analysed but not recorded in the project.
 
+## node_to_string returned lowercase symbols
+
+`node_to_string` duplicated the text of leaf symbol nodes without normalizing case.
+Parsing `aaa` therefore produced `aaa`, while other parts of the system expected
+`AAA`. The function now uppercases leaf symbol and package nodes so its output
+matches `node_get_name`.
+
 ## Package definition parsing only logged errors
 
 `project_on_package_definition` treated invalid REPL output as debug messages,
