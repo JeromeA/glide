@@ -225,9 +225,9 @@ interactions_view_init(InteractionsView *self)
   // Load CSS
   GtkCssProvider *provider = gtk_css_provider_new();
   gtk_css_provider_load_from_data(provider,
-      "." CSS_CLASS_OUTPUT " text { background-color: #f2f2f2; }"
-      " ." CSS_CLASS_ERROR " text { background-color: #ffe5e5; }"
-      " ." CSS_CLASS_RESULT " text { background-color: #e5ffe5; }",
+      "." CSS_CLASS_OUTPUT " text { background-color: #fff; }"
+      " ." CSS_CLASS_ERROR " text { background-color: #fee; }"
+      " ." CSS_CLASS_RESULT " text { background-color: #efe; }",
       -1, NULL);
 
   gtk_style_context_add_provider_for_screen(
