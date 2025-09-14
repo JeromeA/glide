@@ -36,6 +36,8 @@ static gboolean schedule_project_changed(gpointer data);
 static void on_project_changed(Project *project, gpointer user_data);
 static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
 static GdkPixbuf *load_icon(const gchar *filename);
+static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y,
+    gboolean keyboard_mode, GtkTooltip *tooltip, gpointer /*user_data*/);
 
 static void
 project_view_init(ProjectView *self)
@@ -52,8 +54,7 @@ project_view_init(ProjectView *self)
       G_TYPE_STRING);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
   gtk_widget_set_has_tooltip(GTK_WIDGET(self), TRUE);
-  gtk_tree_view_set_tooltip_column(GTK_TREE_VIEW(self),
-      PROJECT_VIEW_COL_TOOLTIP);
+  g_signal_connect(self, "query-tooltip", G_CALLBACK(on_query_tooltip), self);
 
   column = gtk_tree_view_column_new();
   /* Use a single column with icon and text renderers so the icon
@@ -327,6 +328,29 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
     }
   }
   return GTK_WIDGET_CLASS(project_view_parent_class)->button_press_event(widget, event);
+}
+
+static gboolean
+on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
+    GtkTooltip *tooltip, gpointer /*user_data*/)
+{
+  GtkTreeModel *model;
+  GtkTreePath *path;
+  GtkTreeIter iter;
+  if (!gtk_tree_view_get_tooltip_context(GTK_TREE_VIEW(widget), &x, &y,
+      keyboard_mode, &model, &path, &iter))
+    return FALSE;
+  gchar *tt = NULL;
+  gtk_tree_model_get(model, &iter, PROJECT_VIEW_COL_TOOLTIP, &tt, -1);
+  if (!tt) {
+    gtk_tree_path_free(path);
+    return FALSE;
+  }
+  gtk_tree_view_set_tooltip_row(GTK_TREE_VIEW(widget), tooltip, path);
+  gtk_tooltip_set_markup(tooltip, tt);
+  g_free(tt);
+  gtk_tree_path_free(path);
+  return TRUE;
 }
 
 static gboolean

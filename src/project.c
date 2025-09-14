@@ -137,27 +137,42 @@ gchar *project_function_tooltip(Function *function) {
   const gchar *name = function_get_name(function);
   if (lambda && name) {
     gchar *ls = node_to_string(lambda);
-    g_string_append_printf(tt, "(%s%s%s", pkg ? pkg : "",
-        pkg ? ":" : "", name);
     gsize len = strlen(ls);
+    gchar *pkg_esc = pkg ? g_markup_escape_text(pkg, -1) : NULL;
+    gchar *name_esc = g_markup_escape_text(name, -1);
+    g_string_append_c(tt, '(');
+    if (pkg_esc)
+      g_string_append_printf(tt, "<span foreground=\"gray\">%s</span>:", pkg_esc);
+    g_string_append(tt, name_esc);
     if (len > 2 && ls[0] == '(' && ls[len - 1] == ')') {
+      gchar *args = g_strndup(ls + 1, len - 2);
+      gchar *args_esc = g_markup_escape_text(args, -1);
       g_string_append_c(tt, ' ');
-      g_string_append_len(tt, ls + 1, len - 2);
+      g_string_append(tt, args_esc);
+      g_free(args);
+      g_free(args_esc);
     }
     g_string_append(tt, ")\n");
+    g_free(pkg_esc);
+    g_free(name_esc);
     g_free(ls);
   }
   const Node *sym = function_get_symbol(function);
   if (sym && sym->file) {
     const gchar *rel = project_file_get_relative_path(sym->file);
-    if (rel)
-      g_string_append_printf(tt, "File: %s\n", rel);
+    if (rel) {
+      gchar *rel_esc = g_markup_escape_text(rel, -1);
+      g_string_append_printf(tt, "File: %s\n", rel_esc);
+      g_free(rel_esc);
+    }
   }
   const gchar *doc = function_get_doc_string(function);
   if (doc && *doc) {
     if (tt->len)
       g_string_append_c(tt, '\n');
-    g_string_append(tt, doc);
+    gchar *doc_esc = g_markup_escape_text(doc, -1);
+    g_string_append(tt, doc_esc);
+    g_free(doc_esc);
   }
   if (!tt->len) {
     g_string_free(tt, TRUE);
