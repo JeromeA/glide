@@ -36,6 +36,16 @@ ProjectFile *project_file_new(Project *project, TextProvider *provider,
   return file;
 }
 
+ProjectFile *project_file_new_virtual(TextProvider *provider) {
+  g_return_val_if_fail(provider, NULL);
+  ProjectFile *file = g_new0(ProjectFile, 1);
+  file->state = PROJECT_FILE_LIVE;
+  file->provider = text_provider_ref(provider);
+  file->lexer = lisp_lexer_new(file->provider);
+  file->parser = lisp_parser_new();
+  return file;
+}
+
 void project_file_free(ProjectFile *file) {
   if (!file) return;
   if (file->parser) lisp_parser_free(file->parser);

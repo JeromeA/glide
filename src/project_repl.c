@@ -2,8 +2,7 @@
 #include "project_priv.h"
 #include "string_text_provider.h"
 #include "analyse_defpackage.h"
-#include "lisp_lexer.h"
-#include "lisp_parser.h"
+#include "project_file.h"
 #include "repl_session.h"
 #include "interaction.h"
 #include "util.h"
@@ -251,36 +250,23 @@ static void project_handle_compiled_function(Project *project,
   LOG(1, "describe %s compiled function lambda=%s", symbol,
       lambda_list ? lambda_list : "(unknown)");
   LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
+  ProjectFile *file = NULL;
   Node *lambda_node = NULL;
-  TextProvider *provider = NULL;
-  LispLexer *lexer = NULL;
-  LispParser *parser = NULL;
   if (lambda_list) {
-    provider = string_text_provider_new(lambda_list);
-    lexer = lisp_lexer_new(provider);
+    TextProvider *provider = string_text_provider_new(lambda_list);
+    file = project_file_new_virtual(provider);
+    text_provider_unref(provider);
+    LispLexer *lexer = project_file_get_lexer(file);
     lisp_lexer_lex(lexer);
     GArray *tokens = lisp_lexer_get_tokens(lexer);
-    parser = lisp_parser_new();
-    lisp_parser_parse(parser, tokens, NULL);
+    LispParser *parser = project_file_get_parser(file);
+    lisp_parser_parse(parser, tokens, file);
     const Node *ast = lisp_parser_get_ast(parser);
-    if (ast && ast->children && ast->children->len > 0) {
+    if (ast && ast->children && ast->children->len > 0)
       lambda_node = g_array_index(ast->children, Node*, 0);
-      g_array_remove_index(ast->children, 0);
-      lambda_node->parent = NULL;
-    }
   }
   Function *function = function_new(NULL, lambda_node, doc ? doc->str : NULL,
-      NULL, FUNCTION_KIND_FUNCTION, symbol, package);
-  if (lambda_node) {
-    /* Drop parser reference; Function keeps its own. */
-    node_unref(lambda_node);
-  }
-  if (parser)
-    lisp_parser_free(parser);
-  if (lexer)
-    lisp_lexer_free(lexer);
-  if (provider)
-    text_provider_unref(provider);
+      NULL, FUNCTION_KIND_FUNCTION, symbol, package, file);
   FunctionData *fd = g_new0(FunctionData, 1);
   fd->project = project;
   fd->function = function;
