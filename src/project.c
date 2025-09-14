@@ -133,9 +133,18 @@ gchar *project_function_tooltip(Function *function) {
   g_return_val_if_fail(function != NULL, NULL);
   GString *tt = g_string_new(NULL);
   const Node *lambda = function_get_lambda_list(function);
-  if (lambda) {
+  const gchar *pkg = function_get_package(function);
+  const gchar *name = function_get_name(function);
+  if (lambda && name) {
     gchar *ls = node_to_string(lambda);
-    g_string_append_printf(tt, "Lambda: %s\n", ls);
+    g_string_append_printf(tt, "(%s%s%s", pkg ? pkg : "",
+        pkg ? ":" : "", name);
+    gsize len = strlen(ls);
+    if (len > 2 && ls[0] == '(' && ls[len - 1] == ')') {
+      g_string_append_c(tt, ' ');
+      g_string_append_len(tt, ls + 1, len - 2);
+    }
+    g_string_append(tt, ")\n");
     g_free(ls);
   }
   const Node *sym = function_get_symbol(function);
