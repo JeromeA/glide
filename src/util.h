@@ -19,7 +19,7 @@ static inline void g_debug_long(const char *string, const char *msg)
   g_free(escaped);
 }
 
-#define VERBOSITY 1
+#define VERBOSITY 0
 
 #define LOG(level, ...) \
     do { if (VERBOSITY >= (level)) \
