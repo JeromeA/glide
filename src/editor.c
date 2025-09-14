@@ -158,10 +158,10 @@ editor_get_toplevel_range (Editor *self, gsize offset,
 
   while (find_parent_range(buffer, self->file, cur_start, cur_end,
       &new_start, &new_end)) {
-    if (new_start == 0 && new_end == len)
-      break;
     cur_start = new_start;
     cur_end = new_end;
+    if (cur_start == 0 && cur_end == len)
+      break;
   }
 
   if (cur_start == offset && cur_end == offset)
