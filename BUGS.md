@@ -361,3 +361,10 @@ the buffer bounds so end-of-file expressions evaluate correctly.
 reading the `describe` output for compiled functions. Tooltips therefore
 lacked argument lists. The handler now parses the `Lambda-list:` section and
 attaches the resulting AST to the `Function`.
+
+## project_function_tooltip added trailing newline
+
+Function tooltips always appended a newline after each section, leaving a blank
+line at the bottom when no further content followed. Newlines are now inserted
+only when another section is added, so tooltips no longer include trailing
+empty lines.

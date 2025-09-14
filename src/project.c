@@ -152,7 +152,7 @@ gchar *project_function_tooltip(Function *function) {
       g_free(args);
       g_free(args_esc);
     }
-    g_string_append(tt, ")\n");
+    g_string_append_c(tt, ')');
     g_free(pkg_esc);
     g_free(name_esc);
     g_free(ls);
@@ -162,7 +162,9 @@ gchar *project_function_tooltip(Function *function) {
     const gchar *rel = project_file_get_relative_path(sym->file);
     if (rel) {
       gchar *rel_esc = g_markup_escape_text(rel, -1);
-      g_string_append_printf(tt, "File: %s\n", rel_esc);
+      if (tt->len)
+        g_string_append_c(tt, '\n');
+      g_string_append_printf(tt, "File: %s", rel_esc);
       g_free(rel_esc);
     }
   }
