@@ -354,3 +354,10 @@ returned "nothing to evaluate". `editor_get_toplevel_range` broke out of its
 search loop before recording the full-buffer range, leaving start and end equal
 to the cursor offset. The function now updates the range prior to checking for
 the buffer bounds so end-of-file expressions evaluate correctly.
+
+## Describe omitted lambda list
+
+`project_on_describe` created `Function` objects without a lambda list when
+reading the `describe` output for compiled functions. Tooltips therefore
+lacked argument lists. The handler now parses the `Lambda-list:` section and
+attaches the resulting AST to the `Function`.
