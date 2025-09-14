@@ -59,11 +59,47 @@ const gchar *node_sd_type_to_string(StringDesignatorType sd_type) {
   }
 }
 
-gchar *node_to_string(const Node *node) {
+gchar *node_debug_string(const Node *node) {
   if (!node || node->sd_type == SDT_NONE)
     return NULL;
   const gchar *type = node_sd_type_to_string(node->sd_type);
   return g_strdup(type);
+}
+
+static gchar *join_children_with_spaces(const Node *node) {
+  if (!node->children || node->children->len == 0)
+    return NULL;
+  GString *str = g_string_new(NULL);
+  for (guint i = 0; i < node->children->len; i++) {
+    if (i > 0)
+      g_string_append_c(str, ' ');
+    Node *child = g_array_index(node->children, Node*, i);
+    gchar *child_str = node_to_string(child);
+    if (child_str) {
+      g_string_append(str, child_str);
+      g_free(child_str);
+    }
+  }
+  return g_string_free(str, FALSE);
+}
+
+gchar *node_to_string(const Node *node) {
+  if (!node)
+    return NULL;
+  if (!node->children || node->children->len == 0) {
+    return node->start_token ? g_strdup(node->start_token->text) : NULL;
+  }
+  if (node->type == LISP_AST_NODE_TYPE_LIST) {
+    GString *str = g_string_new(node->start_token ? node->start_token->text : "(");
+    gchar *children = join_children_with_spaces(node);
+    if (children) {
+      g_string_append(str, children);
+      g_free(children);
+    }
+    g_string_append(str, node->end_token ? node->end_token->text : ")");
+    return g_string_free(str, FALSE);
+  }
+  return join_children_with_spaces(node);
 }
 
 const gchar *node_get_name(const Node *node) {

@@ -48,6 +48,7 @@ void node_unref(Node *node);
 gboolean node_is(const Node *node, StringDesignatorType t);
 gboolean node_is_toplevel(const Node *node);
 const gchar *node_sd_type_to_string(StringDesignatorType sd_type);
+gchar *node_debug_string(const Node *node);
 gchar *node_to_string(const Node *node);
 const gchar *node_get_name(const Node *node);
 
