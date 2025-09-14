@@ -1,6 +1,7 @@
 #include "project_view.h"
 #include <gdk-pixbuf/gdk-pixbuf.h>
 #include "project_file.h"
+#include "project.h"
 #include "app.h"
 #include "file_new.h"
 #include "file_add.h"
@@ -47,8 +48,12 @@ project_view_init(ProjectView *self)
   self->project = NULL;
   self->app = NULL;
   self->store = gtk_tree_store_new(PROJECT_VIEW_N_COLS,
-      GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER);
+      GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER,
+      G_TYPE_STRING);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
+  gtk_widget_set_has_tooltip(GTK_WIDGET(self), TRUE);
+  gtk_tree_view_set_tooltip_column(GTK_TREE_VIEW(self),
+      PROJECT_VIEW_COL_TOOLTIP);
 
   column = gtk_tree_view_column_new();
   /* Use a single column with icon and text renderers so the icon
@@ -226,14 +231,17 @@ project_view_populate_store(ProjectView *self)
         g_qsort_with_data(fnames, fn, sizeof(gchar *), compare_names, NULL);
         for (guint j = 0; j < fn; j++) {
           const gchar *fname = fnames[j];
+          Function *func = project_get_function(self->project, fname);
+          gchar *tt = project_function_tooltip(func);
           gtk_tree_store_append(self->store, &grandchild, &child);
           gtk_tree_store_set(self->store, &grandchild,
               PROJECT_VIEW_COL_ICON, self->icon_function,
               PROJECT_VIEW_COL_TEXT, fname,
               PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_FUNCTION,
-              PROJECT_VIEW_COL_OBJECT,
-              project_get_function(self->project, fname),
+              PROJECT_VIEW_COL_OBJECT, func,
+              PROJECT_VIEW_COL_TOOLTIP, tt,
               -1);
+          g_free(tt);
         }
         g_free(fnames);
       }
