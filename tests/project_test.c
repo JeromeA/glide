@@ -155,7 +155,7 @@ static void test_function_tooltip(void)
   gchar *tooltip = project_function_tooltip(fn);
   g_assert_nonnull(tooltip);
   g_assert_cmpstr(tooltip, ==,
-      "(<span foreground=\"gray\">CL-USER</span>:FOO X Y)\n\ndoc");
+      "(<span foreground=\"gray\">CL-USER</span>:FOO X Y)\ndoc");
   g_free(tooltip);
   project_unref(project);
 }
