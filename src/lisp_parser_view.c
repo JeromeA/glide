@@ -104,7 +104,7 @@ add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent) {
   }
 
   if (node->sd_type)
-    info = node_to_string(node);
+    info = node_debug_string(node);
 
   gtk_tree_store_append(self->store, &iter, parent);
   gtk_tree_store_set(self->store, &iter,

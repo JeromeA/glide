@@ -5,7 +5,8 @@ endif
 
 VPATH = ../src
 INCLUDES = -I$(VPATH) -I..
-CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0 gtksourceview-4`
+VERBOSITY = -DVERBOSITY=0
+CFLAGS += -Wall $(INCLUDES) `pkg-config --cflags glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0 gtksourceview-4` $(VERBOSITY)
 COMMON = verbosity.c
 LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0 gtksourceview-4`
 TESTS = preferences_test process_test repl_process_test repl_session_test lisp_parser_test \
