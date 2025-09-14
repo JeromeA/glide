@@ -22,7 +22,6 @@ static void test_parse_on_change(void)
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
-  g_main_context_iteration(NULL, TRUE);
   LispParser *parser = project_file_get_parser(file);
   LispLexer *lexer = project_file_get_lexer(file);
   GArray *tokens = lisp_lexer_get_tokens(lexer);
@@ -30,11 +29,9 @@ static void test_parse_on_change(void)
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_START);
   project_file_changed(project, file); /* should still parse without error */
-  g_main_context_iteration(NULL, TRUE);
   const Node *ast = lisp_parser_get_ast(parser);
   g_assert_cmpint(ast->children->len, ==, 1);
   project_file_changed(project, file);
-  g_main_context_iteration(NULL, TRUE);
   project_unref(project);
 }
 
@@ -85,7 +82,6 @@ static void test_function_analysis(void)
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
-  g_main_context_iteration(NULL, TRUE);
   LispParser *parser = project_file_get_parser(file);
   const Node *ast = lisp_parser_get_ast(parser);
   const Node *form = g_array_index(ast->children, Node*, 0);
@@ -107,7 +103,6 @@ static void test_index(void)
       PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
-  g_main_context_iteration(NULL, TRUE);
   LispParser *parser = project_file_get_parser(file);
   const Node *ast = lisp_parser_get_ast(parser);
   const Node *form = g_array_index(ast->children, Node*, 0);
@@ -139,7 +134,6 @@ static void test_functions_table(void)
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
-  g_main_context_iteration(NULL, TRUE);
   Function *fn = project_get_function(project, "FOO");
   g_assert_nonnull(fn);
   const gchar *doc = function_get_doc_string(fn);
@@ -157,13 +151,11 @@ static void test_incremental_index(void)
   ProjectFile *f1 = project_add_file(project, p1, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(p1);
   project_file_changed(project, f1);
-  g_main_context_iteration(NULL, TRUE);
 
   TextProvider *p2 = string_text_provider_new("(defun bar () nil)");
   ProjectFile *f2 = project_add_file(project, p2, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(p2);
   project_file_changed(project, f2);
-  g_main_context_iteration(NULL, TRUE);
 
   GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
@@ -173,7 +165,6 @@ static void test_incremental_index(void)
   g_free(stp2->text);
   stp2->text = g_strdup("(defun baz () nil)");
   project_file_changed(project, f2);
-  g_main_context_iteration(NULL, TRUE);
 
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
   g_assert_null(g_hash_table_lookup(defs, "BAR"));

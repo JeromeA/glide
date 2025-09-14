@@ -206,39 +206,6 @@ void project_clear(Project *self) {
   project_changed(self);
 }
 
-typedef struct {
-  Project *project;
-  ProjectFile *file;
-} ProjectFileChangedData;
-
-static gboolean project_file_changed_finish(gpointer user_data) {
-  ProjectFileChangedData *data = user_data;
-  Project *self = data->project;
-  ProjectFile *file = data->file;
-  LispParser *parser = project_file_get_parser(file);
-  const Node *ast = lisp_parser_get_ast(parser);
-  if (ast)
-    analyse_ast(self, (Node*)ast);
-  if (ast)
-    project_index_walk(self->index, ast);
-  project_changed(self);
-  project_unref(self);
-  g_free(data);
-  return FALSE;
-}
-
-static gpointer project_file_changed_thread(gpointer user_data) {
-  ProjectFileChangedData *data = user_data;
-  ProjectFile *file = data->file;
-  LispLexer *lexer = project_file_get_lexer(file);
-  LispParser *parser = project_file_get_parser(file);
-  lisp_lexer_lex(lexer);
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens, file);
-  g_main_context_invoke(NULL, project_file_changed_finish, data);
-  return NULL;
-}
-
 void project_file_changed(Project *self, ProjectFile *file) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
@@ -247,11 +214,17 @@ void project_file_changed(Project *self, ProjectFile *file) {
   if (!project_file_get_lexer(file) || !project_file_get_parser(file))
     return;
   project_index_remove_file(self->index, file);
-  ProjectFileChangedData *data = g_new(ProjectFileChangedData, 1);
-  data->project = project_ref(self);
-  data->file = file;
-  GThread *thread = g_thread_new("project-file-changed", project_file_changed_thread, data);
-  g_thread_unref(thread);
+  LispLexer *lexer = project_file_get_lexer(file);
+  LispParser *parser = project_file_get_parser(file);
+  lisp_lexer_lex(lexer);
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  lisp_parser_parse(parser, tokens, file);
+  const Node *ast = lisp_parser_get_ast(parser);
+  if (ast)
+    analyse_ast(self, (Node*)ast);
+  if (ast)
+    project_index_walk(self->index, ast);
+  project_changed(self);
 }
 
 Project *project_ref(Project *self) {
