@@ -58,8 +58,11 @@ FULL_OBJECTS = $(SOURCES:.c=.full.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
 CLEANABLES += $(TARGETS) $(COV_OBJECTS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm *.gcda *.gcno out/ coverage.info
 
+# SANITIZER = -fsanitize=address,undefined,bounds -fno-omit-frame-pointer
+VERBOSITY = -DVERBOSITY=0
+
 app-cov $(COV_OBJECTS): CFLAGS += -g -DDEBUG -fprofile-arcs -ftest-coverage
-app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG -fsanitize=address -fno-omit-frame-pointer -pg
+app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG $(SANITIZER) $(VERBOSITY)
 app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
 
 all: $(TARGETS)
@@ -80,7 +83,7 @@ app-cov: $(COV_OBJECTS)
 :$(CC) -fprofile-arcs -ftest-coverage $^ -o $@ $(LDLIBS)
 
 app-full: $(FULL_OBJECTS)
-:$(CC) -fsanitize=address -pg $^ -o $@ $(LDLIBS)
+:$(CC) $(SANITIZER) $^ -o $@ $(LDLIBS)
 
 app-reloc: $(RELOC_OBJECTS)
 :$(CC) $^ -o $@ $(LDLIBS)
@@ -112,8 +115,6 @@ run-full: app-full
 :LSAN_OPTIONS="suppressions=${PWD}/lsan.supp" \
 :ASAN_OPTIONS="detect_leaks=1:abort_on_error=1" \
 :./app-full
-
-# :G_MESSAGES_DEBUG=all \
 
 clean:
 :rm -rf $(CLEANABLES)

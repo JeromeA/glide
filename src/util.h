@@ -19,8 +19,6 @@ static inline void g_debug_long(const char *string, const char *msg)
   g_free(escaped);
 }
 
-#define VERBOSITY 0
-
 #define LOG(level, ...) \
     do { if (VERBOSITY >= (level)) \
       g_log(G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, __VA_ARGS__); } while (0)
