@@ -8,6 +8,8 @@
 #include "file_rename.h"
 #include "util.h"
 
+#define CSS_CLASS_PROJECT_VIEW "project-view"
+
 struct _ProjectView {
   GtkTreeView parent_instance;
   Asdf *asdf;
@@ -71,6 +73,21 @@ project_view_init(ProjectView *self)
   self->icon_variable = load_icon("icon-variable.svg");
   self->icon_lisp = load_icon("icon-lisp.svg");
   self->project_changed_source = 0;
+
+  gtk_style_context_add_class(
+      gtk_widget_get_style_context(GTK_WIDGET(self)),
+      CSS_CLASS_PROJECT_VIEW);
+
+  GtkCssProvider *provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(provider,
+      "." CSS_CLASS_PROJECT_VIEW ".view:selected { background-color: #27b; }"
+      " ." CSS_CLASS_PROJECT_VIEW ".view:selected:focus { background-color: #27b; }",
+      -1, NULL);
+  gtk_style_context_add_provider_for_screen(
+      gdk_screen_get_default(),
+      GTK_STYLE_PROVIDER(provider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(provider);
 }
 
 static void
