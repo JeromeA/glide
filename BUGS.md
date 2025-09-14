@@ -328,3 +328,8 @@ scheduled `add_package_cb`, which destroyed the parser and its nodes. The loop
 describing exported symbols then dereferenced the freed pointer, corrupting the
 package name and crashing. The handler now duplicates the package name before
 queuing the callback and frees the copy after use.
+
+## Async project file analysis raced with edits
+
+`project_file_changed` parsed files on a worker thread while the UI could modify the buffer, producing
+inconsistent ASTs and indexes. The analysis now runs synchronously on the UI thread to avoid races.
