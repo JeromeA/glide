@@ -43,6 +43,7 @@ void           project_add_function(Project *self, Function *function);
 Function      *project_get_function(Project *self, const gchar *name);
 gchar        **project_get_function_names(Project *self, const gchar *package,
     guint *length);
+gchar        *project_function_tooltip(Function *function);
 void           project_add_variable(Project *self, const gchar *package,
     const gchar *name, const gchar *doc);
 const gchar   *project_get_variable(Project *self, const gchar *name);

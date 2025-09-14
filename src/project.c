@@ -129,6 +129,34 @@ gchar **project_get_function_names(Project *self, const gchar *package,
   return project_index_get_function_names(self->index, package, length);
 }
 
+gchar *project_function_tooltip(Function *function) {
+  g_return_val_if_fail(function != NULL, NULL);
+  GString *tt = g_string_new(NULL);
+  const Node *lambda = function_get_lambda_list(function);
+  if (lambda) {
+    gchar *ls = node_to_string(lambda);
+    g_string_append_printf(tt, "Lambda: %s\n", ls);
+    g_free(ls);
+  }
+  const Node *sym = function_get_symbol(function);
+  if (sym && sym->file) {
+    const gchar *rel = project_file_get_relative_path(sym->file);
+    if (rel)
+      g_string_append_printf(tt, "File: %s\n", rel);
+  }
+  const gchar *doc = function_get_doc_string(function);
+  if (doc && *doc) {
+    if (tt->len)
+      g_string_append_c(tt, '\n');
+    g_string_append(tt, doc);
+  }
+  if (!tt->len) {
+    g_string_free(tt, TRUE);
+    return NULL;
+  }
+  return g_string_free(tt, FALSE);
+}
+
 void project_add_variable(Project *self, const gchar *package,
     const gchar *name, const gchar *doc) {
   g_return_if_fail(self != NULL);
