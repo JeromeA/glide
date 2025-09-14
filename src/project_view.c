@@ -36,6 +36,8 @@ static gboolean schedule_project_changed(gpointer data);
 static void on_project_changed(Project *project, gpointer user_data);
 static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
 static GdkPixbuf *load_icon(const gchar *filename);
+static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y,
+    gboolean keyboard_mode, GtkTooltip *tooltip, gpointer /*user_data*/);
 
 static void
 project_view_init(ProjectView *self)
@@ -48,12 +50,10 @@ project_view_init(ProjectView *self)
   self->project = NULL;
   self->app = NULL;
   self->store = gtk_tree_store_new(PROJECT_VIEW_N_COLS,
-      GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER,
-      G_TYPE_STRING);
+      GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
   gtk_widget_set_has_tooltip(GTK_WIDGET(self), TRUE);
-  gtk_tree_view_set_tooltip_column(GTK_TREE_VIEW(self),
-      PROJECT_VIEW_COL_TOOLTIP);
+  g_signal_connect(self, "query-tooltip", G_CALLBACK(on_query_tooltip), self);
 
   column = gtk_tree_view_column_new();
   /* Use a single column with icon and text renderers so the icon
@@ -232,16 +232,13 @@ project_view_populate_store(ProjectView *self)
         for (guint j = 0; j < fn; j++) {
           const gchar *fname = fnames[j];
           Function *func = project_get_function(self->project, fname);
-          gchar *tt = project_function_tooltip(func);
           gtk_tree_store_append(self->store, &grandchild, &child);
           gtk_tree_store_set(self->store, &grandchild,
               PROJECT_VIEW_COL_ICON, self->icon_function,
               PROJECT_VIEW_COL_TEXT, fname,
               PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_FUNCTION,
               PROJECT_VIEW_COL_OBJECT, func,
-              PROJECT_VIEW_COL_TOOLTIP, tt,
               -1);
-          g_free(tt);
         }
         g_free(fnames);
       }
@@ -327,6 +324,36 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
     }
   }
   return GTK_WIDGET_CLASS(project_view_parent_class)->button_press_event(widget, event);
+}
+
+static gboolean
+on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
+    GtkTooltip *tooltip, gpointer /*user_data*/)
+{
+  GtkTreeModel *model;
+  GtkTreePath *path;
+  GtkTreeIter iter;
+  if (!gtk_tree_view_get_tooltip_context(GTK_TREE_VIEW(widget), &x, &y,
+      keyboard_mode, &model, &path, &iter))
+    return FALSE;
+  gint kind = 0;
+  gpointer obj = NULL;
+  gtk_tree_model_get(model, &iter,
+      PROJECT_VIEW_COL_KIND, &kind,
+      PROJECT_VIEW_COL_OBJECT, &obj,
+      -1);
+  gboolean rv = FALSE;
+  if (kind == PROJECT_VIEW_KIND_FUNCTION && obj) {
+    gchar *tt = project_function_tooltip((Function *) obj);
+    if (tt) {
+      gtk_tree_view_set_tooltip_row(GTK_TREE_VIEW(widget), tooltip, path);
+      gtk_tooltip_set_markup(tooltip, tt);
+      g_free(tt);
+      rv = TRUE;
+    }
+  }
+  gtk_tree_path_free(path);
+  return rv;
 }
 
 static gboolean

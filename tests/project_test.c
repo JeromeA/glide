@@ -154,7 +154,8 @@ static void test_function_tooltip(void)
   Function *fn = project_get_function(project, "FOO");
   gchar *tooltip = project_function_tooltip(fn);
   g_assert_nonnull(tooltip);
-  g_assert_cmpstr(tooltip, ==, "(CL-USER:FOO x y)\n\ndoc");
+  g_assert_cmpstr(tooltip, ==,
+      "(<span foreground=\"gray\">CL-USER</span>:FOO X Y)\n\ndoc");
   g_free(tooltip);
   project_unref(project);
 }
