@@ -339,3 +339,11 @@ inconsistent ASTs and indexes. The analysis now runs synchronously on the UI thr
 The INLINE build includes every source file in a single translation unit. Two static functions were both named
 `add_package_cb`, so the compiler reported a redefinition error. Renaming the REPL callback to
 `analyse_defpackage_cb` restored unique names and allowed the inline version to compile.
+
+## Eval toplevel ignored form without trailing newline
+
+Evaluating a buffer containing a single form without a terminating newline
+returned "nothing to evaluate". `editor_get_toplevel_range` broke out of its
+search loop before recording the full-buffer range, leaving start and end equal
+to the cursor offset. The function now updates the range prior to checking for
+the buffer bounds so end-of-file expressions evaluate correctly.
