@@ -144,6 +144,21 @@ static void test_functions_table(void)
   project_unref(project);
 }
 
+static void test_function_tooltip(void)
+{
+  Project *project = project_new(NULL);
+  TextProvider *provider = string_text_provider_new("(defun foo (x y) \"doc\")");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
+  project_file_changed(project, file);
+  Function *fn = project_get_function(project, "FOO");
+  gchar *tooltip = project_function_tooltip(fn);
+  g_assert_nonnull(tooltip);
+  g_assert_cmpstr(tooltip, ==, "(CL-USER:FOO x y)\n\ndoc");
+  g_free(tooltip);
+  project_unref(project);
+}
+
 static void test_incremental_index(void)
 {
   Project *project = project_new(NULL);
@@ -248,6 +263,7 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/function_analysis", test_function_analysis);
   g_test_add_func("/project/index", test_index);
   g_test_add_func("/project/functions_table", test_functions_table);
+  g_test_add_func("/project/function_tooltip", test_function_tooltip);
   g_test_add_func("/project/incremental_index", test_incremental_index);
   g_test_add_func("/project/relative_path", test_relative_path);
   g_test_add_func("/project/remove_file", test_remove_file);
