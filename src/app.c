@@ -151,6 +151,17 @@ app_startup (GApplication *app)
   App *self = GLIDE_APP(app);
   self->project = project_new(self->glide);
   actions_init(self);
+
+  // Load tooltip CSS
+  GtkCssProvider *provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(provider,
+      "tooltip { color: #000; background-color: #eee; }",
+      -1, NULL);
+  gtk_style_context_add_provider_for_screen(
+      gdk_screen_get_default(),
+      GTK_STYLE_PROVIDER(provider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(provider);
 }
 
 static void
