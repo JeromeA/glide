@@ -1,4 +1,5 @@
 #include "function.h"
+#include "project_file.h"
 
 struct Function {
   gint ref;
@@ -9,11 +10,13 @@ struct Function {
   gchar *name;
   gchar *package;
   FunctionKind kind;
+  ProjectFile *file;
 };
 
 Function *
 function_new(Node *symbol, Node *lambda_list, const gchar *doc_string,
-    Node *type, FunctionKind kind, const gchar *name, const gchar *package)
+    Node *type, FunctionKind kind, const gchar *name, const gchar *package,
+    ProjectFile *file)
 {
   Function *function = g_new0(Function, 1);
   g_atomic_int_set(&function->ref, 1);
@@ -26,6 +29,7 @@ function_new(Node *symbol, Node *lambda_list, const gchar *doc_string,
   function->package = package ? g_strdup(package) :
     (symbol ? g_strdup(symbol->package_context) : NULL);
   function->kind = kind;
+  function->file = file;
   return function;
 }
 
@@ -49,6 +53,8 @@ function_finalize(Function *function)
   g_clear_pointer(&function->doc_string, g_free);
   g_clear_pointer(&function->name, g_free);
   g_clear_pointer(&function->package, g_free);
+  if (function->file)
+    project_file_free(function->file);
 }
 
 void

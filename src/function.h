@@ -12,7 +12,7 @@ typedef struct Function Function;
 
 Function *function_new(Node *symbol, Node *lambda_list,
     const gchar *doc_string, Node *type, FunctionKind kind,
-    const gchar *name, const gchar *package);
+    const gchar *name, const gchar *package, ProjectFile *file);
 Function *function_ref(Function *function);
 void function_unref(Function *function);
 

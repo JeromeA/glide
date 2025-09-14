@@ -17,6 +17,7 @@ typedef struct _ProjectFile ProjectFile;
 
 ProjectFile *project_file_new(Project *project, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
+ProjectFile *project_file_new_virtual(TextProvider *provider);
 void        project_file_free(ProjectFile *file);
 ProjectFileState project_file_get_state(ProjectFile *file);
 void        project_file_set_state(ProjectFile *file, ProjectFileState state);
