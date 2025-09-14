@@ -28,6 +28,9 @@ static void test_describe(void) {
   }
   g_assert_nonnull(fn);
   g_assert_cmpstr(function_get_doc_string(fn), ==, "foo doc");
+  const Node *lambda = function_get_lambda_list(fn);
+  g_assert_nonnull(lambda);
+  g_assert_cmpint(lambda->type, ==, LISP_AST_NODE_TYPE_LIST);
   g_assert_nonnull(var_doc);
   g_assert_cmpstr(var_doc, ==, "bar doc");
 
