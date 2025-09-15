@@ -375,3 +375,11 @@ The AST range search function relied on token offsets and lived in `editor.c`,
 so nodes without explicit tokens were skipped and the code was misplaced.
 `node_find_containing_range` now resides in `node.c` and computes bounds using
 `node_get_start_offset` and `node_get_end_offset` to handle all nodes.
+
+## Last open file not restored
+
+Glide failed to reopen the previously active file on startup. The application
+only saved the current file when quitting, so unexpected termination left the
+preferences without the last file and cursor position. The page switch handler
+now updates both values whenever the user changes tabs, ensuring the last open
+file and cursor are restored at launch.
