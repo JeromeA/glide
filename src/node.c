@@ -46,6 +46,24 @@ gboolean node_is_toplevel(const Node *node) {
   return node->parent->parent == NULL;
 }
 
+gsize node_get_start_offset(const Node *node) {
+  g_return_val_if_fail(node, 0);
+  if (node->start_token)
+    return node->start_token->start_offset;
+  g_return_val_if_fail(node->children && node->children->len > 0, 0);
+  Node *child = g_array_index(node->children, Node*, 0);
+  return node_get_start_offset(child);
+}
+
+gsize node_get_end_offset(const Node *node) {
+  g_return_val_if_fail(node, 0);
+  if (node->end_token)
+    return node->end_token->end_offset;
+  g_return_val_if_fail(node->children && node->children->len > 0, 0);
+  Node *child = g_array_index(node->children, Node*, node->children->len - 1);
+  return node_get_end_offset(child);
+}
+
 const gchar *node_sd_type_to_string(StringDesignatorType sd_type) {
   switch(sd_type) {
     case SDT_VAR_DEF: return "VarDef";
