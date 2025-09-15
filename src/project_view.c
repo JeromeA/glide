@@ -330,18 +330,23 @@ static gboolean
 project_view_on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
     GtkTooltip *tooltip, gpointer /*user_data*/)
 {
+  g_assert(glide_is_ui_thread());
+  LOG(1, "ProjectView.on_query_tooltip at %d,%d", x, y);
   GtkTreeModel *model;
   GtkTreePath *path;
   GtkTreeIter iter;
   if (!gtk_tree_view_get_tooltip_context(GTK_TREE_VIEW(widget), &x, &y,
-      keyboard_mode, &model, &path, &iter))
+      keyboard_mode, &model, &path, &iter)) {
+    LOG(1, "ProjectView.on_query_tooltip: no context");
     return FALSE;
+  }
   gint kind = 0;
   gpointer obj = NULL;
   gtk_tree_model_get(model, &iter,
       PROJECT_VIEW_COL_KIND, &kind,
       PROJECT_VIEW_COL_OBJECT, &obj,
       -1);
+  LOG(1, "ProjectView.on_query_tooltip: kind=%d obj=%p", kind, obj);
   gboolean rv = FALSE;
   if (kind == PROJECT_VIEW_KIND_FUNCTION && obj) {
     gchar *tt = function_tooltip((Function *) obj);
@@ -350,9 +355,14 @@ project_view_on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboa
       gtk_tooltip_set_markup(tooltip, tt);
       g_free(tt);
       rv = TRUE;
+    } else {
+      LOG(1, "ProjectView.on_query_tooltip: empty tooltip");
     }
+  } else {
+    LOG(1, "ProjectView.on_query_tooltip: no tooltip for kind=%d", kind);
   }
   gtk_tree_path_free(path);
+  LOG(1, "ProjectView.on_query_tooltip: rv=%d", rv);
   return rv;
 }
 

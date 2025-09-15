@@ -199,9 +199,13 @@ static gboolean
 editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_mode*/,
     GtkTooltip *tooltip, gpointer user_data)
 {
+  g_assert (glide_is_ui_thread ());
+  LOG (1, "Editor.on_query_tooltip at %d,%d", x, y);
+
   Editor *self = GLIDE_EDITOR (user_data);
-  if (!self || !self->file || !self->project)
-    return FALSE;
+  g_return_val_if_fail (self != NULL, FALSE);
+  g_return_val_if_fail (self->file != NULL, FALSE);
+  g_return_val_if_fail (self->project != NULL, FALSE);
   GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (widget));
   GtkTextIter iter;
   gint bx;
@@ -214,22 +218,33 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   gsize len = gtk_text_iter_get_offset (&end_iter);
   gsize offset = gtk_text_iter_get_offset (&iter);
   gsize end = offset < len ? offset + 1 : offset;
+  LOG (1, "offset=%zu end=%zu len=%zu", offset, end, len);
   LispParser *parser = project_file_get_parser (self->file);
   const Node *ast = lisp_parser_get_ast (parser);
   const Node *node = find_node_containing_range (ast, offset, end, len);
-  if (node && node_is (node, SDT_FUNCTION_USE)) {
-    const gchar *name = node_get_name (node);
-    Function *fn = project_get_function (self->project, name);
-    if (fn) {
-      gchar *tt = function_tooltip (fn);
-      if (tt) {
-        gtk_tooltip_set_markup (tooltip, tt);
-        g_free (tt);
-        return TRUE;
-      }
-    }
+  if (!node) {
+    LOG (1, "Editor.on_query_tooltip: no node");
+    return FALSE;
   }
-  return FALSE;
+  if (!node_is (node, SDT_FUNCTION_USE)) {
+    LOG (1, "Editor.on_query_tooltip: node not a function use");
+    return FALSE;
+  }
+  const gchar *name = node_get_name (node);
+  LOG (1, "Editor.on_query_tooltip: function %s", name);
+  Function *fn = project_get_function (self->project, name);
+  if (!fn) {
+    LOG (1, "Editor.on_query_tooltip: function not found");
+    return FALSE;
+  }
+  gchar *tt = function_tooltip (fn);
+  if (!tt) {
+    LOG (1, "Editor.on_query_tooltip: no tooltip");
+    return FALSE;
+  }
+  gtk_tooltip_set_markup (tooltip, tt);
+  g_free (tt);
+  return TRUE;
 }
 
 static gboolean
