@@ -156,7 +156,8 @@ static void test_function_tooltip(void)
   g_assert_nonnull(tooltip);
   g_assert_cmpstr(tooltip, ==,
       "In <span foreground=\"darkgreen\">CL-USER</span>:\n"
-      "(<span foreground=\"brown\">FOO</span> X <span foreground=\"darkgreen\">&amp;REST</span> REST)\ndoc");
+      "(<span foreground=\"brown\"><b>FOO</b></span> X <span foreground=\"darkgreen\">&amp;REST</span> REST)\n\n"
+      "doc");
   g_free(tooltip);
   project_unref(project);
 }

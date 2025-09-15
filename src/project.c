@@ -143,7 +143,7 @@ gchar *project_function_tooltip(Function *function) {
     if (pkg_esc)
       g_string_append_printf(tt,
           "In <span foreground=\"darkgreen\">%s</span>:\n", pkg_esc);
-    g_string_append_printf(tt, "(<span foreground=\"brown\">%s</span>",
+    g_string_append_printf(tt, "(<span foreground=\"brown\"><b>%s</b></span>",
         name_esc);
     if (len > 2 && ls[0] == '(' && ls[len - 1] == ')') {
       gchar *args = g_strndup(ls + 1, len - 2);
@@ -186,7 +186,7 @@ gchar *project_function_tooltip(Function *function) {
   const gchar *doc = function_get_doc_string(function);
   if (doc && *doc) {
     if (tt->len)
-      g_string_append_c(tt, '\n');
+      g_string_append(tt, "\n\n");
     gchar *doc_esc = g_markup_escape_text(doc, -1);
     g_string_append(tt, doc_esc);
     g_free(doc_esc);
