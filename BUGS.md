@@ -368,3 +368,10 @@ Function tooltips always appended a newline after each section, leaving a blank
 line at the bottom when no further content followed. Newlines are now inserted
 only when another section is added, so tooltips no longer include trailing
 empty lines.
+
+## find_node_containing_range used token offsets
+
+The AST range search function relied on token offsets and lived in `editor.c`,
+so nodes without explicit tokens were skipped and the code was misplaced.
+`node_find_containing_range` now resides in `node.c` and computes bounds using
+`node_get_start_offset` and `node_get_end_offset` to handle all nodes.

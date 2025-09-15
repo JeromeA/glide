@@ -177,23 +177,6 @@ editor_get_toplevel_range (Editor *self, gsize offset,
   return TRUE;
 }
 
-static const Node *
-find_node_containing_range (const Node *node, gsize start, gsize end, gsize len)
-{
-  if (!node)
-    return NULL;
-  gsize node_start = node->start_token ? node->start_token->start_offset : 0;
-  gsize node_end = node->end_token ? node->end_token->end_offset : len;
-  if (start < node_start || end > node_end)
-    return NULL;
-  for (guint i = 0; node->children && i < node->children->len; i++) {
-    const Node *child = g_array_index (node->children, Node*, i);
-    const Node *found = find_node_containing_range (child, start, end, len);
-    if (found)
-      return found;
-  }
-  return node;
-}
 
 static gboolean
 editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_mode*/,
@@ -221,7 +204,7 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   LOG (1, "offset=%zu end=%zu len=%zu", offset, end, len);
   LispParser *parser = project_file_get_parser (self->file);
   const Node *ast = lisp_parser_get_ast (parser);
-  const Node *node = find_node_containing_range (ast, offset, end, len);
+  const Node *node = node_find_containing_range (ast, offset, end);
   if (!node) {
     LOG (1, "Editor.on_query_tooltip: no node");
     return FALSE;
@@ -259,21 +242,21 @@ find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
 
   LispParser *parser = project_file_get_parser (file);
   const Node *ast = lisp_parser_get_ast (parser);
-  const Node *node = find_node_containing_range (ast, start, end, len);
+  const Node *node = node_find_containing_range (ast, start, end);
   if (!node) {
     LOG(1, "no node found");
     return FALSE;
   }
 
-  gsize node_start = node->start_token ? node->start_token->start_offset : 0;
-  gsize node_end = node->end_token ? node->end_token->end_offset : len;
+  gsize node_start = node_get_start_offset (node);
+  gsize node_end = node_get_end_offset (node);
   const Node *parent = node->parent;
 
   while (node_start == start && node_end == end && parent) {
     LOG(1, "parent has same range [%zu,%zu), climbing", node_start, node_end);
     node = parent;
-    node_start = node->start_token ? node->start_token->start_offset : 0;
-    node_end = node->end_token ? node->end_token->end_offset : len;
+    node_start = node_get_start_offset (node);
+    node_end = node_get_end_offset (node);
     parent = node->parent;
   }
 
