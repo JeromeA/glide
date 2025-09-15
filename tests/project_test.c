@@ -147,7 +147,7 @@ static void test_functions_table(void)
 static void test_function_tooltip(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(defun foo (x y) \"doc\")");
+  TextProvider *provider = string_text_provider_new("(defun foo (x &rest rest) \"doc\")");
   ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
   text_provider_unref(provider);
   project_file_changed(project, file);
@@ -155,7 +155,8 @@ static void test_function_tooltip(void)
   gchar *tooltip = project_function_tooltip(fn);
   g_assert_nonnull(tooltip);
   g_assert_cmpstr(tooltip, ==,
-      "(<span foreground=\"gray\">CL-USER</span>:FOO X Y)\ndoc");
+      "In <span foreground=\"darkgreen\">CL-USER</span>:\n"
+      "(<span foreground=\"brown\">FOO</span> X <span foreground=\"darkgreen\">&amp;REST</span> REST)\ndoc");
   g_free(tooltip);
   project_unref(project);
 }
