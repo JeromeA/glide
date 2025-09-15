@@ -154,7 +154,7 @@ void repl_session_set_interaction_updated_cb(ReplSession *self, ReplSessionCallb
 void repl_session_on_message(GString *msg, gpointer user_data) {
   ReplSession *self = user_data ? (ReplSession*)user_data : NULL;
   const char *str = msg->str;
-  LOG_LONG(1, "ReplSession.on_message ", str);
+  LOG_LONG(2, "ReplSession.on_message ", str);
   while (*str && *str != '(') {
     if (*str == ';') {
       const char *nl = strchr(str, '\n');
@@ -184,7 +184,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strstr(start, "\")");
       if (end) {
         GString *text = g_string_new_len(start, end - start);
-        LOG_LONG(1, "ReplSession.on_message stdout: ", text->str);
+        LOG_LONG(2, "ReplSession.on_message stdout: ", text->str);
         g_mutex_lock(&interaction->lock);
         if (!interaction->output)
           interaction->output = text;
@@ -207,7 +207,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strstr(start, "\")");
       if (end) {
         GString *text = g_string_new_len(start, end - start);
-        LOG_LONG(1, "ReplSession.on_message stderr: ", text->str);
+        LOG_LONG(2, "ReplSession.on_message stderr: ", text->str);
         g_mutex_lock(&interaction->lock);
         if (!interaction->output)
           interaction->output = text;
@@ -230,7 +230,7 @@ void repl_session_on_message(GString *msg, gpointer user_data) {
       const char *end = strrchr(start, ')');
       if (end) {
         GString *res = g_string_new_len(start, end - start);
-        LOG_LONG(1, "ReplSession.on_message result: ", res->str);
+        LOG_LONG(2, "ReplSession.on_message result: ", res->str);
         g_mutex_lock(&interaction->lock);
         if (interaction->result)
           g_string_assign(interaction->result, res->str);

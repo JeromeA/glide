@@ -40,8 +40,7 @@ editor_init (Editor *self)
       GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   gtk_container_add (GTK_CONTAINER (self), GTK_WIDGET (self->view));
   gtk_widget_set_has_tooltip (GTK_WIDGET (self->view), TRUE);
-  g_signal_connect (self->view, "query-tooltip",
-      G_CALLBACK (editor_on_query_tooltip), self);
+  g_signal_connect (self->view, "query-tooltip", G_CALLBACK (editor_on_query_tooltip), self);
 
   self->project = NULL;
   self->file = NULL;
@@ -161,8 +160,7 @@ editor_get_toplevel_range (Editor *self, gsize offset,
   gsize new_start;
   gsize new_end;
 
-  while (find_parent_range(buffer, self->file, cur_start, cur_end,
-      &new_start, &new_end)) {
+  while (find_parent_range(buffer, self->file, cur_start, cur_end, &new_start, &new_end)) {
     cur_start = new_start;
     cur_end = new_end;
     if (cur_start == 0 && cur_end == len)
@@ -183,18 +181,16 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
     GtkTooltip *tooltip, gpointer user_data)
 {
   g_assert (glide_is_ui_thread ());
-  LOG (1, "Editor.on_query_tooltip at %d,%d", x, y);
-
   Editor *self = GLIDE_EDITOR (user_data);
   g_return_val_if_fail (self != NULL, FALSE);
   g_return_val_if_fail (self->file != NULL, FALSE);
   g_return_val_if_fail (self->project != NULL, FALSE);
+  LOG (1, "Editor.on_query_tooltip at %d,%d", x, y);
   GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (widget));
   GtkTextIter iter;
   gint bx;
   gint by;
-  gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (widget),
-      GTK_TEXT_WINDOW_WIDGET, x, y, &bx, &by);
+  gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (widget), GTK_TEXT_WINDOW_WIDGET, x, y, &bx, &by);
   gtk_text_view_get_iter_at_location (GTK_TEXT_VIEW (widget), &iter, bx, by);
   GtkTextIter end_iter;
   gtk_text_buffer_get_end_iter (buffer, &end_iter);

@@ -17,7 +17,7 @@ static void on_proc_out(GString *data, gpointer user_data) {
   ReplProcess *self = user_data;
   g_mutex_lock(&self->mutex);
   g_string_append_len(self->buffer, data->str, data->len);
-  LOG_LONG(1, "ReplProcess.on_proc_out added: ", data->str);
+  LOG_LONG(3, "ReplProcess.on_proc_out added: ", data->str);
   while(TRUE) {
     while (self->buffer->len > 0 && self->buffer->str[0] == '\n') {
       g_string_erase(self->buffer, 0, 1);
@@ -52,14 +52,14 @@ static void on_proc_out(GString *data, gpointer user_data) {
       }
     }
     if (!complete) {
-      LOG_LONG(1, "ReplProcess.on_proc_out incomplete: ", self->buffer->str);
+      LOG_LONG(3, "ReplProcess.on_proc_out incomplete: ", self->buffer->str);
       g_mutex_unlock(&self->mutex);
       return;
     }
     GString *line = g_string_new_len(self->buffer->str, i + 1);
     g_string_erase(self->buffer, 0, i + 1);
-    LOG_LONG(1, "ReplProcess.on_proc_out forwarding: ", line->str);
-    LOG_LONG(1, "ReplProcess.on_proc_out still in buffer: ", self->buffer->str);
+    LOG_LONG(3, "ReplProcess.on_proc_out forwarding: ", line->str);
+    LOG_LONG(3, "ReplProcess.on_proc_out still in buffer: ", self->buffer->str);
     g_mutex_unlock(&self->mutex);
     if (self->msg_cb)
       self->msg_cb(line, self->msg_cb_data);
