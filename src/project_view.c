@@ -36,7 +36,7 @@ static gboolean schedule_project_changed(gpointer data);
 static void on_project_changed(Project *project, gpointer user_data);
 static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
 static GdkPixbuf *load_icon(const gchar *filename);
-static gboolean on_query_tooltip(GtkWidget *widget, gint x, gint y,
+static gboolean project_view_on_query_tooltip(GtkWidget *widget, gint x, gint y,
     gboolean keyboard_mode, GtkTooltip *tooltip, gpointer /*user_data*/);
 
 static void
@@ -53,7 +53,7 @@ project_view_init(ProjectView *self)
       GDK_TYPE_PIXBUF, G_TYPE_STRING, G_TYPE_INT, G_TYPE_POINTER);
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
   gtk_widget_set_has_tooltip(GTK_WIDGET(self), TRUE);
-  g_signal_connect(self, "query-tooltip", G_CALLBACK(on_query_tooltip), self);
+  g_signal_connect(self, "query-tooltip", G_CALLBACK(project_view_on_query_tooltip), self);
 
   column = gtk_tree_view_column_new();
   /* Use a single column with icon and text renderers so the icon
@@ -327,7 +327,7 @@ on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data)
 }
 
 static gboolean
-on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
+project_view_on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
     GtkTooltip *tooltip, gpointer /*user_data*/)
 {
   GtkTreeModel *model;
