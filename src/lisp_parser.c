@@ -180,6 +180,38 @@ static Node *parse_expression(LispParser *parser, GArray *tokens, guint *positio
     }
     list_node->end_token = NULL;
     return list_node;
+  } else if (token->type == LISP_TOKEN_TYPE_QUOTE ||
+             token->type == LISP_TOKEN_TYPE_BACKQUOTE ||
+             token->type == LISP_TOKEN_TYPE_UNQUOTE ||
+             token->type == LISP_TOKEN_TYPE_UNQUOTE_SPLICING) {
+    LispAstNodeType type;
+    switch(token->type) {
+      case LISP_TOKEN_TYPE_QUOTE:
+        type = LISP_AST_NODE_TYPE_QUOTE;
+        break;
+      case LISP_TOKEN_TYPE_BACKQUOTE:
+        type = LISP_AST_NODE_TYPE_BACKQUOTE;
+        break;
+      case LISP_TOKEN_TYPE_UNQUOTE:
+        type = LISP_AST_NODE_TYPE_UNQUOTE;
+        break;
+      default:
+        type = LISP_AST_NODE_TYPE_UNQUOTE_SPLICING;
+        break;
+    }
+    Node *macro_node = node_new(type, parser->file);
+    macro_node->start_token = token;
+    macro_node->children = g_array_new(FALSE, FALSE, sizeof(Node*));
+    (*position)++;
+    Node *child_expr = parse_expression(parser, tokens, position);
+    if (child_expr) {
+      child_expr->parent = macro_node;
+      g_array_append_val(macro_node->children, child_expr);
+      macro_node->end_token = child_expr->end_token;
+    } else {
+      macro_node->end_token = token;
+    }
+    return macro_node;
   } else if (token->type == LISP_TOKEN_TYPE_NUMBER || token->type == LISP_TOKEN_TYPE_STRING) {
     Node *atom_node;
     if (token->type == LISP_TOKEN_TYPE_STRING)

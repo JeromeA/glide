@@ -138,6 +138,20 @@ gchar *node_to_string(const Node *node) {
     g_string_append(str, node->end_token ? node->end_token->text : ")");
     return g_string_free(str, FALSE);
   }
+  if (node->type == LISP_AST_NODE_TYPE_QUOTE ||
+      node->type == LISP_AST_NODE_TYPE_BACKQUOTE ||
+      node->type == LISP_AST_NODE_TYPE_UNQUOTE ||
+      node->type == LISP_AST_NODE_TYPE_UNQUOTE_SPLICING) {
+    GString *str = g_string_new(node->start_token ? node->start_token->text : "");
+    if (node->children && node->children->len > 0) {
+      gchar *child = node_to_string(g_array_index(node->children, Node*, 0));
+      if (child) {
+        g_string_append(str, child);
+        g_free(child);
+      }
+    }
+    return g_string_free(str, FALSE);
+  }
   return join_children_with_spaces(node);
 }
 
