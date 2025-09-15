@@ -102,7 +102,7 @@ void analyse_defpackage(Project *project, Node *expr, AnalyseContext *context) {
     }
   }
 
-  if (node_is_toplevel(expr) && pkg && !context->backquote) {
+  if (node_is_toplevel(expr) && pkg) {
     AddPackageData *data = g_new0(AddPackageData, 1);
     data->project = project;
     data->package = package_ref(pkg);

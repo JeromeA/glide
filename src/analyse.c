@@ -35,20 +35,22 @@ void analyse_node(Project *project, Node *node, AnalyseContext *context) {
         if (name) {
           if (!first->sd_type)
             node_set_sd_type(first, SDT_FUNCTION_USE, context->package);
-          if (strcmp(name, "DEFUN") == 0) {
-            analyse_defun(project, node, context);
-            return;
-          } else if (strcmp(name, "IN-PACKAGE") == 0 && node->children->len > 1) {
-            Node *pkg_node = g_array_index(node->children, Node*, 1);
-            analyse_node(project, pkg_node, context);
-            const gchar *pkg_name = node_get_name(pkg_node);
-            if (pkg_name) {
-              g_free(context->package);
-              context->package = g_strdup(pkg_name);
+          if (!context->backquote) {
+            if (strcmp(name, "DEFUN") == 0) {
+              analyse_defun(project, node, context);
+              return;
+            } else if (strcmp(name, "IN-PACKAGE") == 0 && node->children->len > 1) {
+              Node *pkg_node = g_array_index(node->children, Node*, 1);
+              analyse_node(project, pkg_node, context);
+              const gchar *pkg_name = node_get_name(pkg_node);
+              if (pkg_name) {
+                g_free(context->package);
+                context->package = g_strdup(pkg_name);
+              }
+            } else if (strcmp(name, "DEFPACKAGE") == 0) {
+              analyse_defpackage(project, node, context);
+              return;
             }
-          } else if (strcmp(name, "DEFPACKAGE") == 0) {
-            analyse_defpackage(project, node, context);
-            return;
           }
         }
       }
