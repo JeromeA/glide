@@ -350,9 +350,20 @@ on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*pag
   if (!file)
     return;
   const gchar *rel = project_file_get_relative_path(file);
-  if (!rel)
-    return;
-  project_view_select_file(PROJECT_VIEW(view), rel);
+  if (rel)
+    project_view_select_file(PROJECT_VIEW(view), rel);
+
+  Preferences *prefs = app_get_preferences(self);
+  if (prefs) {
+    preferences_set_last_file(prefs, project_file_get_path(file));
+    GtkTextBuffer *buffer = project_file_get_buffer(file);
+    g_return_if_fail(buffer);
+    GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
+    GtkTextIter iter;
+    gtk_text_buffer_get_iter_at_mark(buffer, &iter, mark);
+    gint pos = gtk_text_iter_get_offset(&iter);
+    preferences_set_cursor_position(prefs, pos);
+  }
 }
 
 STATIC void
