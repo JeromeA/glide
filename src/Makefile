@@ -46,12 +46,12 @@ SOURCES += \
   status_bar.c \
   status_service.c
 
-# SANITIZER = -fsanitize=address,undefined,bounds -fno-omit-frame-pointer
-VERBOSITY = -DVERBOSITY=0
+SANITIZER = -fsanitize=address,undefined,bounds -fno-omit-frame-pointer
+VERBOSITY = -DVERBOSITY=1
 
 INCLUDE_DIRS := $(addprefix -I, $(VPATH))
 LIBS += gtk+-3.0
-CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS) $(VERBOSITY)
+CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS)
 LDLIBS += `pkg-config --libs $(LIBS)`
 
 TARGETS += app-full app-cov app-reloc app-gdb app
@@ -61,9 +61,9 @@ FULL_OBJECTS = $(SOURCES:.c=.full.o)
 RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
 CLEANABLES += $(TARGETS) $(COV_OBJECTS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm *.gcda *.gcno out/ coverage.info
 
-app-cov $(COV_OBJECTS): CFLAGS += -g -DDEBUG -fprofile-arcs -ftest-coverage
+app-cov $(COV_OBJECTS): CFLAGS += -g -DDEBUG -fprofile-arcs -ftest-coverage -DVERBOSITY=0
 app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG $(SANITIZER) $(VERBOSITY)
-app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS
+app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS -DVERBOSITY=0
 
 all: $(TARGETS)
 
@@ -88,7 +88,7 @@ app-full: $(FULL_OBJECTS)
 app-reloc: $(RELOC_OBJECTS)
 :$(CC) $^ -o $@ $(LDLIBS)
 
-app-source.s: CFLAGS += -O2 -DRELOC -DINLINE -DSYSCALLS -DINTEL_SYNTAX
+app-source.s: CFLAGS += -O2 -DRELOC -DINLINE -DSYSCALLS -DINTEL_SYNTAX -DVERBOSITY=0
 app-source.s: $(SOURCES)
 :$(CC) $(CFLAGS) main.c -S -masm=intel -o $@
 
