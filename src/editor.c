@@ -23,7 +23,7 @@ G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
 
 // Forward declaration for the callback
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
-static gboolean on_query_tooltip (GtkWidget *widget, gint x, gint y,
+static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
     gboolean /*keyboard_mode*/, GtkTooltip *tooltip, gpointer user_data);
 
 static void
@@ -41,7 +41,7 @@ editor_init (Editor *self)
   gtk_container_add (GTK_CONTAINER (self), GTK_WIDGET (self->view));
   gtk_widget_set_has_tooltip (GTK_WIDGET (self->view), TRUE);
   g_signal_connect (self->view, "query-tooltip",
-      G_CALLBACK (on_query_tooltip), self);
+      G_CALLBACK (editor_on_query_tooltip), self);
 
   self->project = NULL;
   self->file = NULL;
@@ -196,7 +196,7 @@ find_node_containing_range (const Node *node, gsize start, gsize end, gsize len)
 }
 
 static gboolean
-on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_mode*/,
+editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_mode*/,
     GtkTooltip *tooltip, gpointer user_data)
 {
   Editor *self = GLIDE_EDITOR (user_data);
