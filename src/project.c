@@ -140,17 +140,32 @@ gchar *project_function_tooltip(Function *function) {
     gsize len = strlen(ls);
     gchar *pkg_esc = pkg ? g_markup_escape_text(pkg, -1) : NULL;
     gchar *name_esc = g_markup_escape_text(name, -1);
-    g_string_append_c(tt, '(');
     if (pkg_esc)
-      g_string_append_printf(tt, "<span foreground=\"gray\">%s</span>:", pkg_esc);
-    g_string_append(tt, name_esc);
+      g_string_append_printf(tt,
+          "In <span foreground=\"darkgreen\">%s</span>:\n", pkg_esc);
+    g_string_append_printf(tt, "(<span foreground=\"brown\">%s</span>",
+        name_esc);
     if (len > 2 && ls[0] == '(' && ls[len - 1] == ')') {
       gchar *args = g_strndup(ls + 1, len - 2);
-      gchar *args_esc = g_markup_escape_text(args, -1);
       g_string_append_c(tt, ' ');
-      g_string_append(tt, args_esc);
+      gchar **tokens = g_strsplit_set(args, " \t\n", 0);
+      gboolean first = TRUE;
+      for (guint i = 0; tokens[i]; i++) {
+        if (!tokens[i][0])
+          continue;
+        if (!first)
+          g_string_append_c(tt, ' ');
+        gchar *tok_esc = g_markup_escape_text(tokens[i], -1);
+        if (tokens[i][0] == '&')
+          g_string_append_printf(tt,
+              "<span foreground=\"darkgreen\">%s</span>", tok_esc);
+        else
+          g_string_append(tt, tok_esc);
+        g_free(tok_esc);
+        first = FALSE;
+      }
+      g_strfreev(tokens);
       g_free(args);
-      g_free(args_esc);
     }
     g_string_append_c(tt, ')');
     g_free(pkg_esc);
