@@ -23,6 +23,7 @@
   their result or failure), so that reading the logs gives a good idea of what happened.
 - When a check fail, a return or return NULL is never enough, it should at least be a g_debug, and almost always be a
   g_return_val_if_fail(), 
+- All functions, even static ones, should have a unique name, so that the INLINE compilation works.
 
 ## OO
 
