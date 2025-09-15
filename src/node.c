@@ -64,6 +64,23 @@ gsize node_get_end_offset(const Node *node) {
   return node_get_end_offset(child);
 }
 
+const Node *node_find_containing_range(const Node *node, gsize start, gsize end) {
+  g_return_val_if_fail(node, NULL);
+  gsize node_start = node_get_start_offset(node);
+  gsize node_end = node_get_end_offset(node);
+  if (start < node_start || end > node_end)
+    return NULL;
+  if (node->children) {
+    for (guint i = 0; i < node->children->len; i++) {
+      const Node *child = g_array_index(node->children, Node*, i);
+      const Node *found = node_find_containing_range(child, start, end);
+      if (found)
+        return found;
+    }
+  }
+  return node;
+}
+
 const gchar *node_sd_type_to_string(StringDesignatorType sd_type) {
   switch(sd_type) {
     case SDT_VAR_DEF: return "VarDef";

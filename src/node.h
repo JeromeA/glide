@@ -49,6 +49,7 @@ gboolean node_is(const Node *node, StringDesignatorType t);
 gboolean node_is_toplevel(const Node *node);
 gsize node_get_start_offset(const Node *node);
 gsize node_get_end_offset(const Node *node);
+const Node *node_find_containing_range(const Node *node, gsize start, gsize end);
 const gchar *node_sd_type_to_string(StringDesignatorType sd_type);
 gchar *node_debug_string(const Node *node);
 gchar *node_to_string(const Node *node);
