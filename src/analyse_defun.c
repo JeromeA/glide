@@ -28,7 +28,7 @@ void analyse_defun(Project *project, Node *expr, AnalyseContext *context) {
   Function *function = function_new(name_node, args,
       doc_node ? node_get_name(doc_node) : NULL, NULL,
       FUNCTION_KIND_FUNCTION, node_get_name(name_node), context->package, NULL);
-  if (node_is_toplevel(expr) && !context->backquote)
+  if (node_is_toplevel(expr))
     project_add_function(project, function);
   function_unref(function);
 

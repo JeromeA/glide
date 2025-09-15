@@ -390,3 +390,10 @@ Reader macros `'`, `` ` ``, `,` and `,@` were tokenized as part of the following
 parser produced leaf symbol nodes instead of wrapping the next expression. The lexer now emits
 dedicated tokens for these macros, and the parser attaches the following s-expression as their
 child, yielding correct ASTs.
+
+## DEFPACKAGE in backquote skipped code analysis
+
+`DEFPACKAGE` forms appearing inside a backquoted expression were analysed as
+package declarations, so comma expressions within them were ignored. The
+analyser now treats `DEFPACKAGE` and `IN-PACKAGE` inside backquotes as regular
+function calls, ensuring that comma subforms are interpreted as code.
