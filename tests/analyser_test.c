@@ -106,6 +106,37 @@ static void test_nested_defun(void) {
   project_unref(project);
 }
 
+static void test_backquote_defpackage(void) {
+  const gchar *text =
+    "`(defpackage foo (:export ,(progn (defun inner ()) '(inner))))";
+  TextProvider *provider = string_text_provider_new(text);
+  LispLexer *lexer = lisp_lexer_new(provider);
+  lisp_lexer_lex(lexer);
+  LispParser *parser = lisp_parser_new();
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  lisp_parser_parse(parser, tokens, NULL);
+  Node *ast = (Node*)lisp_parser_get_ast(parser);
+
+  Project *project = project_new(NULL);
+  analyse_ast(project, ast);
+
+  g_assert_null(project_get_package(project, "FOO"));
+
+  Node *backquote = g_array_index(ast->children, Node*, 0);
+  Node *defpackage = g_array_index(backquote->children, Node*, 0);
+  Node *option = g_array_index(defpackage->children, Node*, 2);
+  Node *unquote = g_array_index(option->children, Node*, 1);
+  Node *progn = g_array_index(unquote->children, Node*, 0);
+  Node *defun = g_array_index(progn->children, Node*, 1);
+  Node *inner_name = g_array_index(defun->children, Node*, 1);
+  g_assert(node_is(inner_name, SDT_FUNCTION_DEF));
+
+  lisp_parser_free(parser);
+  lisp_lexer_free(lexer);
+  text_provider_unref(provider);
+  project_unref(project);
+}
+
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
   GMainContext *ctx = g_main_context_default();
@@ -113,6 +144,7 @@ int main(int argc, char *argv[]) {
   g_test_add_func("/analyse/basic", test_analyse);
   g_test_add_func("/analyse/nested-defpackage", test_nested_defpackage);
   g_test_add_func("/analyse/nested-defun", test_nested_defun);
+  g_test_add_func("/analyse/backquote-defpackage", test_backquote_defpackage);
   int ret = g_test_run();
   g_main_context_pop_thread_default(ctx);
   return ret;

@@ -2,6 +2,7 @@
 #include "project_priv.h"
 #include "string_text_provider.h"
 #include "analyse_defpackage.h"
+#include "analyse.h"
 #include "project_file.h"
 #include "repl_session.h"
 #include "interaction.h"
@@ -43,7 +44,9 @@ typedef struct {
 
 static gboolean analyse_defpackage_cb(gpointer data) {
   PackageDefinitionData *pd = data;
-  analyse_defpackage(pd->project, pd->expr, NULL);
+  AnalyseContext ctx = { g_strdup("CL-USER"), FALSE };
+  analyse_defpackage(pd->project, pd->expr, &ctx);
+  g_free(ctx.package);
   lisp_parser_free(pd->parser);
   lisp_lexer_free(pd->lexer);
   text_provider_unref(pd->provider);

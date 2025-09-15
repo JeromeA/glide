@@ -2,18 +2,21 @@
 #include "package.h"
 #include <string.h>
 
-static void parse_symbols(Node *list, guint start,
+static void parse_symbols(Project *project, Node *list, guint start,
     void (*add)(Package *package, const gchar *symbol), Package *package,
-    const gchar *context, StringDesignatorType sd_type) {
+    AnalyseContext *context, StringDesignatorType sd_type) {
   if (!list || !list->children) return;
   for (guint i = start; i < list->children->len; i++) {
     Node *sym = g_array_index(list->children, Node*, i);
-    const gchar *name = node_get_name(sym);
+    analyse_node(project, sym, context);
+    const gchar *name = NULL;
+    if (sym->type == LISP_AST_NODE_TYPE_SYMBOL || sym->type == LISP_AST_NODE_TYPE_STRING)
+      name = node_get_name(sym);
     if (name) {
-      if (add)
+      if (add && package)
         add(package, name);
       if (sd_type != SDT_NONE)
-        node_set_sd_type(sym, sd_type, context);
+        node_set_sd_type(sym, sd_type, context->package);
     }
   }
 }
@@ -31,15 +34,18 @@ static gboolean add_package_cb(gpointer user_data) {
   return G_SOURCE_REMOVE;
 }
 
-void analyse_defpackage(Project *project, Node *expr, const gchar *context) {
+void analyse_defpackage(Project *project, Node *expr, AnalyseContext *context) {
   if (!project || !expr || !expr->children || expr->children->len < 2) return;
 
   Node *name_node = g_array_index(expr->children, Node*, 1);
-  const gchar *pkg_name = node_get_name(name_node);
-  if (!pkg_name) return;
+  analyse_node(project, name_node, context);
+  const gchar *pkg_name = NULL;
+  if (name_node->type == LISP_AST_NODE_TYPE_SYMBOL || name_node->type == LISP_AST_NODE_TYPE_STRING)
+    pkg_name = node_get_name(name_node);
 
-  Package *pkg = package_new(pkg_name);
-  node_set_sd_type(name_node, SDT_PACKAGE_DEF, context);
+  Package *pkg = pkg_name ? package_new(pkg_name) : NULL;
+  if (pkg_name && name_node->type == LISP_AST_NODE_TYPE_SYMBOL)
+    node_set_sd_type(name_node, SDT_PACKAGE_DEF, context->package);
 
   for (guint i = 2; i < expr->children->len; i++) {
     Node *option = g_array_index(expr->children, Node*, i);
@@ -47,47 +53,62 @@ void analyse_defpackage(Project *project, Node *expr, const gchar *context) {
       continue;
     Node *keyword_node = g_array_index(option->children, Node*, 0);
     const gchar *keyword = node_get_name(keyword_node);
-    if (!keyword) continue;
+    if (!keyword) {
+      analyse_node(project, option, context);
+      continue;
+    }
 
     if (strcmp(keyword, "NICKNAMES") == 0) {
-      parse_symbols(option, 1, (void(*)(Package*, const gchar*))package_add_nickname, pkg, context, SDT_PACKAGE_DEF);
+      parse_symbols(project, option, 1, (void(*)(Package*, const gchar*))package_add_nickname, pkg, context, SDT_PACKAGE_DEF);
     } else if (strcmp(keyword, "USE") == 0) {
-      parse_symbols(option, 1, (void(*)(Package*, const gchar*))package_add_use, pkg, context, SDT_PACKAGE_USE);
+      parse_symbols(project, option, 1, (void(*)(Package*, const gchar*))package_add_use, pkg, context, SDT_PACKAGE_USE);
     } else if (strcmp(keyword, "EXPORT") == 0) {
-      parse_symbols(option, 1, (void(*)(Package*, const gchar*))package_add_export, pkg, context, SDT_NONE);
+      parse_symbols(project, option, 1, (void(*)(Package*, const gchar*))package_add_export, pkg, context, SDT_NONE);
     } else if (strcmp(keyword, "SHADOW") == 0) {
-      parse_symbols(option, 1, (void(*)(Package*, const gchar*))package_add_shadow, pkg, context, SDT_NONE);
+      parse_symbols(project, option, 1, (void(*)(Package*, const gchar*))package_add_shadow, pkg, context, SDT_NONE);
     } else if (strcmp(keyword, "IMPORT-FROM") == 0) {
       if (option->children->len > 2) {
         Node *from_node = g_array_index(option->children, Node*, 1);
-        const gchar *from_name = node_get_name(from_node);
+        analyse_node(project, from_node, context);
+        const gchar *from_name = NULL;
+        if (from_node->type == LISP_AST_NODE_TYPE_SYMBOL || from_node->type == LISP_AST_NODE_TYPE_STRING)
+          from_name = node_get_name(from_node);
         if (from_name) {
-          node_set_sd_type(from_node, SDT_PACKAGE_USE, context);
+          node_set_sd_type(from_node, SDT_PACKAGE_USE, context->package);
           for (guint j = 2; j < option->children->len; j++) {
             Node *sym = g_array_index(option->children, Node*, j);
-            const gchar *sym_name = node_get_name(sym);
-            if (sym_name) {
+            analyse_node(project, sym, context);
+            const gchar *sym_name = NULL;
+            if (sym->type == LISP_AST_NODE_TYPE_SYMBOL || sym->type == LISP_AST_NODE_TYPE_STRING)
+              sym_name = node_get_name(sym);
+            if (sym_name && pkg)
               package_add_import_from(pkg, sym_name, from_name);
-            }
           }
         }
       }
     } else if (strcmp(keyword, "DOCUMENTATION") == 0) {
       if (option->children->len > 1) {
         Node *str = g_array_index(option->children, Node*, 1);
-        const gchar *desc = node_get_name(str);
-        if (desc)
+        analyse_node(project, str, context);
+        const gchar *desc = NULL;
+        if (str->type == LISP_AST_NODE_TYPE_SYMBOL || str->type == LISP_AST_NODE_TYPE_STRING)
+          desc = node_get_name(str);
+        if (desc && pkg)
           package_set_description(pkg, desc);
       }
+    } else {
+      for (guint j = 1; j < option->children->len; j++)
+        analyse_node(project, g_array_index(option->children, Node*, j), context);
     }
   }
 
-  if (node_is_toplevel(expr)) {
+  if (node_is_toplevel(expr) && pkg && !context->backquote) {
     AddPackageData *data = g_new0(AddPackageData, 1);
     data->project = project;
     data->package = package_ref(pkg);
     g_main_context_invoke(NULL, add_package_cb, data);
   }
-  package_unref(pkg);
+  if (pkg)
+    package_unref(pkg);
 }
 

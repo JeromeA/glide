@@ -2,20 +2,20 @@
 #include "analyse.h"
 #include "function.h"
 
-void analyse_defun(Project *project, Node *expr, gchar **context) {
+void analyse_defun(Project *project, Node *expr, AnalyseContext *context) {
   if (!expr || !expr->children || expr->children->len < 3)
     return;
 
   Node *name_node = g_array_index(expr->children, Node*, 1);
   if (name_node->type == LISP_AST_NODE_TYPE_SYMBOL && !name_node->sd_type)
-    node_set_sd_type(name_node, SDT_FUNCTION_DEF, *context);
+    node_set_sd_type(name_node, SDT_FUNCTION_DEF, context->package);
 
   Node *args = g_array_index(expr->children, Node*, 2);
   if (args->type == LISP_AST_NODE_TYPE_LIST && args->children) {
     for (guint i = 0; i < args->children->len; i++) {
       Node *arg = g_array_index(args->children, Node*, i);
       if (arg->type == LISP_AST_NODE_TYPE_SYMBOL && !arg->sd_type)
-        node_set_sd_type(arg, SDT_VAR_DEF, *context);
+        node_set_sd_type(arg, SDT_VAR_DEF, context->package);
     }
   }
 
@@ -27,8 +27,8 @@ void analyse_defun(Project *project, Node *expr, gchar **context) {
   }
   Function *function = function_new(name_node, args,
       doc_node ? node_get_name(doc_node) : NULL, NULL,
-      FUNCTION_KIND_FUNCTION, node_get_name(name_node), *context, NULL);
-  if (node_is_toplevel(expr))
+      FUNCTION_KIND_FUNCTION, node_get_name(name_node), context->package, NULL);
+  if (node_is_toplevel(expr) && !context->backquote)
     project_add_function(project, function);
   function_unref(function);
 
