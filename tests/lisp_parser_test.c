@@ -211,6 +211,31 @@ static void test_comment(void) {
   parser_fixture_free(&fixture);
 }
 
+static void test_reader_macros(void) {
+  ParserFixture fixture = parser_fixture_from_text("'a `b ,c ,@d");
+
+  const Node *ast = lisp_parser_get_ast(fixture.parser);
+  g_assert_cmpint(ast->children->len, ==, 4);
+
+  const Node *quote = g_array_index(ast->children, Node*, 0);
+  g_assert_cmpint(quote->type, ==, LISP_AST_NODE_TYPE_QUOTE);
+  g_assert_cmpint(quote->children->len, ==, 1);
+
+  const Node *backquote = g_array_index(ast->children, Node*, 1);
+  g_assert_cmpint(backquote->type, ==, LISP_AST_NODE_TYPE_BACKQUOTE);
+  g_assert_cmpint(backquote->children->len, ==, 1);
+
+  const Node *unquote = g_array_index(ast->children, Node*, 2);
+  g_assert_cmpint(unquote->type, ==, LISP_AST_NODE_TYPE_UNQUOTE);
+  g_assert_cmpint(unquote->children->len, ==, 1);
+
+  const Node *unquote_splicing = g_array_index(ast->children, Node*, 3);
+  g_assert_cmpint(unquote_splicing->type, ==, LISP_AST_NODE_TYPE_UNQUOTE_SPLICING);
+  g_assert_cmpint(unquote_splicing->children->len, ==, 1);
+
+  parser_fixture_free(&fixture);
+}
+
 static void test_node_to_string(void) {
   const gchar *text = " (  + 1 ; comment\n   (- 2 3) ) ; trailing\n";
   ParserFixture fixture = parser_fixture_from_text(text);
@@ -246,6 +271,7 @@ int main(int argc, char *argv[]) {
   g_test_add_func("/lisp_parser/symbol_with_package", test_symbol_with_package);
   g_test_add_func("/lisp_parser/extra_closing_paren", test_extra_closing_paren);
   g_test_add_func("/lisp_parser/comment", test_comment);
+  g_test_add_func("/lisp_parser/reader_macros", test_reader_macros);
   g_test_add_func("/lisp_parser/node_to_string", test_node_to_string);
   g_test_add_func("/lisp_parser/node_to_string_symbol", test_node_to_string_symbol_uppercase);
   return g_test_run();

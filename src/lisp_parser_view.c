@@ -71,6 +71,10 @@ node_type_to_string(LispAstNodeType type) {
     case LISP_AST_NODE_TYPE_SYMBOL_NAME: return "SymbolName";
     case LISP_AST_NODE_TYPE_LIST: return "List";
     case LISP_AST_NODE_TYPE_STRING: return "String";
+    case LISP_AST_NODE_TYPE_QUOTE: return "Quote";
+    case LISP_AST_NODE_TYPE_BACKQUOTE: return "BackQuote";
+    case LISP_AST_NODE_TYPE_UNQUOTE: return "Unquote";
+    case LISP_AST_NODE_TYPE_UNQUOTE_SPLICING: return "UnquoteSplicing";
     default: return "Unknown";
   }
 }

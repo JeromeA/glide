@@ -383,3 +383,10 @@ only saved the current file when quitting, so unexpected termination left the
 preferences without the last file and cursor position. The page switch handler
 now updates both values whenever the user changes tabs, ensuring the last open
 file and cursor are restored at launch.
+
+## Reader macros parsed as symbols
+
+Reader macros `'`, `` ` ``, `,` and `,@` were tokenized as part of the following symbols, so the
+parser produced leaf symbol nodes instead of wrapping the next expression. The lexer now emits
+dedicated tokens for these macros, and the parser attaches the following s-expression as their
+child, yielding correct ASTs.
