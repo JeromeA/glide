@@ -23,4 +23,5 @@ const Node *function_get_type(const Function *function);
 FunctionKind function_get_kind(const Function *function);
 const gchar *function_get_name(const Function *function);
 const gchar *function_get_package(const Function *function);
+gchar       *function_tooltip(Function *function);
 

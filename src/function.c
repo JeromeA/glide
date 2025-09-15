@@ -1,5 +1,6 @@
 #include "function.h"
 #include "project_file.h"
+#include <string.h>
 
 struct Function {
   gint ref;
@@ -108,5 +109,76 @@ const gchar *
 function_get_package(const Function *function)
 {
   return function ? function->package : NULL;
+}
+
+gchar *
+function_tooltip(Function *function)
+{
+  g_return_val_if_fail(function != NULL, NULL);
+  GString *tt = g_string_new(NULL);
+  const Node *lambda = function_get_lambda_list(function);
+  const gchar *pkg = function_get_package(function);
+  const gchar *name = function_get_name(function);
+  if (lambda && name) {
+    gchar *ls = node_to_string(lambda);
+    gsize len = strlen(ls);
+    gchar *pkg_esc = pkg ? g_markup_escape_text(pkg, -1) : NULL;
+    gchar *name_esc = g_markup_escape_text(name, -1);
+    if (pkg_esc)
+      g_string_append_printf(tt,
+          "In <span foreground=\"darkgreen\">%s</span>:\n", pkg_esc);
+    g_string_append_printf(tt, "(<span foreground=\"brown\"><b>%s</b></span>",
+        name_esc);
+    if (len > 2 && ls[0] == '(' && ls[len - 1] == ')') {
+      gchar *args = g_strndup(ls + 1, len - 2);
+      g_string_append_c(tt, ' ');
+      gchar **tokens = g_strsplit_set(args, " \t\n", 0);
+      gboolean first = TRUE;
+      for (guint i = 0; tokens[i]; i++) {
+        if (!tokens[i][0])
+          continue;
+        if (!first)
+          g_string_append_c(tt, ' ');
+        gchar *tok_esc = g_markup_escape_text(tokens[i], -1);
+        if (tokens[i][0] == '&')
+          g_string_append_printf(tt,
+              "<span foreground=\"darkgreen\">%s</span>", tok_esc);
+        else
+          g_string_append(tt, tok_esc);
+        g_free(tok_esc);
+        first = FALSE;
+      }
+      g_strfreev(tokens);
+      g_free(args);
+    }
+    g_string_append_c(tt, ')');
+    g_free(pkg_esc);
+    g_free(name_esc);
+    g_free(ls);
+  }
+  const Node *sym = function_get_symbol(function);
+  if (sym && sym->file) {
+    const gchar *rel = project_file_get_relative_path(sym->file);
+    if (rel) {
+      gchar *rel_esc = g_markup_escape_text(rel, -1);
+      if (tt->len)
+        g_string_append_c(tt, '\n');
+      g_string_append_printf(tt, "File: %s", rel_esc);
+      g_free(rel_esc);
+    }
+  }
+  const gchar *doc = function_get_doc_string(function);
+  if (doc && *doc) {
+    if (tt->len)
+      g_string_append(tt, "\n\n");
+    gchar *doc_esc = g_markup_escape_text(doc, -1);
+    g_string_append(tt, doc_esc);
+    g_free(doc_esc);
+  }
+  if (!tt->len) {
+    g_string_free(tt, TRUE);
+    return NULL;
+  }
+  return g_string_free(tt, FALSE);
 }
 

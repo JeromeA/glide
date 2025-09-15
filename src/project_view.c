@@ -344,7 +344,7 @@ on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean keyboard_mode,
       -1);
   gboolean rv = FALSE;
   if (kind == PROJECT_VIEW_KIND_FUNCTION && obj) {
-    gchar *tt = project_function_tooltip((Function *) obj);
+    gchar *tt = function_tooltip((Function *) obj);
     if (tt) {
       gtk_tree_view_set_tooltip_row(GTK_TREE_VIEW(widget), tooltip, path);
       gtk_tooltip_set_markup(tooltip, tt);

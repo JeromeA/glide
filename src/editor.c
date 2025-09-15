@@ -23,6 +23,8 @@ G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
 
 // Forward declaration for the callback
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
+static gboolean on_query_tooltip (GtkWidget *widget, gint x, gint y,
+    gboolean /*keyboard_mode*/, GtkTooltip *tooltip, gpointer user_data);
 
 static void
 editor_init (Editor *self)
@@ -37,6 +39,9 @@ editor_init (Editor *self)
   gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (self),
       GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   gtk_container_add (GTK_CONTAINER (self), GTK_WIDGET (self->view));
+  gtk_widget_set_has_tooltip (GTK_WIDGET (self->view), TRUE);
+  g_signal_connect (self->view, "query-tooltip",
+      G_CALLBACK (on_query_tooltip), self);
 
   self->project = NULL;
   self->file = NULL;
@@ -188,6 +193,43 @@ find_node_containing_range (const Node *node, gsize start, gsize end, gsize len)
       return found;
   }
   return node;
+}
+
+static gboolean
+on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_mode*/,
+    GtkTooltip *tooltip, gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  if (!self || !self->file || !self->project)
+    return FALSE;
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (widget));
+  GtkTextIter iter;
+  gint bx;
+  gint by;
+  gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (widget),
+      GTK_TEXT_WINDOW_WIDGET, x, y, &bx, &by);
+  gtk_text_view_get_iter_at_location (GTK_TEXT_VIEW (widget), &iter, bx, by);
+  GtkTextIter end_iter;
+  gtk_text_buffer_get_end_iter (buffer, &end_iter);
+  gsize len = gtk_text_iter_get_offset (&end_iter);
+  gsize offset = gtk_text_iter_get_offset (&iter);
+  gsize end = offset < len ? offset + 1 : offset;
+  LispParser *parser = project_file_get_parser (self->file);
+  const Node *ast = lisp_parser_get_ast (parser);
+  const Node *node = find_node_containing_range (ast, offset, end, len);
+  if (node && node_is (node, SDT_FUNCTION_USE)) {
+    const gchar *name = node_get_name (node);
+    Function *fn = project_get_function (self->project, name);
+    if (fn) {
+      gchar *tt = function_tooltip (fn);
+      if (tt) {
+        gtk_tooltip_set_markup (tooltip, tt);
+        g_free (tt);
+        return TRUE;
+      }
+    }
+  }
+  return FALSE;
 }
 
 static gboolean
