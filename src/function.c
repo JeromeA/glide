@@ -100,6 +100,21 @@ function_get_kind(const Function *function)
   return function ? function->kind : FUNCTION_KIND_FUNCTION;
 }
 
+static const gchar *
+function_get_kind_name(FunctionKind kind)
+{
+  switch (kind) {
+    case FUNCTION_KIND_COMPILED_FUNCTION:
+      return "compiled function";
+    case FUNCTION_KIND_MACRO:
+      return "macro";
+    case FUNCTION_KIND_SPECIAL_OPERATOR:
+      return "special operator";
+    default:
+      return "function";
+  }
+}
+
 const gchar *
 function_get_name(const Function *function)
 {
@@ -123,11 +138,20 @@ function_tooltip(Function *function)
   if (lambda && name) {
     gchar *ls = node_to_string(lambda);
     gsize len = strlen(ls);
+    FunctionKind kind = function_get_kind(function);
+    const gchar *kind_name = function_get_kind_name(kind);
     gchar *pkg_esc = pkg ? g_markup_escape_text(pkg, -1) : NULL;
     gchar *name_esc = g_markup_escape_text(name, -1);
-    if (pkg_esc)
-      g_string_append_printf(tt,
-          "In <span foreground=\"darkgreen\">%s</span>:\n", pkg_esc);
+    if (name_esc) {
+      if (pkg_esc)
+        g_string_append_printf(tt,
+            "<span foreground=\"brown\"><b>%s</b></span> is a %s in <span foreground=\"darkgreen\">%s</span>:\n",
+            name_esc, kind_name, pkg_esc);
+      else
+        g_string_append_printf(tt,
+            "<span foreground=\"brown\"><b>%s</b></span> is a %s:\n", name_esc,
+            kind_name);
+    }
     g_string_append_printf(tt, "(<span foreground=\"brown\"><b>%s</b></span>",
         name_esc);
     if (len > 2 && ls[0] == '(' && ls[len - 1] == ')') {

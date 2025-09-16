@@ -168,7 +168,7 @@ static void test_function_tooltip(void)
   gchar *tooltip = function_tooltip(fn);
   g_assert_nonnull(tooltip);
   g_assert_cmpstr(tooltip, ==,
-      "In <span foreground=\"darkgreen\">CL-USER</span>:\n"
+      "<span foreground=\"brown\"><b>FOO</b></span> is a function in <span foreground=\"darkgreen\">CL-USER</span>:\n"
       "(<span foreground=\"brown\"><b>FOO</b></span> X <span foreground=\"darkgreen\">&amp;REST</span> REST)\n\n"
       "doc");
   g_free(tooltip);
