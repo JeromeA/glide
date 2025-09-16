@@ -11,10 +11,13 @@
 
 static void project_on_package_definition(Interaction *interaction, gpointer user_data);
 static void project_on_describe(Interaction *interaction, gpointer user_data);
+static void project_collect_documentation(GPtrArray *section,
+    guint doc_line_index, GString **doc);
 static void project_handle_special_variable(Project *project,
     const gchar *package, const gchar *symbol, GPtrArray *section);
-static void project_handle_compiled_function(Project *project,
-    const gchar *package, const gchar *symbol, GPtrArray *section);
+static void project_handle_callable(Project *project,
+    const gchar *package, const gchar *symbol, GPtrArray *section,
+    FunctionKind kind);
 
 typedef struct {
   Project *project;
@@ -75,6 +78,38 @@ static gboolean add_function_cb(gpointer data) {
 static gboolean project_unref_cb(gpointer data) {
   project_unref(data);
   return G_SOURCE_REMOVE;
+}
+
+static void project_collect_documentation(GPtrArray *section,
+    guint doc_line_index, GString **doc) {
+  if (!section)
+    return;
+  for (guint j = doc_line_index + 1; j < section->len; j++) {
+    const gchar *dline = g_ptr_array_index(section, j);
+    if (g_str_has_prefix(dline, "    ")) {
+      if (!*doc)
+        *doc = g_string_new(NULL);
+      gchar *trimmed = g_strdup(dline + 4);
+      g_strstrip(trimmed);
+      if ((*doc)->len)
+        g_string_append_c(*doc, '\n');
+      g_string_append(*doc, trimmed);
+      g_free(trimmed);
+    } else if (dline[0] == '\0') {
+      gboolean has_more = FALSE;
+      if (j + 1 < section->len) {
+        const gchar *next = g_ptr_array_index(section, j + 1);
+        if (g_str_has_prefix(next, "    "))
+          has_more = TRUE;
+      }
+      if (!has_more)
+        break;
+      if (*doc && (*doc)->len)
+        g_string_append_c(*doc, '\n');
+    } else {
+      break;
+    }
+  }
 }
 
 static void collect_export_symbols(Node *expr, GPtrArray *out) {
@@ -195,18 +230,7 @@ static void project_handle_special_variable(Project *project,
       g_free(value);
       value = g_strdup(g_strstrip((gchar*)line + 7));
     } else if (g_str_has_prefix(line, "  Documentation:")) {
-      if (!doc)
-        doc = g_string_new(NULL);
-      for (guint j = i + 1; j < section->len; j++) {
-        const gchar *dline = g_ptr_array_index(section, j);
-        if (g_str_has_prefix(dline, "    ")) {
-          if (doc->len)
-            g_string_append_c(doc, '\n');
-          g_string_append(doc, g_strstrip((gchar*)dline + 4));
-        } else {
-          break;
-        }
-      }
+      project_collect_documentation(section, i, &doc);
     }
   }
   LOG(1, "describe %s special variable type=%s value=%s", symbol,
@@ -225,9 +249,19 @@ static void project_handle_special_variable(Project *project,
     g_string_free(doc, TRUE);
 }
 
-static void project_handle_compiled_function(Project *project,
-    const gchar *package, const gchar *symbol, GPtrArray *section) {
-  LOG(1, "project_handle_compiled_function symbol=%s", symbol);
+static void project_handle_callable(Project *project,
+    const gchar *package, const gchar *symbol, GPtrArray *section,
+    FunctionKind kind) {
+  const gchar *kind_tag = "compiled_function";
+  const gchar *kind_desc = "compiled function";
+  if (kind == FUNCTION_KIND_MACRO) {
+    kind_tag = "macro";
+    kind_desc = "macro";
+  } else if (kind == FUNCTION_KIND_SPECIAL_OPERATOR) {
+    kind_tag = "special_operator";
+    kind_desc = "special operator";
+  }
+  LOG(1, "project_handle_%s symbol=%s", kind_tag, symbol);
   gchar *lambda_list = NULL;
   GString *doc = NULL;
   for (guint i = 1; i < section->len; i++) {
@@ -236,22 +270,11 @@ static void project_handle_compiled_function(Project *project,
       g_free(lambda_list);
       lambda_list = g_strdup(g_strstrip((gchar*)line + 14));
     } else if (g_str_has_prefix(line, "  Documentation:")) {
-      if (!doc)
-        doc = g_string_new(NULL);
-      for (guint j = i + 1; j < section->len; j++) {
-        const gchar *dline = g_ptr_array_index(section, j);
-        if (g_str_has_prefix(dline, "    ")) {
-          if (doc->len)
-            g_string_append_c(doc, '\n');
-          g_string_append(doc, g_strstrip((gchar*)dline + 4));
-        } else {
-          break;
-        }
-      }
+      project_collect_documentation(section, i, &doc);
     }
   }
-  LOG(1, "describe %s compiled function lambda=%s", symbol,
-      lambda_list ? lambda_list : "(unknown)");
+  LOG(1, "describe %s %s lambda=%s", symbol,
+      kind_desc, lambda_list ? lambda_list : "(unknown)");
   LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
   ProjectFile *file = NULL;
   Node *lambda_node = NULL;
@@ -268,8 +291,8 @@ static void project_handle_compiled_function(Project *project,
     if (ast && ast->children && ast->children->len > 0)
       lambda_node = g_array_index(ast->children, Node*, 0);
   }
-  Function *function = function_new(NULL, lambda_node, doc ? doc->str : NULL,
-      NULL, FUNCTION_KIND_COMPILED_FUNCTION, symbol, package, file);
+  Function *function = function_new(NULL, lambda_node,
+      doc ? doc->str : NULL, NULL, kind, symbol, package, file);
   FunctionData *fd = g_new0(FunctionData, 1);
   fd->project = project;
   fd->function = function;
@@ -310,8 +333,14 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
       project_handle_special_variable(data->project, data->package_name,
           data->symbol, section);
     } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
-      project_handle_compiled_function(data->project, data->package_name,
-          data->symbol, section);
+      project_handle_callable(data->project, data->package_name,
+          data->symbol, section, FUNCTION_KIND_COMPILED_FUNCTION);
+    } else if (g_str_has_suffix(first_line, "names a macro:")) {
+      project_handle_callable(data->project, data->package_name,
+          data->symbol, section, FUNCTION_KIND_MACRO);
+    } else if (g_str_has_suffix(first_line, "names a special operator:")) {
+      project_handle_callable(data->project, data->package_name,
+          data->symbol, section, FUNCTION_KIND_SPECIAL_OPERATOR);
     } else {
       LOG(1, "describe %s ignoring section: %s", data->symbol, first_line);
     }
