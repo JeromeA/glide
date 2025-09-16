@@ -65,8 +65,13 @@ void analyse_node(Project *project, Node *node, AnalyseContext *context) {
 }
 
 void analyse_ast(Project *project, Node *root) {
+  g_return_if_fail(root != NULL);
+
   AnalyseContext context = { g_strdup("CL-USER"), FALSE };
-  analyse_node(project, root, &context);
+  if (root->children) {
+    for (guint i = 0; i < root->children->len; i++)
+      analyse_node(project, g_array_index(root->children, Node*, i), &context);
+  }
   g_free(context.package);
 }
 
