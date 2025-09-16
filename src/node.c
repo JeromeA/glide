@@ -157,11 +157,35 @@ gchar *node_to_string(const Node *node) {
   return join_children_with_spaces(node);
 }
 
+Node *node_get_symbol_name_node(Node *node) {
+  if (!node)
+    return NULL;
+  if (node->type == LISP_AST_NODE_TYPE_SYMBOL_NAME)
+    return node;
+  if (node->type != LISP_AST_NODE_TYPE_SYMBOL || !node->children)
+    return NULL;
+  for (guint i = 0; i < node->children->len; i++) {
+    Node *child = g_array_index(node->children, Node*, i);
+    if (child->type == LISP_AST_NODE_TYPE_SYMBOL_NAME)
+      return child;
+  }
+  return NULL;
+}
+
+const Node *node_get_symbol_name_node_const(const Node *node) {
+  return (const Node*)node_get_symbol_name_node((Node*)node);
+}
+
 const gchar *node_get_name(const Node *node) {
   if (!node)
     return NULL;
   if (node->name)
     return node->name;
+  if (node->type == LISP_AST_NODE_TYPE_SYMBOL_NAME) {
+    g_assert(node->start_token && node->start_token->text);
+    ((Node*)node)->name = g_ascii_strup(node->start_token->text, -1);
+    return node->name;
+  }
   g_assert(node->start_token && node->start_token->text);
   g_assert(node->type == LISP_AST_NODE_TYPE_STRING ||
           node->type == LISP_AST_NODE_TYPE_SYMBOL);

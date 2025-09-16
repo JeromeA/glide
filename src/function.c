@@ -21,6 +21,7 @@ function_new(Node *symbol, Node *lambda_list, const gchar *doc_string,
 {
   Function *function = g_new0(Function, 1);
   g_atomic_int_set(&function->ref, 1);
+  Node *symbol_name = symbol ? node_get_symbol_name_node(symbol) : NULL;
   function->symbol = symbol ? node_ref(symbol) : NULL;
   function->lambda_list = lambda_list ? node_ref(lambda_list) : NULL;
   function->doc_string = doc_string ? g_strdup(doc_string) : NULL;
@@ -28,7 +29,7 @@ function_new(Node *symbol, Node *lambda_list, const gchar *doc_string,
   function->name = name ? g_strdup(name) :
     (symbol ? g_strdup(node_get_name(symbol)) : NULL);
   function->package = package ? g_strdup(package) :
-    (symbol ? g_strdup(symbol->package_context) : NULL);
+    (symbol_name ? g_strdup(symbol_name->package_context) : NULL);
   function->kind = kind;
   function->file = file;
   return function;
