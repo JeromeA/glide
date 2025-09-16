@@ -185,7 +185,6 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   g_return_val_if_fail (self != NULL, FALSE);
   g_return_val_if_fail (self->file != NULL, FALSE);
   g_return_val_if_fail (self->project != NULL, FALSE);
-  LOG (1, "Editor.on_query_tooltip at %d,%d", x, y);
   GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (widget));
   GtkTextIter iter;
   gint bx;
@@ -205,6 +204,9 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
     LOG (1, "Editor.on_query_tooltip: no node");
     return FALSE;
   }
+  gchar *node_str = node_to_string (node);
+  LOG (1, "Editor.on_query_tooltip: node %s", node_str ? node_str : "<unknown>");
+  g_free (node_str);
   if (!node_is (node, SDT_FUNCTION_USE)) {
     LOG (1, "Editor.on_query_tooltip: node not a function use");
     return FALSE;
