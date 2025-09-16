@@ -151,6 +151,7 @@ static void test_functions_table(void)
   const gchar *doc = function_get_doc_string(fn);
   g_assert_nonnull(doc);
   g_assert_cmpstr(doc, ==, "doc");
+  g_assert_cmpint(function_get_kind(fn), ==, FUNCTION_KIND_FUNCTION);
   g_assert_cmpstr(function_get_name(fn), ==, "FOO");
   g_assert_cmpstr(function_get_package(fn), ==, "CL-USER");
   project_unref(project);

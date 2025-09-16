@@ -269,7 +269,7 @@ static void project_handle_compiled_function(Project *project,
       lambda_node = g_array_index(ast->children, Node*, 0);
   }
   Function *function = function_new(NULL, lambda_node, doc ? doc->str : NULL,
-      NULL, FUNCTION_KIND_FUNCTION, symbol, package, file);
+      NULL, FUNCTION_KIND_COMPILED_FUNCTION, symbol, package, file);
   FunctionData *fd = g_new0(FunctionData, 1);
   fd->project = project;
   fd->function = function;

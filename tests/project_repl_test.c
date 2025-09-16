@@ -28,6 +28,7 @@ static void test_describe(void) {
   }
   g_assert_nonnull(fn);
   g_assert_cmpstr(function_get_doc_string(fn), ==, "foo doc");
+  g_assert_cmpint(function_get_kind(fn), ==, FUNCTION_KIND_COMPILED_FUNCTION);
   const Node *lambda = function_get_lambda_list(fn);
   g_assert_nonnull(lambda);
   g_assert_cmpint(lambda->type, ==, LISP_AST_NODE_TYPE_LIST);
