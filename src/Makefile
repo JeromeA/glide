@@ -46,7 +46,7 @@ SOURCES += \
   status_bar.c \
   status_service.c
 
-SANITIZER = -fsanitize=address,undefined,bounds -fno-omit-frame-pointer
+#SANITIZER = -fsanitize=address,undefined,bounds -fno-omit-frame-pointer
 VERBOSITY = -DVERBOSITY=1
 
 INCLUDE_DIRS := $(addprefix -I, $(VPATH))
