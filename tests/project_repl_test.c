@@ -15,14 +15,20 @@ static void test_describe(void) {
 
   project_request_describe(project, "COMMON-LISP-USER", "FOO");
   project_request_describe(project, "COMMON-LISP-USER", "*BAR*");
+  project_request_describe(project, "COMMON-LISP", "WHEN");
+  project_request_describe(project, "COMMON-LISP", "IF");
 
   Function *fn = NULL;
   const gchar *var_doc = NULL;
+  Function *macro_fn = NULL;
+  Function *special_fn = NULL;
   for (int i = 0; i < 200; i++) {
     g_main_context_iteration(NULL, FALSE);
     fn = project_get_function(project, "FOO");
     var_doc = project_get_variable(project, "*BAR*");
-    if (fn && var_doc)
+    macro_fn = project_get_function(project, "WHEN");
+    special_fn = project_get_function(project, "IF");
+    if (fn && var_doc && macro_fn && special_fn)
       break;
     g_usleep(100000);
   }
@@ -34,6 +40,15 @@ static void test_describe(void) {
   g_assert_cmpint(lambda->type, ==, LISP_AST_NODE_TYPE_LIST);
   g_assert_nonnull(var_doc);
   g_assert_cmpstr(var_doc, ==, "bar doc");
+  g_assert_nonnull(macro_fn);
+  g_assert_cmpint(function_get_kind(macro_fn), ==, FUNCTION_KIND_MACRO);
+  g_assert_nonnull(function_get_lambda_list(macro_fn));
+  g_assert_nonnull(function_get_doc_string(macro_fn));
+  g_assert_nonnull(special_fn);
+  g_assert_cmpint(function_get_kind(special_fn), ==,
+      FUNCTION_KIND_SPECIAL_OPERATOR);
+  g_assert_nonnull(function_get_lambda_list(special_fn));
+  g_assert_nonnull(function_get_doc_string(special_fn));
 
   project_unref(project);
   repl_session_unref(sess);

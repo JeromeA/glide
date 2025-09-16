@@ -13,8 +13,9 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
 static void project_on_describe(Interaction *interaction, gpointer user_data);
 static void project_handle_special_variable(Project *project,
     const gchar *package, const gchar *symbol, GPtrArray *section);
-static void project_handle_compiled_function(Project *project,
-    const gchar *package, const gchar *symbol, GPtrArray *section);
+static void project_handle_function_section(Project *project,
+    const gchar *package, const gchar *symbol, GPtrArray *section,
+    FunctionKind kind);
 
 typedef struct {
   Project *project;
@@ -225,9 +226,28 @@ static void project_handle_special_variable(Project *project,
     g_string_free(doc, TRUE);
 }
 
-static void project_handle_compiled_function(Project *project,
-    const gchar *package, const gchar *symbol, GPtrArray *section) {
-  LOG(1, "project_handle_compiled_function symbol=%s", symbol);
+static void project_handle_function_section(Project *project,
+    const gchar *package, const gchar *symbol, GPtrArray *section,
+    FunctionKind kind) {
+  const gchar *log_label = "function";
+  const gchar *kind_name = "function";
+  switch (kind) {
+    case FUNCTION_KIND_COMPILED_FUNCTION:
+      log_label = "compiled_function";
+      kind_name = "compiled function";
+      break;
+    case FUNCTION_KIND_MACRO:
+      log_label = "macro";
+      kind_name = "macro";
+      break;
+    case FUNCTION_KIND_SPECIAL_OPERATOR:
+      log_label = "special_operator";
+      kind_name = "special operator";
+      break;
+    default:
+      break;
+  }
+  LOG(1, "project_handle_%s symbol=%s", log_label, symbol);
   gchar *lambda_list = NULL;
   GString *doc = NULL;
   for (guint i = 1; i < section->len; i++) {
@@ -250,8 +270,8 @@ static void project_handle_compiled_function(Project *project,
       }
     }
   }
-  LOG(1, "describe %s compiled function lambda=%s", symbol,
-      lambda_list ? lambda_list : "(unknown)");
+  LOG(1, "describe %s %s lambda=%s", symbol,
+      kind_name, lambda_list ? lambda_list : "(unknown)");
   LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
   ProjectFile *file = NULL;
   Node *lambda_node = NULL;
@@ -269,7 +289,7 @@ static void project_handle_compiled_function(Project *project,
       lambda_node = g_array_index(ast->children, Node*, 0);
   }
   Function *function = function_new(NULL, lambda_node, doc ? doc->str : NULL,
-      NULL, FUNCTION_KIND_COMPILED_FUNCTION, symbol, package, file);
+      NULL, kind, symbol, package, file);
   FunctionData *fd = g_new0(FunctionData, 1);
   fd->project = project;
   fd->function = function;
@@ -310,8 +330,14 @@ static void project_on_describe(Interaction *interaction, gpointer user_data) {
       project_handle_special_variable(data->project, data->package_name,
           data->symbol, section);
     } else if (g_str_has_suffix(first_line, "names a compiled function:")) {
-      project_handle_compiled_function(data->project, data->package_name,
-          data->symbol, section);
+      project_handle_function_section(data->project, data->package_name,
+          data->symbol, section, FUNCTION_KIND_COMPILED_FUNCTION);
+    } else if (g_str_has_suffix(first_line, "names a macro:")) {
+      project_handle_function_section(data->project, data->package_name,
+          data->symbol, section, FUNCTION_KIND_MACRO);
+    } else if (g_str_has_suffix(first_line, "names a special operator:")) {
+      project_handle_function_section(data->project, data->package_name,
+          data->symbol, section, FUNCTION_KIND_SPECIAL_OPERATOR);
     } else {
       LOG(1, "describe %s ignoring section: %s", data->symbol, first_line);
     }
