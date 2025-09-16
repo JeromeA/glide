@@ -31,10 +31,11 @@ void analyse_node(Project *project, Node *node, AnalyseContext *context) {
     if (node->children->len > 0) {
       Node *first = g_array_index(node->children, Node*, 0);
       if (first->type == LISP_AST_NODE_TYPE_SYMBOL) {
+        Node *first_name = node_get_symbol_name_node(first);
         const gchar *name = node_get_name(first);
         if (name) {
-          if (!first->sd_type)
-            node_set_sd_type(first, SDT_FUNCTION_USE, context->package);
+          if (first_name && !first_name->sd_type)
+            node_set_sd_type(first_name, SDT_FUNCTION_USE, context->package);
           if (!context->backquote) {
             if (strcmp(name, "DEFUN") == 0) {
               analyse_defun(project, node, context);
@@ -57,8 +58,11 @@ void analyse_node(Project *project, Node *node, AnalyseContext *context) {
     }
     for (guint i = 0; i < node->children->len; i++) {
       Node *child = g_array_index(node->children, Node*, i);
-      if (i > 0 && child->type == LISP_AST_NODE_TYPE_SYMBOL && !child->sd_type)
-        node_set_sd_type(child, SDT_VAR_USE, context->package);
+      if (i > 0 && child->type == LISP_AST_NODE_TYPE_SYMBOL) {
+        Node *child_name = node_get_symbol_name_node(child);
+        if (child_name && !child_name->sd_type)
+          node_set_sd_type(child_name, SDT_VAR_USE, context->package);
+      }
       analyse_node(project, child, context);
     }
   }

@@ -7,15 +7,21 @@ void analyse_defun(Project *project, Node *expr, AnalyseContext *context) {
     return;
 
   Node *name_node = g_array_index(expr->children, Node*, 1);
-  if (name_node->type == LISP_AST_NODE_TYPE_SYMBOL && !name_node->sd_type)
-    node_set_sd_type(name_node, SDT_FUNCTION_DEF, context->package);
+  if (name_node->type == LISP_AST_NODE_TYPE_SYMBOL) {
+    Node *name_symbol = node_get_symbol_name_node(name_node);
+    if (name_symbol && !name_symbol->sd_type)
+      node_set_sd_type(name_symbol, SDT_FUNCTION_DEF, context->package);
+  }
 
   Node *args = g_array_index(expr->children, Node*, 2);
   if (args->type == LISP_AST_NODE_TYPE_LIST && args->children) {
     for (guint i = 0; i < args->children->len; i++) {
       Node *arg = g_array_index(args->children, Node*, i);
-      if (arg->type == LISP_AST_NODE_TYPE_SYMBOL && !arg->sd_type)
-        node_set_sd_type(arg, SDT_VAR_DEF, context->package);
+      if (arg->type == LISP_AST_NODE_TYPE_SYMBOL) {
+        Node *arg_name = node_get_symbol_name_node(arg);
+        if (arg_name && !arg_name->sd_type)
+          node_set_sd_type(arg_name, SDT_VAR_DEF, context->package);
+      }
     }
   }
 

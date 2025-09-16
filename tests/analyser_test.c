@@ -30,15 +30,21 @@ static void test_analyse(void) {
   g_assert_true(g_hash_table_contains(package_get_uses(pkg), "CL"));
 
   Node *foo_expr = g_array_index(ast->children, Node*, 1);
-  Node *foo_name = g_array_index(foo_expr->children, Node*, 1);
+  Node *foo_symbol = g_array_index(foo_expr->children, Node*, 1);
+  Node *foo_name = node_get_symbol_name_node(foo_symbol);
+  g_assert_nonnull(foo_name);
   g_assert_cmpstr(foo_name->package_context, ==, "CL-USER");
 
   Node *bar_expr = g_array_index(ast->children, Node*, 3);
-  Node *bar_name = g_array_index(bar_expr->children, Node*, 1);
+  Node *bar_symbol = g_array_index(bar_expr->children, Node*, 1);
+  Node *bar_name = node_get_symbol_name_node(bar_symbol);
+  g_assert_nonnull(bar_name);
   g_assert_cmpstr(bar_name->package_context, ==, "MY-PACK");
 
   Node *call_expr = g_array_index(ast->children, Node*, 4);
-  Node *var_use = g_array_index(call_expr->children, Node*, 1);
+  Node *var_symbol = g_array_index(call_expr->children, Node*, 1);
+  Node *var_use = node_get_symbol_name_node(var_symbol);
+  g_assert_nonnull(var_use);
   g_assert(node_is(var_use, SDT_VAR_USE));
   g_assert_cmpstr(var_use->package_context, ==, "MY-PACK");
 
@@ -97,7 +103,9 @@ static void test_nested_defun(void) {
 
   Node *let_expr = g_array_index(ast->children, Node*, 1);
   Node *inner_expr = g_array_index(let_expr->children, Node*, 2);
-  Node *inner_name = g_array_index(inner_expr->children, Node*, 1);
+  Node *inner_symbol = g_array_index(inner_expr->children, Node*, 1);
+  Node *inner_name = node_get_symbol_name_node(inner_symbol);
+  g_assert_nonnull(inner_name);
   g_assert(node_is(inner_name, SDT_FUNCTION_DEF));
 
   lisp_parser_free(parser);
@@ -128,7 +136,9 @@ static void test_backquote_defpackage(void) {
   Node *unquote = g_array_index(option->children, Node*, 1);
   Node *progn = g_array_index(unquote->children, Node*, 0);
   Node *defun = g_array_index(progn->children, Node*, 1);
-  Node *inner_name = g_array_index(defun->children, Node*, 1);
+  Node *inner_symbol = g_array_index(defun->children, Node*, 1);
+  Node *inner_name = node_get_symbol_name_node(inner_symbol);
+  g_assert_nonnull(inner_name);
   g_assert(node_is(inner_name, SDT_FUNCTION_DEF));
 
   lisp_parser_free(parser);
