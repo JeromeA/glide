@@ -397,3 +397,12 @@ child, yielding correct ASTs.
 package declarations, so comma expressions within them were ignored. The
 analyser now treats `DEFPACKAGE` and `IN-PACKAGE` inside backquotes as regular
 function calls, ensuring that comma subforms are interpreted as code.
+
+## Toplevel analysis treated file as a list form
+
+Analysing a file walked the artificial toplevel list as if it were code. The
+file node's helper children represent each top-level form, but the analyser
+tagged later children as variable uses because it treated them as arguments to
+the first expression. The analyser now iterates over the toplevel children
+directly, so each form is analysed independently and top-level symbols keep
+their correct roles.
