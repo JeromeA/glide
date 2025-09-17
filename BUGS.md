@@ -415,3 +415,11 @@ tagged later children as variable uses because it treated them as arguments to
 the first expression. The analyser now iterates over the toplevel children
 directly, so each form is analysed independently and top-level symbols keep
 their correct roles.
+
+## COMMON-LISP package not refreshed after switching projects
+
+Loading another project cleared the index but never asked the REPL to describe
+`COMMON-LISP` again. Only the first project populated the core packages, so
+standard symbols were missing afterwards. Package bootstrap now happens inside
+`project_clear()`, ensuring both startup and later project loads request
+`COMMON-LISP` and `COMMON-LISP-USER` from the REPL.

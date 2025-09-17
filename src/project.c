@@ -35,13 +35,10 @@ Project *project_new(ReplSession *repl) {
   LOG(1, "project_new");
   Project *self = project_init();
   self->repl = repl ? repl_session_ref(repl) : NULL;
+  project_clear(self);
   TextProvider *provider = string_text_provider_new("");
   project_add_file(self, provider, NULL, "unnamed.lisp", PROJECT_FILE_LIVE);
   text_provider_unref(provider);
-  if (self->repl) {
-    project_request_package(self, "COMMON-LISP");
-    project_request_package(self, "COMMON-LISP-USER");
-  }
   return self;
 }
 
@@ -203,6 +200,10 @@ void project_clear(Project *self) {
   Asdf *asdf = asdf_new();
   project_set_asdf(self, asdf);
   g_object_unref(asdf);
+  if (self->repl) {
+    project_request_package(self, "COMMON-LISP");
+    project_request_package(self, "COMMON-LISP-USER");
+  }
   project_changed(self);
 }
 
