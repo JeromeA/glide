@@ -17,6 +17,8 @@ struct _Editor
   Project *project;
   ProjectFile *file;
   GArray *selection_stack;
+  GtkTextTag *function_def_tag;
+  GtkTextTag *function_use_tag;
 };
 
 G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
@@ -25,6 +27,14 @@ G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
 static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
     gboolean /*keyboard_mode*/, GtkTooltip *tooltip, gpointer user_data);
+static void editor_update_function_highlight (Editor *self);
+static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
+    GtkTextMark *mark, gpointer user_data);
+static void editor_clear_function_highlight (Editor *self);
+static void editor_highlight_nodes (Editor *self, GPtrArray *nodes,
+    GtkTextTag *tag);
+static void editor_highlight_node (Editor *self, const Node *node,
+    GtkTextTag *tag);
 
 static void
 editor_init (Editor *self)
@@ -45,6 +55,12 @@ editor_init (Editor *self)
   self->project = NULL;
   self->file = NULL;
   self->selection_stack = g_array_new (FALSE, FALSE, sizeof (SelectionRange));
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  self->function_def_tag = gtk_text_buffer_create_tag (buffer,
+      "function-def-highlight", "background", "#fef", NULL);
+  self->function_use_tag = gtk_text_buffer_create_tag (buffer,
+      "function-use-highlight", "background", "#eef", NULL);
+  g_signal_connect (buffer, "mark-set", G_CALLBACK (editor_on_mark_set), self);
 }
 
 // Callback for when the GtkTextBuffer changes
@@ -54,6 +70,8 @@ on_buffer_changed (GtkTextBuffer * /*buffer*/, gpointer user_data)
   Editor *self = GLIDE_EDITOR (user_data);
   if (self && self->project && self->file)
     project_file_changed(self->project, self->file);
+  if (self)
+    editor_update_function_highlight (self);
 }
 
 static void
@@ -69,6 +87,8 @@ editor_dispose (GObject *object)
     self->project = NULL;
   }
 
+  self->function_def_tag = NULL;
+  self->function_use_tag = NULL;
   g_clear_object (&self->buffer);
   self->view = NULL;
   if (self->selection_stack) {
@@ -112,6 +132,7 @@ editor_new_for_file (Project *project, ProjectFile *file)
   project_file_changed (self->project, self->file);
   gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);
+  editor_update_function_highlight (self);
   return GTK_WIDGET (self);
 }
 
@@ -135,6 +156,108 @@ editor_get_view (Editor *self)
 {
   g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
   return GTK_WIDGET (self->view);
+}
+
+static void
+editor_clear_function_highlight (Editor *self)
+{
+  if (!self->buffer)
+    return;
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  GtkTextIter start;
+  GtkTextIter end;
+  gtk_text_buffer_get_bounds (buffer, &start, &end);
+  if (self->function_def_tag)
+    gtk_text_buffer_remove_tag (buffer, self->function_def_tag, &start, &end);
+  if (self->function_use_tag)
+    gtk_text_buffer_remove_tag (buffer, self->function_use_tag, &start, &end);
+}
+
+static void
+editor_highlight_nodes (Editor *self, GPtrArray *nodes, GtkTextTag *tag)
+{
+  if (!nodes || !tag)
+    return;
+  for (guint i = 0; i < nodes->len; i++) {
+    Node *node = g_ptr_array_index (nodes, i);
+    editor_highlight_node (self, node, tag);
+  }
+}
+
+static void
+editor_highlight_node (Editor *self, const Node *node, GtkTextTag *tag)
+{
+  if (!node || !tag)
+    return;
+  if (node->file != self->file)
+    return;
+  const Node *highlight = node_get_symbol_name_node_const (node);
+  if (!highlight)
+    highlight = node;
+  gsize start = node_get_start_offset (highlight);
+  gsize end = node_get_end_offset (highlight);
+  if (end <= start)
+    return;
+  GtkTextIter it_start;
+  GtkTextIter it_end;
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  gtk_text_buffer_get_iter_at_offset (buffer, &it_start, (gint) start);
+  gtk_text_buffer_get_iter_at_offset (buffer, &it_end, (gint) end);
+  gtk_text_buffer_apply_tag (buffer, tag, &it_start, &it_end);
+}
+
+static void
+editor_update_function_highlight (Editor *self)
+{
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+  editor_clear_function_highlight (self);
+  if (!self->project || !self->file)
+    return;
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  GtkTextMark *insert = gtk_text_buffer_get_insert (buffer);
+  GtkTextIter iter;
+  gtk_text_buffer_get_iter_at_mark (buffer, &iter, insert);
+  GtkTextIter end_iter;
+  gtk_text_buffer_get_end_iter (buffer, &end_iter);
+  gsize len = gtk_text_iter_get_offset (&end_iter);
+  gsize offset = gtk_text_iter_get_offset (&iter);
+  gsize end = offset < len ? offset + 1 : offset;
+  LispParser *parser = project_file_get_parser (self->file);
+  if (!parser)
+    return;
+  const Node *ast = lisp_parser_get_ast (parser);
+  if (!ast)
+    return;
+  const Node *node = node_find_containing_range (ast, offset, end);
+  while (node && node->sd_type != SDT_FUNCTION_DEF && node->sd_type != SDT_FUNCTION_USE)
+    node = node->parent;
+  if (!node)
+    return;
+  const gchar *name = node_get_name (node);
+  if (!name)
+    return;
+  GHashTable *def_table = project_get_index (self->project, SDT_FUNCTION_DEF);
+  GHashTable *use_table = project_get_index (self->project, SDT_FUNCTION_USE);
+  GPtrArray *defs = def_table ? g_hash_table_lookup (def_table, name) : NULL;
+  GPtrArray *uses = use_table ? g_hash_table_lookup (use_table, name) : NULL;
+  if (!defs && node->sd_type == SDT_FUNCTION_DEF)
+    editor_highlight_node (self, node, self->function_def_tag);
+  else
+    editor_highlight_nodes (self, defs, self->function_def_tag);
+  if (!uses && node->sd_type == SDT_FUNCTION_USE)
+    editor_highlight_node (self, node, self->function_use_tag);
+  else
+    editor_highlight_nodes (self, uses, self->function_use_tag);
+}
+
+static void
+editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
+    GtkTextMark *mark, gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  if (mark != gtk_text_buffer_get_insert (buffer))
+    return;
+  editor_update_function_highlight (self);
 }
 
 static gboolean find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
