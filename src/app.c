@@ -104,35 +104,8 @@ app_activate (GApplication *app)
   gtk_box_pack_start(GTK_BOX(vbox), GTK_WIDGET(self->statusbar), FALSE, FALSE, 0);
   gtk_container_add(GTK_CONTAINER(self->window), vbox);
   const gchar *proj = preferences_get_project_file(self->preferences);
-  if (proj) {
-    if (file_open_path(self, proj)) {
-      const gchar *last = preferences_get_last_file(self->preferences);
-      gint pos = preferences_get_cursor_position(self->preferences);
-      if (last) {
-        Project *project = app_get_project(self);
-        guint count = project_get_file_count(project);
-        for (guint i = 0; i < count; i++) {
-          ProjectFile *pf = project_get_file(project, i);
-          if (g_strcmp0(project_file_get_path(pf), last) == 0) {
-            gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
-            Editor *view = lisp_source_notebook_get_current_editor(self->notebook);
-            if (view) {
-              GtkWidget *text_view = editor_get_view(view);
-              GtkTextBuffer *buffer =
-                  GTK_TEXT_BUFFER(editor_get_buffer(view));
-              GtkTextIter iter;
-              gtk_text_buffer_get_iter_at_offset(buffer, &iter, pos);
-              gtk_text_buffer_place_cursor(buffer, &iter);
-              gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(text_view), &iter,
-                  0.0, FALSE, 0, 0);
-                app_connect_editor(self, view);
-            }
-            break;
-          }
-        }
-      }
-    }
-  }
+  if (proj)
+    file_open_path(self, proj);
   app_update_project_view(self);
   app_update_recent_menu(self);
   gtk_widget_show_all(self->window);
@@ -293,6 +266,42 @@ app_update_project_view(App *self)
   gtk_widget_show_all(self->project_scrolled);
   on_notebook_switch_page(GTK_NOTEBOOK(self->notebook), NULL,
       gtk_notebook_get_current_page(GTK_NOTEBOOK(self->notebook)), self);
+}
+
+STATIC void
+app_restore_last_file(App *self)
+{
+  g_return_if_fail(GLIDE_IS_APP(self));
+  if (!self->notebook)
+    return;
+  Preferences *prefs = app_get_preferences(self);
+  if (!prefs)
+    return;
+  const gchar *last = preferences_get_last_file(prefs);
+  if (!last)
+    return;
+  Project *project = app_get_project(self);
+  if (!project)
+    return;
+  guint count = project_get_file_count(project);
+  for (guint i = 0; i < count; i++) {
+    ProjectFile *pf = project_get_file(project, i);
+    if (g_strcmp0(project_file_get_path(pf), last) == 0) {
+      gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
+      Editor *view = lisp_source_notebook_get_current_editor(self->notebook);
+      if (!view)
+        return;
+      GtkWidget *text_view = editor_get_view(view);
+      GtkTextBuffer *buffer = GTK_TEXT_BUFFER(editor_get_buffer(view));
+      gint pos = preferences_get_cursor_position(prefs);
+      GtkTextIter iter;
+      gtk_text_buffer_get_iter_at_offset(buffer, &iter, pos);
+      gtk_text_buffer_place_cursor(buffer, &iter);
+      gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(text_view), &iter,
+          0.0, FALSE, 0, 0);
+      return;
+    }
+  }
 }
 
 STATIC void

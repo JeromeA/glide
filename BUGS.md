@@ -284,6 +284,15 @@ of output filled with NUL characters. The method now respects the slice before
 forwarding, preventing padded NULs from ever reaching `Process` or
 `ReplProcess`.
 
+## Project restore only ran for first project
+
+Loading a project after the initial startup left the notebook on the first
+file, ignoring the saved cursor location. The restore logic lived in
+`App.activate`, so only the first project opened during activation went through
+it. Moving the restoration into `file_open_path` makes both startup and
+subsequent loads follow the same code path, restoring the last file every
+time.
+
 ## Project view selection leaked strings
 
 Selecting rows in the project viewer leaked memory because the selection handler

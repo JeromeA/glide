@@ -25,6 +25,7 @@ STATIC Project *app_get_project(App *self);
 STATIC void app_connect_editor(App *self, Editor *editor);
 STATIC ProjectFile *app_get_current_file(App *self);
 STATIC void app_update_project_view(App *self);
+STATIC void app_restore_last_file(App *self);
 STATIC void app_update_recent_menu(App *self);
 STATIC Preferences *app_get_preferences(App *self);
 STATIC ReplSession *app_get_glide(App *self);
