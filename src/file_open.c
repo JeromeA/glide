@@ -93,6 +93,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
   preferences_add_recent_project(prefs, filename);
   app_update_recent_menu(app);
 
+  app_restore_last_file(app);
   Editor *view = lisp_source_notebook_get_current_editor(notebook);
   if (view)
     app_connect_editor(app, view);
