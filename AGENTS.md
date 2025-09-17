@@ -39,4 +39,5 @@
 - Don't forget to add any new file to the INLINE version in main.c.
 - Don't forget to run "make app-full" in src/ as part of your testing.
 - Don't forget to run "make run" in tests/ as part of your testing.
+- Do not wrap at 80 characters, use 120 instead.
 
