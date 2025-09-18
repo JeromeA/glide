@@ -1,6 +1,7 @@
 #include "project.h"
 #include "string_text_provider.h"
 #include "node.h"
+#include "function.h"
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <string.h>
@@ -193,6 +194,42 @@ static void test_function_tooltip(void)
   project_unref(project);
 }
 
+static void test_defun_requires_symbol_name(void)
+{
+  Project *project = project_new(NULL);
+  TextProvider *provider = string_text_provider_new("(defun \"foo\" () nil)");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
+  project_file_changed(project, file);
+
+  const GArray *errors = project_file_get_errors(file);
+  g_assert_nonnull(errors);
+  g_assert_cmpuint(errors->len, ==, 1);
+  const ProjectFileError *err = &g_array_index((GArray*)errors, ProjectFileError, 0);
+  g_assert_nonnull(err->message);
+  g_assert_cmpstr(err->message, ==, "DEFUN requires a symbol name.");
+
+  project_unref(project);
+}
+
+static void test_defun_requires_parameter_list(void)
+{
+  Project *project = project_new(NULL);
+  TextProvider *provider = string_text_provider_new("(defun foo \"bad-params\" nil)");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
+  project_file_changed(project, file);
+
+  const GArray *errors = project_file_get_errors(file);
+  g_assert_nonnull(errors);
+  g_assert_cmpuint(errors->len, ==, 1);
+  const ProjectFileError *err = &g_array_index((GArray*)errors, ProjectFileError, 0);
+  g_assert_nonnull(err->message);
+  g_assert_cmpstr(err->message, ==, "DEFUN requires a parameter list.");
+
+  project_unref(project);
+}
+
 static void test_incremental_index(void)
 {
   Project *project = project_new(NULL);
@@ -248,6 +285,16 @@ static void test_function_call_argument_mismatch(void)
   TextProvider *file_provider = project_file_get_provider(file);
   gsize len = text_provider_get_length(file_provider);
   g_assert_cmpuint(err->end, ==, len);
+  g_assert_nonnull(err->message);
+  Function *project_fn = project_get_function(project, "BAR");
+  g_assert_nonnull(project_fn);
+  gchar *tooltip = function_tooltip(project_fn);
+  g_assert_nonnull(tooltip);
+  gchar *expected_msg = g_strdup_printf(
+      "Expected %u arguments but found %u\n%s", 2u, 1u, tooltip);
+  g_assert_cmpstr(err->message, ==, expected_msg);
+  g_free(expected_msg);
+  g_free(tooltip);
 
   StringTextProvider *stp = (StringTextProvider*)file_provider;
   g_free(stp->text);
@@ -265,6 +312,15 @@ static void test_function_call_argument_mismatch(void)
   errors = project_file_get_errors(file);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 1);
+  err = &g_array_index((GArray*)errors, ProjectFileError, 0);
+  g_assert_nonnull(err->message);
+  tooltip = function_tooltip(project_fn);
+  g_assert_nonnull(tooltip);
+  expected_msg = g_strdup_printf(
+      "Expected %u arguments but found %u\n%s", 2u, 3u, tooltip);
+  g_assert_cmpstr(err->message, ==, expected_msg);
+  g_free(expected_msg);
+  g_free(tooltip);
 
   g_free(stp->text);
   stp->text = g_strdup("(bar 1 2)");
@@ -349,6 +405,10 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/index", test_index);
   g_test_add_func("/project/functions_table", test_functions_table);
   g_test_add_func("/function/tooltip", test_function_tooltip);
+  g_test_add_func("/project/defun_requires_symbol_name",
+      test_defun_requires_symbol_name);
+  g_test_add_func("/project/defun_requires_parameter_list",
+      test_defun_requires_parameter_list);
   g_test_add_func("/project/incremental_index", test_incremental_index);
   g_test_add_func("/project/function_call_argument_mismatch",
       test_function_call_argument_mismatch);

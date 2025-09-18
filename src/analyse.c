@@ -7,14 +7,14 @@
 #include "function.h"
 #include <string.h>
 
-static void analyse_mark_error(Node *node) {
+static void analyse_mark_error(Node *node, const gchar *message) {
   if (!node || !node->file)
     return;
   gsize start = node_get_start_offset(node);
   gsize end = node_get_end_offset(node);
   if (end <= start)
     return;
-  project_file_add_error(node->file, start, end);
+  project_file_add_error(node->file, start, end, message);
 }
 
 static const gchar *analyse_get_symbol_name(const Node *node) {
@@ -112,7 +112,16 @@ static gboolean analyse_validate_call(Project *project, Node *expr) {
     return TRUE;
   guint actual = expr->children->len > 0 ? expr->children->len - 1 : 0;
   if (actual < min_args || (has_max && actual > max_args)) {
-    analyse_mark_error(expr);
+    guint expected = actual < min_args ? min_args : max_args;
+    gchar *tooltip = function_tooltip(function);
+    gchar *message = tooltip && *tooltip
+        ? g_strdup_printf("Expected %u arguments but found %u\n%s", expected,
+            actual, tooltip)
+        : g_strdup_printf("Expected %u arguments but found %u", expected,
+            actual);
+    analyse_mark_error(expr, message);
+    g_free(message);
+    g_free(tooltip);
     return FALSE;
   }
   return TRUE;
