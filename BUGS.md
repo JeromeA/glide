@@ -61,6 +61,14 @@ beginning of a line. Evaluation now asks `Editor` for the enclosing
 top‑level range, which is shared with the selection expansion logic, so the
 correct expression is sent to swank.
 
+## Eval toplevel evaluated entire buffer
+
+Evaluating a top-level form sometimes forwarded the whole buffer to the REPL.
+`editor_get_toplevel_range` walked to the parent node repeatedly until the
+request reached the AST root, whose bounds match the entire buffer, and
+returned that range. The parent search now stops when it reaches the root node,
+so evaluation selects the actual surrounding form instead of the whole file.
+
 ## eval-and-capture evaluated raw strings
 
 `eval-and-capture` expected a parsed form but the server sent it expressions as

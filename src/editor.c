@@ -381,6 +381,11 @@ find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
     parent = node->parent;
   }
 
+  if (!parent) {
+    LOG(1, "at root node, cannot extend");
+    return FALSE;
+  }
+
   if (node_start == start && node_end == end) {
     if (start == 0 && end == len) {
       LOG(1, "at buffer range, cannot extend");
