@@ -214,6 +214,7 @@ void project_file_changed(Project *self, ProjectFile *file) {
   LOG(1, "project_file_changed path=%s", project_file_get_path(file));
   if (!project_file_get_lexer(file) || !project_file_get_parser(file))
     return;
+  project_file_clear_errors(file);
   project_index_remove_file(self->index, file);
   LispLexer *lexer = project_file_get_lexer(file);
   LispParser *parser = project_file_get_parser(file);
@@ -225,6 +226,7 @@ void project_file_changed(Project *self, ProjectFile *file) {
     analyse_ast(self, (Node*)ast);
   if (ast)
     project_index_walk(self->index, ast);
+  project_file_apply_errors(file);
   project_changed(self);
 }
 

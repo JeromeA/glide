@@ -15,6 +15,11 @@ typedef enum {
 
 typedef struct _ProjectFile ProjectFile;
 
+typedef struct {
+  gsize start;
+  gsize end;
+} ProjectFileError;
+
 ProjectFile *project_file_new(Project *project, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
 ProjectFile *project_file_new_virtual(TextProvider *provider);
@@ -31,3 +36,7 @@ const gchar *project_file_get_path(ProjectFile *file); /* borrowed */
 void        project_file_set_path(ProjectFile *file, const gchar *path);
 gboolean    project_file_load(ProjectFile *file);
 const gchar *project_file_get_relative_path(ProjectFile *file);
+void        project_file_clear_errors(ProjectFile *file);
+void        project_file_add_error(ProjectFile *file, gsize start, gsize end);
+void        project_file_apply_errors(ProjectFile *file);
+const GArray *project_file_get_errors(ProjectFile *file);

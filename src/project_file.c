@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <glib-object.h>
+#include <gtk/gtk.h>
 #include "syscalls.h"
 #include "util.h"
 
@@ -17,7 +18,11 @@ struct _ProjectFile {
   LispLexer *lexer; /* owned */
   LispParser *parser; /* owned */
   Project *project;
+  GtkTextTag *error_tag;
+  GArray *errors; /* ProjectFileError */
 };
+
+static void project_file_ensure_error_tag(ProjectFile *file);
 
 ProjectFile *project_file_new(Project *project, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
@@ -33,6 +38,8 @@ ProjectFile *project_file_new(Project *project, TextProvider *provider,
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
   file->path = path ? g_strdup(path) : NULL;
+  file->error_tag = NULL;
+  file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
   return file;
 }
 
@@ -43,6 +50,8 @@ ProjectFile *project_file_new_virtual(TextProvider *provider) {
   file->provider = text_provider_ref(provider);
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
+  file->error_tag = NULL;
+  file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
   return file;
 }
 
@@ -52,6 +61,8 @@ void project_file_free(ProjectFile *file) {
   if (file->lexer) lisp_lexer_free(file->lexer);
   if (file->provider) text_provider_unref(file->provider);
   if (file->buffer) g_object_unref(file->buffer);
+  if (file->errors)
+    g_array_free(file->errors, TRUE);
   g_free(file->path);
   g_free(file);
 }
@@ -72,6 +83,7 @@ void project_file_set_provider(ProjectFile *file, TextProvider *provider,
   g_return_if_fail(file != NULL);
   g_return_if_fail(provider);
   g_return_if_fail(glide_is_ui_thread());
+  project_file_clear_errors(file);
   if (file->parser)
     lisp_parser_free(file->parser);
   if (file->lexer)
@@ -84,6 +96,7 @@ void project_file_set_provider(ProjectFile *file, TextProvider *provider,
   file->buffer = buffer ? g_object_ref(buffer) : NULL;
   file->lexer = lisp_lexer_new(file->provider);
   file->parser = lisp_parser_new();
+  file->error_tag = NULL;
 }
 
 TextProvider *project_file_get_provider(ProjectFile *file) {
@@ -191,4 +204,57 @@ const gchar *project_file_get_relative_path(ProjectFile *file) {
     return rel;
   }
   return path;
+}
+
+void project_file_clear_errors(ProjectFile *file) {
+  g_return_if_fail(file != NULL);
+  if (file->errors)
+    g_array_set_size(file->errors, 0);
+  if (file->buffer && file->error_tag) {
+    GtkTextIter start;
+    GtkTextIter end;
+    gtk_text_buffer_get_bounds(file->buffer, &start, &end);
+    gtk_text_buffer_remove_tag(file->buffer, file->error_tag, &start, &end);
+  }
+}
+
+void project_file_add_error(ProjectFile *file, gsize start, gsize end) {
+  g_return_if_fail(file != NULL);
+  if (!file->errors)
+    file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
+  if (end <= start)
+    return;
+  ProjectFileError err = { start, end };
+  g_array_append_val(file->errors, err);
+}
+
+static void project_file_ensure_error_tag(ProjectFile *file) {
+  if (!file->buffer)
+    return;
+  if (!file->error_tag) {
+    file->error_tag = gtk_text_buffer_create_tag(file->buffer, NULL,
+        "underline", PANGO_UNDERLINE_ERROR, NULL);
+  }
+}
+
+void project_file_apply_errors(ProjectFile *file) {
+  g_return_if_fail(file != NULL);
+  if (!file->buffer || !file->errors || file->errors->len == 0)
+    return;
+  project_file_ensure_error_tag(file);
+  if (!file->error_tag)
+    return;
+  for (guint i = 0; i < file->errors->len; i++) {
+    ProjectFileError *err = &g_array_index(file->errors, ProjectFileError, i);
+    GtkTextIter start;
+    GtkTextIter end;
+    gtk_text_buffer_get_iter_at_offset(file->buffer, &start, (gint)err->start);
+    gtk_text_buffer_get_iter_at_offset(file->buffer, &end, (gint)err->end);
+    gtk_text_buffer_apply_tag(file->buffer, file->error_tag, &start, &end);
+  }
+}
+
+const GArray *project_file_get_errors(ProjectFile *file) {
+  g_return_val_if_fail(file != NULL, NULL);
+  return file->errors;
 }
