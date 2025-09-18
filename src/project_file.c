@@ -61,8 +61,10 @@ void project_file_free(ProjectFile *file) {
   if (file->lexer) lisp_lexer_free(file->lexer);
   if (file->provider) text_provider_unref(file->provider);
   if (file->buffer) g_object_unref(file->buffer);
-  if (file->errors)
+  if (file->errors) {
+    project_file_clear_errors(file);
     g_array_free(file->errors, TRUE);
+  }
   g_free(file->path);
   g_free(file);
 }
@@ -208,8 +210,14 @@ const gchar *project_file_get_relative_path(ProjectFile *file) {
 
 void project_file_clear_errors(ProjectFile *file) {
   g_return_if_fail(file != NULL);
-  if (file->errors)
+  if (file->errors) {
+    for (guint i = 0; i < file->errors->len; i++) {
+      ProjectFileError *err = &g_array_index(file->errors, ProjectFileError, i);
+      g_free(err->message);
+      err->message = NULL;
+    }
     g_array_set_size(file->errors, 0);
+  }
   if (file->buffer && file->error_tag) {
     GtkTextIter start;
     GtkTextIter end;
@@ -218,13 +226,14 @@ void project_file_clear_errors(ProjectFile *file) {
   }
 }
 
-void project_file_add_error(ProjectFile *file, gsize start, gsize end) {
+void project_file_add_error(ProjectFile *file, gsize start, gsize end,
+    const gchar *message) {
   g_return_if_fail(file != NULL);
   if (!file->errors)
     file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
   if (end <= start)
     return;
-  ProjectFileError err = { start, end };
+  ProjectFileError err = { start, end, message ? g_strdup(message) : NULL };
   g_array_append_val(file->errors, err);
 }
 
