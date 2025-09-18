@@ -5,6 +5,24 @@
 #include <glib/gstdio.h>
 #include <string.h>
 
+static Function *create_function_with_lambda(const gchar *name,
+    const gchar *lambda) {
+  TextProvider *provider = string_text_provider_new(lambda);
+  ProjectFile *file = project_file_new_virtual(provider);
+  text_provider_unref(provider);
+  LispLexer *lexer = project_file_get_lexer(file);
+  lisp_lexer_lex(lexer);
+  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  LispParser *parser = project_file_get_parser(file);
+  lisp_parser_parse(parser, tokens, file);
+  const Node *ast = lisp_parser_get_ast(parser);
+  Node *lambda_node = NULL;
+  if (ast && ast->children && ast->children->len > 0)
+    lambda_node = g_array_index(ast->children, Node*, 0);
+  return function_new(NULL, lambda_node, NULL, NULL, FUNCTION_KIND_FUNCTION,
+      name, "CL-USER", file);
+}
+
 static void test_default_file(void)
 {
   Project *project = project_new(NULL);
@@ -208,6 +226,57 @@ static void test_incremental_index(void)
   project_unref(project);
 }
 
+static void test_function_call_argument_mismatch(void)
+{
+  Project *project = project_new(NULL);
+  Function *fn = create_function_with_lambda("BAR", "(x y)");
+  project_add_function(project, fn);
+  function_unref(fn);
+
+  TextProvider *provider = string_text_provider_new("(bar 1)");
+  ProjectFile *file = project_add_file(project, provider, NULL, NULL,
+      PROJECT_FILE_LIVE);
+  text_provider_unref(provider);
+  project_file_changed(project, file);
+
+  const GArray *errors = project_file_get_errors(file);
+  g_assert_nonnull(errors);
+  g_assert_cmpuint(errors->len, ==, 1);
+  const ProjectFileError *err = &g_array_index((GArray*)errors,
+      ProjectFileError, 0);
+  g_assert_cmpuint(err->start, ==, 0);
+  TextProvider *file_provider = project_file_get_provider(file);
+  gsize len = text_provider_get_length(file_provider);
+  g_assert_cmpuint(err->end, ==, len);
+
+  StringTextProvider *stp = (StringTextProvider*)file_provider;
+  g_free(stp->text);
+  stp->text = g_strdup("(bar 1 2)");
+  project_file_changed(project, file);
+
+  errors = project_file_get_errors(file);
+  g_assert_nonnull(errors);
+  g_assert_cmpuint(errors->len, ==, 0);
+
+  g_free(stp->text);
+  stp->text = g_strdup("(bar 1 2 3)");
+  project_file_changed(project, file);
+
+  errors = project_file_get_errors(file);
+  g_assert_nonnull(errors);
+  g_assert_cmpuint(errors->len, ==, 1);
+
+  g_free(stp->text);
+  stp->text = g_strdup("(bar 1 2)");
+  project_file_changed(project, file);
+
+  errors = project_file_get_errors(file);
+  g_assert_nonnull(errors);
+  g_assert_cmpuint(errors->len, ==, 0);
+
+  project_unref(project);
+}
+
 static void test_relative_path(void)
 {
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
@@ -281,6 +350,8 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/functions_table", test_functions_table);
   g_test_add_func("/function/tooltip", test_function_tooltip);
   g_test_add_func("/project/incremental_index", test_incremental_index);
+  g_test_add_func("/project/function_call_argument_mismatch",
+      test_function_call_argument_mismatch);
   g_test_add_func("/project/relative_path", test_relative_path);
   g_test_add_func("/project/remove_file", test_remove_file);
   g_test_add_func("/project/project_changed_cb", test_project_changed_cb);
