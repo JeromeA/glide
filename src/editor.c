@@ -1,5 +1,6 @@
 #include "editor.h"
 #include "gtk_text_provider.h"
+#include "editor_tooltip_widget.h"
 #include "project.h"
 #include "util.h"
 
@@ -19,6 +20,7 @@ struct _Editor
   GArray *selection_stack;
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
+  EditorTooltipWidget *tooltip_widget;
 };
 
 G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
@@ -56,6 +58,9 @@ editor_init (Editor *self)
   self->project = NULL;
   self->file = NULL;
   self->selection_stack = g_array_new (FALSE, FALSE, sizeof (SelectionRange));
+  self->tooltip_widget = editor_tooltip_widget_new ();
+  if (self->tooltip_widget)
+    g_object_ref_sink (G_OBJECT (self->tooltip_widget));
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
   self->function_def_tag = gtk_text_buffer_create_tag (buffer,
       "function-def-highlight", "background", "#fef", NULL);
@@ -96,6 +101,7 @@ editor_dispose (GObject *object)
     g_array_free (self->selection_stack, TRUE);
     self->selection_stack = NULL;
   }
+  g_clear_object (&self->tooltip_widget);
 
   G_OBJECT_CLASS (editor_parent_class)->dispose (object);
 }
@@ -327,19 +333,19 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   gchar *function_markup = editor_build_function_tooltip_markup (self, offset, end);
   gboolean shown = FALSE;
 
-  if (error_markup && function_markup) {
-    GString *combined = g_string_new (error_markup);
-    g_string_append (combined, "\n\n");
-    g_string_append (combined, function_markup);
-    gtk_tooltip_set_markup (tooltip, combined->str);
-    g_string_free (combined, TRUE);
-    shown = TRUE;
-  } else if (function_markup) {
-    gtk_tooltip_set_markup (tooltip, function_markup);
-    shown = TRUE;
-  } else if (error_markup) {
-    gtk_tooltip_set_markup (tooltip, error_markup);
-    shown = TRUE;
+  if (!self->tooltip_widget) {
+    self->tooltip_widget = editor_tooltip_widget_new ();
+    if (self->tooltip_widget)
+      g_object_ref_sink (G_OBJECT (self->tooltip_widget));
+  }
+
+  if (self->tooltip_widget) {
+    if (editor_tooltip_widget_set_content (self->tooltip_widget, error_markup, function_markup)) {
+      gtk_tooltip_set_custom (tooltip, GTK_WIDGET (self->tooltip_widget));
+      shown = TRUE;
+    } else {
+      gtk_tooltip_set_custom (tooltip, NULL);
+    }
   }
 
   g_free (function_markup);
