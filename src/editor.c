@@ -35,6 +35,7 @@ static void editor_highlight_nodes (Editor *self, GPtrArray *nodes,
     GtkTextTag *tag);
 static void editor_highlight_node (Editor *self, const Node *node,
     GtkTextTag *tag);
+static gchar *editor_build_error_tooltip_markup (Editor *self, gsize offset);
 
 static void
 editor_init (Editor *self)
@@ -262,6 +263,8 @@ editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
 
 static gboolean find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
     gsize start, gsize end, gsize *new_start, gsize *new_end);
+static gchar *editor_build_function_tooltip_markup (Editor *self, gsize offset,
+    gsize end);
 
 gboolean
 editor_get_toplevel_range (Editor *self, gsize offset,
@@ -298,7 +301,6 @@ editor_get_toplevel_range (Editor *self, gsize offset,
   return TRUE;
 }
 
-
 static gboolean
 editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_mode*/,
     GtkTooltip *tooltip, gpointer user_data)
@@ -320,35 +322,91 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   gsize offset = gtk_text_iter_get_offset (&iter);
   gsize end = offset < len ? offset + 1 : offset;
   LOG (1, "offset=%zu end=%zu len=%zu", offset, end, len);
+
+  gchar *error_markup = editor_build_error_tooltip_markup (self, offset);
+  gchar *function_markup = editor_build_function_tooltip_markup (self, offset, end);
+  gboolean shown = FALSE;
+
+  if (error_markup && function_markup) {
+    GString *combined = g_string_new (error_markup);
+    g_string_append (combined, "\n\n");
+    g_string_append (combined, function_markup);
+    gtk_tooltip_set_markup (tooltip, combined->str);
+    g_string_free (combined, TRUE);
+    shown = TRUE;
+  } else if (function_markup) {
+    gtk_tooltip_set_markup (tooltip, function_markup);
+    shown = TRUE;
+  } else if (error_markup) {
+    gtk_tooltip_set_markup (tooltip, error_markup);
+    shown = TRUE;
+  }
+
+  g_free (function_markup);
+  g_free (error_markup);
+  return shown;
+}
+
+static gchar *
+editor_build_function_tooltip_markup (Editor *self, gsize offset, gsize end)
+{
   LispParser *parser = project_file_get_parser (self->file);
   const Node *ast = lisp_parser_get_ast (parser);
   const Node *node = node_find_containing_range (ast, offset, end);
   if (!node) {
-    LOG (1, "Editor.on_query_tooltip: no node");
-    return FALSE;
+    LOG (1, "Editor.build_function_tooltip_markup: no node");
+    return NULL;
   }
+
   gchar *node_str = node_to_string (node);
-  LOG (1, "Editor.on_query_tooltip: node %s", node_str ? node_str : "<unknown>");
+  LOG (1, "Editor.build_function_tooltip_markup: node %s",
+      node_str ? node_str : "<unknown>");
   g_free (node_str);
+
   if (!node_is (node, SDT_FUNCTION_USE)) {
-    LOG (1, "Editor.on_query_tooltip: node not a function use");
-    return FALSE;
+    LOG (1, "Editor.build_function_tooltip_markup: node not a function use");
+    return NULL;
   }
+
   const gchar *name = node_get_name (node);
-  LOG (1, "Editor.on_query_tooltip: function %s", name);
+  LOG (1, "Editor.build_function_tooltip_markup: function %s", name);
+
   Function *fn = project_get_function (self->project, name);
   if (!fn) {
-    LOG (1, "Editor.on_query_tooltip: function not found");
-    return FALSE;
+    LOG (1, "Editor.build_function_tooltip_markup: function not found");
+    return NULL;
   }
-  gchar *tt = function_tooltip (fn);
-  if (!tt) {
-    LOG (1, "Editor.on_query_tooltip: no tooltip");
-    return FALSE;
+
+  gchar *markup = function_tooltip (fn);
+  if (!markup)
+    LOG (1, "Editor.build_function_tooltip_markup: no tooltip");
+
+  return markup;
+}
+
+static gchar *
+editor_build_error_tooltip_markup (Editor *self, gsize offset)
+{
+  const GArray *errors = project_file_get_errors (self->file);
+  if (!errors || errors->len == 0)
+    return NULL;
+  LOG (1, "Editor.build_error_tooltip checking %u errors", errors->len);
+  for (guint i = 0; i < errors->len; i++) {
+    const ProjectFileError *err = &g_array_index ((GArray*) errors,
+        ProjectFileError, i);
+    if (offset < err->start || offset >= err->end)
+      continue;
+    LOG (1, "Editor.build_error_tooltip: match range=[%zu,%zu) message=%s",
+        err->start, err->end, err->message ? err->message : "(null)");
+    const gchar *message = (err->message && *err->message) ? err->message : "Error";
+    gchar *message_esc = g_markup_escape_text (message, -1);
+    gchar *markup = g_strdup_printf ("<span foreground=\"darkred\"><b>%s</b></span>",
+        message_esc);
+    g_free (message_esc);
+    return markup;
   }
-  gtk_tooltip_set_markup (tooltip, tt);
-  g_free (tt);
-  return TRUE;
+  LOG (1, "Editor.build_error_tooltip: no match at offset %zu", offset);
+  return NULL;
 }
 
 static gboolean

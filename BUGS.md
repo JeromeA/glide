@@ -11,11 +11,20 @@ to dispose an already finalized object, triggering the GLib critical `instance w
 
 ## Crash when restoring last file at startup
 
-The application crashed when restoring the previously opened file at startup. 
+The application crashed when restoring the previously opened file at startup.
 `app_activate` tried to scroll the view by casting an `Editor` to
 `GtkTextView`. Since `Editor` is a `GtkScrolledWindow` containing the
 actual `GtkSourceView`, the invalid cast triggered a GLib critical and
 terminated the program.
+
+## Argument errors provided no diagnostics
+
+Triggering an argument arity error only underlined the offending call. Hovering
+the underline produced no tooltip and the log contained no trace of the error,
+so diagnosing analysis problems required stepping through the code.
+`project_file_add_error` and the error-application path now emit structured log
+entries for each diagnostic, and the editor's tooltip handler displays the
+associated message when hovering the underline.
 
 ## Project viewer no longer selected files
 
