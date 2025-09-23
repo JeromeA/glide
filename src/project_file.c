@@ -210,6 +210,9 @@ const gchar *project_file_get_relative_path(ProjectFile *file) {
 
 void project_file_clear_errors(ProjectFile *file) {
   g_return_if_fail(file != NULL);
+  const gchar *path = file->path ? file->path : "(null)";
+  guint count = file->errors ? file->errors->len : 0;
+  LOG(1, "project_file_clear_errors path=%s count=%u", path, count);
   if (file->errors) {
     for (guint i = 0; i < file->errors->len; i++) {
       ProjectFileError *err = &g_array_index(file->errors, ProjectFileError, i);
@@ -233,6 +236,9 @@ void project_file_add_error(ProjectFile *file, gsize start, gsize end,
     file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
   if (end <= start)
     return;
+  const gchar *path = file->path ? file->path : "(null)";
+  LOG(1, "project_file_add_error path=%s range=[%zu,%zu) message=%s", path, start,
+      end, message ? message : "(null)");
   ProjectFileError err = { start, end, message ? g_strdup(message) : NULL };
   g_array_append_val(file->errors, err);
 }
@@ -250,11 +256,15 @@ void project_file_apply_errors(ProjectFile *file) {
   g_return_if_fail(file != NULL);
   if (!file->buffer || !file->errors || file->errors->len == 0)
     return;
+  const gchar *path = file->path ? file->path : "(null)";
+  LOG(1, "project_file_apply_errors path=%s count=%u", path, file->errors->len);
   project_file_ensure_error_tag(file);
   if (!file->error_tag)
     return;
   for (guint i = 0; i < file->errors->len; i++) {
     ProjectFileError *err = &g_array_index(file->errors, ProjectFileError, i);
+    LOG(1, "project_file_apply_errors applying range=[%zu,%zu) message=%s",
+        err->start, err->end, err->message ? err->message : "(null)");
     GtkTextIter start;
     GtkTextIter end;
     gtk_text_buffer_get_iter_at_offset(file->buffer, &start, (gint)err->start);
