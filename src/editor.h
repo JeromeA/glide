@@ -18,5 +18,6 @@ gboolean        editor_get_toplevel_range (Editor *self,
                     gsize offset, gsize *start, gsize *end);
 void            editor_extend_selection (Editor *self);
 void            editor_shrink_selection (Editor *self);
+gboolean        editor_show_tooltip_window (Editor *self);
 
 G_END_DECLS

@@ -11,6 +11,8 @@ struct _EditorTooltipWidget
   GtkWidget *separator;
   GtkWidget *doc_box;
   GtkWidget *doc_label;
+  gboolean has_error;
+  gboolean has_doc;
 };
 
 struct _EditorTooltipWidgetClass
@@ -27,6 +29,9 @@ editor_tooltip_widget_init (EditorTooltipWidget *self)
 {
   gtk_orientable_set_orientation (GTK_ORIENTABLE (self), GTK_ORIENTATION_VERTICAL);
   gtk_box_set_spacing (GTK_BOX (self), 0);
+
+  self->has_error = FALSE;
+  self->has_doc = FALSE;
 
   editor_tooltip_widget_init_css ();
 
@@ -113,10 +118,20 @@ editor_tooltip_widget_set_content (EditorTooltipWidget *self,
   gtk_widget_set_visible (self->doc_box, show_doc);
   gtk_widget_set_visible (self->separator, show_error && show_doc);
 
+  self->has_error = show_error;
+  self->has_doc = show_doc;
+
   if (show_error || show_doc)
     gtk_widget_show_all (GTK_WIDGET (self));
 
   return show_error || show_doc;
+}
+
+gboolean
+editor_tooltip_widget_has_content (EditorTooltipWidget *self)
+{
+  g_return_val_if_fail (EDITOR_IS_TOOLTIP_WIDGET (self), FALSE);
+  return self->has_error || self->has_doc;
 }
 
 static void
@@ -131,19 +146,26 @@ editor_tooltip_widget_init_css (void)
       "  background-color: transparent;"
       "  padding: 0;"
       "  margin: 0;"
+      "  border: 0;"
       "}"
       ".editor-tooltip-error {"
       "  background-color: #f3f3f3;"
-      "  padding: 6px 8px;"
+      "  padding: 0;"
+      "  margin: 0;"
+      "  border: 0;"
       "}"
       ".editor-tooltip-doc {"
       "  background-color: #ffffff;"
-      "  padding: 6px 8px;"
+      "  padding: 0;"
+      "  margin: 0;"
+      "  border: 0;"
       "}"
       ".editor-tooltip-separator {"
       "  background-color: #a1a1a1;"
       "  min-height: 1px;"
       "  margin: 0;"
+      "  padding: 0;"
+      "  border: 0;"
       "}";
 
   GtkCssProvider *provider = gtk_css_provider_new ();

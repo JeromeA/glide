@@ -16,6 +16,7 @@
 
 static gboolean app_maybe_save_all(App *self);
 static void show_parser(App *self);
+static void show_editor_tooltip(App *self);
 
 /* === Action callbacks ==================================================== */
 
@@ -116,6 +117,12 @@ show_parser_action(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer da
 }
 
 static void
+show_tooltip_action(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  show_editor_tooltip(data);
+}
+
+static void
 eval_toplevel(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   on_evaluate_toplevel(NULL, data);
@@ -161,6 +168,7 @@ static const GActionEntry app_entries[] = {
   { .name = "file-rename", .activate = rename_file },
   { .name = "file-delete", .activate = delete_file },
   { .name = "show-parser", .activate = show_parser_action },
+  { .name = "show-tooltip", .activate = show_tooltip_action },
   { .name = "eval-toplevel", .activate = eval_toplevel },
   { .name = "eval-selection", .activate = eval_selection },
   { .name = "eval", .activate = eval_current },
@@ -180,6 +188,9 @@ actions_init(App *self)
   const gchar *parser_accels[] = {"<Alt>p", NULL};
   gtk_application_set_accels_for_action(GTK_APPLICATION(self),
       "app.show-parser", parser_accels);
+  const gchar *tooltip_accels[] = {"<Alt>t", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.show-tooltip", tooltip_accels);
   const gchar *shrink_accels[] = {"<Primary><Shift>w", NULL};
   gtk_application_set_accels_for_action(GTK_APPLICATION(self),
       "app.shrink-selection", shrink_accels);
@@ -217,6 +228,28 @@ show_parser(App *self)
   gtk_container_add(GTK_CONTAINER(scrolled), view);
   gtk_container_add(GTK_CONTAINER(win), scrolled);
   gtk_widget_show_all(win);
+}
+
+static void
+show_editor_tooltip(App *self)
+{
+  g_assert(glide_is_ui_thread());
+  g_return_if_fail(self != NULL);
+
+  LispSourceNotebook *notebook = app_get_notebook(self);
+  if (!notebook) {
+    LOG(1, "Actions.show_editor_tooltip: no notebook");
+    return;
+  }
+
+  Editor *current = lisp_source_notebook_get_current_editor(notebook);
+  if (!current) {
+    LOG(1, "Actions.show_editor_tooltip: no current editor");
+    return;
+  }
+
+  if (!editor_show_tooltip_window(current))
+    LOG(1, "Actions.show_editor_tooltip: no tooltip content");
 }
 
 static gboolean

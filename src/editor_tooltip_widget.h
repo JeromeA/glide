@@ -16,6 +16,7 @@ typedef struct _EditorTooltipWidgetClass EditorTooltipWidgetClass;
 
 gboolean               editor_tooltip_widget_set_content (EditorTooltipWidget *self,
     const gchar *error_markup, const gchar *doc_markup);
+gboolean               editor_tooltip_widget_has_content (EditorTooltipWidget *self);
 EditorTooltipWidget   *editor_tooltip_widget_new          (void);
 GType       editor_tooltip_widget_get_type     (void);
 
