@@ -9,6 +9,13 @@ The application crashed on startup because `editor_dispose` explicitly unreferen
 widget. The `GtkScrolledWindow` parent already disposes of its children, so unreferencing the view again left GTK trying
 to dispose an already finalized object, triggering the GLib critical `instance with invalid (NULL) class pointer`.
 
+## Argument error tooltip duplicated documentation
+
+Hovering an argument arity error showed the function documentation twice: once as escaped plain text in the error
+tooltip and once in the coloured documentation section. The analyser appended the function tooltip, which already
+contains the doc string, to the diagnostic message so the editor displayed both copies. The analyser now limits the
+error message to the argument count details and leaves the documentation to the dedicated function tooltip.
+
 ## Crash when restoring last file at startup
 
 The application crashed when restoring the previously opened file at startup.
