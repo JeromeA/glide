@@ -113,15 +113,11 @@ static gboolean analyse_validate_call(Project *project, Node *expr) {
   guint actual = expr->children->len > 0 ? expr->children->len - 1 : 0;
   if (actual < min_args || (has_max && actual > max_args)) {
     guint expected = actual < min_args ? min_args : max_args;
-    gchar *tooltip = function_tooltip(function);
-    gchar *message = tooltip && *tooltip
-        ? g_strdup_printf("Expected %u arguments but found %u\n%s", expected,
-            actual, tooltip)
-        : g_strdup_printf("Expected %u arguments but found %u", expected,
-            actual);
+    gchar *message = g_strdup_printf(
+        "Expected %u arguments for %s but found %u", expected, fn_name,
+        actual);
     analyse_mark_error(expr, message);
     g_free(message);
-    g_free(tooltip);
     return FALSE;
   }
   return TRUE;

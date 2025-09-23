@@ -286,15 +286,9 @@ static void test_function_call_argument_mismatch(void)
   gsize len = text_provider_get_length(file_provider);
   g_assert_cmpuint(err->end, ==, len);
   g_assert_nonnull(err->message);
-  Function *project_fn = project_get_function(project, "BAR");
-  g_assert_nonnull(project_fn);
-  gchar *tooltip = function_tooltip(project_fn);
-  g_assert_nonnull(tooltip);
-  gchar *expected_msg = g_strdup_printf(
-      "Expected %u arguments but found %u\n%s", 2u, 1u, tooltip);
-  g_assert_cmpstr(err->message, ==, expected_msg);
-  g_free(expected_msg);
-  g_free(tooltip);
+  g_assert_nonnull(project_get_function(project, "BAR"));
+  g_assert_cmpstr(err->message, ==,
+      "Expected 2 arguments for BAR but found 1");
 
   StringTextProvider *stp = (StringTextProvider*)file_provider;
   g_free(stp->text);
@@ -314,13 +308,8 @@ static void test_function_call_argument_mismatch(void)
   g_assert_cmpuint(errors->len, ==, 1);
   err = &g_array_index((GArray*)errors, ProjectFileError, 0);
   g_assert_nonnull(err->message);
-  tooltip = function_tooltip(project_fn);
-  g_assert_nonnull(tooltip);
-  expected_msg = g_strdup_printf(
-      "Expected %u arguments but found %u\n%s", 2u, 3u, tooltip);
-  g_assert_cmpstr(err->message, ==, expected_msg);
-  g_free(expected_msg);
-  g_free(tooltip);
+  g_assert_cmpstr(err->message, ==,
+      "Expected 2 arguments for BAR but found 3");
 
   g_free(stp->text);
   stp->text = g_strdup("(bar 1 2)");
