@@ -101,7 +101,7 @@ editor_dispose (GObject *object)
     g_array_free (self->selection_stack, TRUE);
     self->selection_stack = NULL;
   }
-  g_clear_object ((GObject **) &self->tooltip_widget);
+  g_clear_object (&self->tooltip_widget);
 
   G_OBJECT_CLASS (editor_parent_class)->dispose (object);
 }
