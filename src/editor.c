@@ -400,10 +400,7 @@ editor_build_error_tooltip_markup (Editor *self, gsize offset)
         err->start, err->end, err->message ? err->message : "(null)");
     const gchar *message = (err->message && *err->message) ? err->message : "Error";
     gchar *message_esc = g_markup_escape_text (message, -1);
-    gchar *markup = g_strdup_printf ("<span foreground=\"darkred\"><b>%s</b></span>",
-        message_esc);
-    g_free (message_esc);
-    return markup;
+    return message_esc;
   }
   LOG (1, "Editor.build_error_tooltip: no match at offset %zu", offset);
   return NULL;

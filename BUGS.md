@@ -16,6 +16,12 @@ tooltip and once in the coloured documentation section. The analyser appended th
 contains the doc string, to the diagnostic message so the editor displayed both copies. The analyser now limits the
 error message to the argument count details and leaves the documentation to the dedicated function tooltip.
 
+## Error tooltips forced bold brown text
+
+Diagnostics displayed in the editor used `<span foreground="darkred"><b>…</b></span>` markup around the message. GTK
+rendered that markup in brown bold text, so the tooltip looked unlike the rest of the UI. The editor now returns the
+escaped message directly and lets the theme style tooltips consistently.
+
 ## Crash when restoring last file at startup
 
 The application crashed when restoring the previously opened file at startup.
