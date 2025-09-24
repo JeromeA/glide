@@ -69,16 +69,12 @@ static void test_file_load(void)
   g_file_set_contents(filepath, contents, -1, NULL);
 
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("");
-  ProjectFile *file = project_add_file(project, provider, NULL, filepath,
-      PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
 
   int count = 0;
   project_set_file_loaded_cb(project, on_file_loaded, &count);
 
-  gboolean ok = project_file_load(file);
-  g_assert_true(ok);
+  ProjectFile *file = project_add_loaded_file(project, filepath);
+  g_assert_nonnull(file);
   g_assert_cmpint(count, ==, 1);
 
   TextProvider *tp = project_file_get_provider(file);

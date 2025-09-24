@@ -35,7 +35,7 @@ LispLexer   *project_file_get_lexer(ProjectFile *file);
 GtkTextBuffer *project_file_get_buffer(ProjectFile *file);
 const gchar *project_file_get_path(ProjectFile *file); /* borrowed */
 void        project_file_set_path(ProjectFile *file, const gchar *path);
-gboolean    project_file_load(ProjectFile *file);
+ProjectFile *project_file_load(Project *project, const gchar *path);
 const gchar *project_file_get_relative_path(ProjectFile *file);
 void        project_file_clear_errors(ProjectFile *file);
 void        project_file_add_error(ProjectFile *file, gsize start, gsize end,

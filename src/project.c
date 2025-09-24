@@ -59,6 +59,25 @@ ProjectFile *project_add_file(Project *self, TextProvider *provider,
   return file;
 }
 
+ProjectFile *project_add_loaded_file(Project *self, const gchar *path) {
+  g_return_val_if_fail(self != NULL, NULL);
+  g_return_val_if_fail(path != NULL, NULL);
+  g_return_val_if_fail(glide_is_ui_thread(), NULL);
+
+  LOG(1, "project_add_loaded_file path=%s", path);
+
+  ProjectFile *file = project_file_load(self, path);
+  if (!file)
+    return NULL;
+
+  g_ptr_array_add(self->files, file);
+
+  project_changed(self);
+  project_file_loaded(self, file);
+
+  return file;
+}
+
 void project_remove_file(Project *self, ProjectFile *file) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(file != NULL);
