@@ -24,7 +24,7 @@ SOURCES += \
   menu_bar.c \
   app.c \
   lisp_source_notebook.c \
-  editor_tooltip_window.c \
+  editor_tooltip_widget.c \
   editor.c \
   lisp_lexer.c \
   lisp_parser.c \

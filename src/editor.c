@@ -1,6 +1,6 @@
 #include "editor.h"
 #include "gtk_text_provider.h"
-#include "editor_tooltip_window.h"
+#include "editor_tooltip_widget.h"
 #include "project.h"
 #include "util.h"
 
@@ -20,7 +20,7 @@ struct _Editor
   GArray *selection_stack;
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
-  EditorTooltipWindow *tooltip_window;
+  EditorTooltipWidget *tooltip_widget;
 };
 
 G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
@@ -28,7 +28,7 @@ G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
 // Forward declaration for the callback
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
 static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
-    gboolean /*keyboard_mode*/, GtkTooltip * /*tooltip*/, gpointer user_data);
+    gboolean /*keyboard_mode*/, GtkTooltip *tooltip, gpointer user_data);
 static void editor_update_function_highlight (Editor *self);
 static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
     GtkTextMark *mark, gpointer user_data);
@@ -58,12 +58,9 @@ editor_init (Editor *self)
   self->project = NULL;
   self->file = NULL;
   self->selection_stack = g_array_new (FALSE, FALSE, sizeof (SelectionRange));
-  self->tooltip_window = editor_tooltip_window_new_popup ();
-  if (self->tooltip_window) {
-    g_object_ref_sink (G_OBJECT (self->tooltip_window));
-    gtk_widget_set_tooltip_window (GTK_WIDGET (self->view),
-        GTK_WINDOW (self->tooltip_window));
-  }
+  self->tooltip_widget = editor_tooltip_widget_new ();
+  if (self->tooltip_widget)
+    g_object_ref_sink (G_OBJECT (self->tooltip_widget));
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
   self->function_def_tag = gtk_text_buffer_create_tag (buffer,
       "function-def-highlight", "background", "#fef", NULL);
@@ -104,7 +101,7 @@ editor_dispose (GObject *object)
     g_array_free (self->selection_stack, TRUE);
     self->selection_stack = NULL;
   }
-  g_clear_object (&self->tooltip_window);
+  g_clear_object (&self->tooltip_widget);
 
   G_OBJECT_CLASS (editor_parent_class)->dispose (object);
 }
@@ -312,7 +309,7 @@ editor_get_toplevel_range (Editor *self, gsize offset,
 
 static gboolean
 editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_mode*/,
-    GtkTooltip * /*tooltip*/, gpointer user_data)
+    GtkTooltip *tooltip, gpointer user_data)
 {
   g_assert (glide_is_ui_thread ());
   Editor *self = GLIDE_EDITOR (user_data);
@@ -336,18 +333,19 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   gchar *function_markup = editor_build_function_tooltip_markup (self, offset, end);
   gboolean shown = FALSE;
 
-  if (!self->tooltip_window) {
-    self->tooltip_window = editor_tooltip_window_new_popup ();
-    if (self->tooltip_window) {
-      g_object_ref_sink (G_OBJECT (self->tooltip_window));
-      gtk_widget_set_tooltip_window (GTK_WIDGET (self->view),
-          GTK_WINDOW (self->tooltip_window));
-    }
+  if (!self->tooltip_widget) {
+    self->tooltip_widget = editor_tooltip_widget_new ();
+    if (self->tooltip_widget)
+      g_object_ref_sink (G_OBJECT (self->tooltip_widget));
   }
 
-  if (self->tooltip_window) {
-    if (editor_tooltip_window_set_content (self->tooltip_window, error_markup, function_markup))
+  if (self->tooltip_widget) {
+    if (editor_tooltip_widget_set_content (self->tooltip_widget, error_markup, function_markup)) {
+      gtk_tooltip_set_custom (tooltip, GTK_WIDGET (self->tooltip_widget));
       shown = TRUE;
+    } else {
+      gtk_tooltip_set_custom (tooltip, NULL);
+    }
   }
 
   g_free (function_markup);
@@ -541,24 +539,37 @@ editor_show_tooltip_window (Editor *self)
   g_assert (glide_is_ui_thread ());
   g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
 
-  if (!self->tooltip_window) {
-    LOG (1, "Editor.show_tooltip_window: no tooltip window");
+  if (!self->tooltip_widget) {
+    LOG (1, "Editor.show_tooltip_window: no tooltip widget");
     return FALSE;
   }
 
-  if (!editor_tooltip_window_has_content (self->tooltip_window)) {
+  if (!editor_tooltip_widget_has_content (self->tooltip_widget)) {
     LOG (1, "Editor.show_tooltip_window: no cached tooltip content");
     return FALSE;
   }
 
-  EditorTooltipWindow *window = editor_tooltip_window_new_toplevel ();
-  if (!window) {
-    LOG (1, "Editor.show_tooltip_window: failed to create window");
-    return FALSE;
+  GtkWidget *tooltip_widget = GTK_WIDGET (self->tooltip_widget);
+  GtkWidget *parent = gtk_widget_get_parent (tooltip_widget);
+  if (parent) {
+    if (GTK_IS_WINDOW (parent)) {
+      gtk_window_present (GTK_WINDOW (parent));
+      return TRUE;
+    }
+    if (GTK_IS_CONTAINER (parent)) {
+      gtk_container_remove (GTK_CONTAINER (parent), tooltip_widget);
+    } else {
+      LOG (1,
+          "Editor.show_tooltip_window: cannot detach tooltip widget from parent %s",
+          G_OBJECT_TYPE_NAME (parent));
+      return FALSE;
+    }
   }
 
-  editor_tooltip_window_copy_content (window, self->tooltip_window);
-  gtk_widget_show_all (GTK_WIDGET (window));
+  GtkWidget *window = gtk_window_new (GTK_WINDOW_TOPLEVEL);
+  gtk_window_set_title (GTK_WINDOW (window), "Tooltip");
+  gtk_container_add (GTK_CONTAINER (window), tooltip_widget);
+  gtk_widget_show_all (window);
   gtk_window_present (GTK_WINDOW (window));
 
   return TRUE;

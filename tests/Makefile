@@ -49,7 +49,7 @@ package_test: package_test.c package.c node.c $(COMMON)
 status_service_test: status_service_test.c status_service.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-editor_test: editor_test.c editor.c editor_tooltip_window.c gtk_text_provider.c project_index.c project.c project_repl.c asdf.c project_file.c analyse.c analyse_defpackage.c analyse_defun.c function.c node.c package.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c repl_session.c repl_process.c process.c status_service.c $(COMMON)
+editor_test: editor_test.c editor.c editor_tooltip_widget.c gtk_text_provider.c project_index.c project.c project_repl.c asdf.c project_file.c analyse.c analyse_defpackage.c analyse_defun.c function.c node.c package.c lisp_lexer.c lisp_parser.c string_text_provider.c text_provider.c repl_session.c repl_process.c process.c status_service.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 run: all
