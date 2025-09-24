@@ -2,7 +2,6 @@
 #include "file_new.h"
 #include "app.h"
 #include "project.h"
-#include "string_text_provider.h"
 #include "lisp_source_notebook.h"
 #include "editor.h"
 #include "project_file.h"
@@ -30,11 +29,8 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
       const gchar *dir = project_get_path(project);
       gchar *path = g_build_filename(dir ? dir : ".", fname, NULL);
       g_file_set_contents(path, "", 0, NULL);
-      TextProvider *provider = string_text_provider_new("");
-      ProjectFile *file = project_add_file(project, provider, NULL, path, PROJECT_FILE_LIVE);
-      text_provider_unref(provider);
+      ProjectFile *file = project_add_loaded_file(project, path);
       if (file) {
-        project_file_load(file);
         Editor *view = lisp_source_notebook_get_current_editor(app_get_notebook(app));
         if (view)
           app_connect_editor(app, view);

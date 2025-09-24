@@ -26,6 +26,7 @@ ProjectFile   *project_get_file(Project *self, guint index);
 guint          project_get_file_count(Project *self);
 ProjectFile   *project_add_file(Project *self, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
+ProjectFile   *project_add_loaded_file(Project *self, const gchar *path);
 void           project_remove_file(Project *self, ProjectFile *file);
 void           project_file_changed(Project *self, ProjectFile *file);
 void           project_file_loaded(Project *self, ProjectFile *file);

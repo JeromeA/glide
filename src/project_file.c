@@ -23,36 +23,22 @@ struct _ProjectFile {
 };
 
 static void project_file_ensure_error_tag(ProjectFile *file);
+static ProjectFile *project_file_create(Project *project, TextProvider *provider,
+    GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
+static void project_file_assign_provider(ProjectFile *file, TextProvider *provider,
+    GtkTextBuffer *buffer);
 
 ProjectFile *project_file_new(Project *project, TextProvider *provider,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
   g_return_val_if_fail(project != NULL, NULL);
   g_return_val_if_fail(provider, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
-
-  ProjectFile *file = g_new0(ProjectFile, 1);
-  file->project = project;
-  file->state = state;
-  file->provider = text_provider_ref(provider);
-  file->buffer = buffer ? g_object_ref(buffer) : NULL;
-  file->lexer = lisp_lexer_new(file->provider);
-  file->parser = lisp_parser_new();
-  file->path = path ? g_strdup(path) : NULL;
-  file->error_tag = NULL;
-  file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
-  return file;
+  return project_file_create(project, provider, buffer, path, state);
 }
 
 ProjectFile *project_file_new_virtual(TextProvider *provider) {
   g_return_val_if_fail(provider, NULL);
-  ProjectFile *file = g_new0(ProjectFile, 1);
-  file->state = PROJECT_FILE_LIVE;
-  file->provider = text_provider_ref(provider);
-  file->lexer = lisp_lexer_new(file->provider);
-  file->parser = lisp_parser_new();
-  file->error_tag = NULL;
-  file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
-  return file;
+  return project_file_create(NULL, provider, NULL, NULL, PROJECT_FILE_LIVE);
 }
 
 void project_file_free(ProjectFile *file) {
@@ -94,11 +80,7 @@ void project_file_set_provider(ProjectFile *file, TextProvider *provider,
     text_provider_unref(file->provider);
   if (file->buffer)
     g_object_unref(file->buffer);
-  file->provider = text_provider_ref(provider);
-  file->buffer = buffer ? g_object_ref(buffer) : NULL;
-  file->lexer = lisp_lexer_new(file->provider);
-  file->parser = lisp_parser_new();
-  file->error_tag = NULL;
+  project_file_assign_provider(file, provider, buffer);
 }
 
 TextProvider *project_file_get_provider(ProjectFile *file) {
@@ -133,26 +115,24 @@ void project_file_set_path(ProjectFile *file, const gchar *path) {
   file->path = path ? g_strdup(path) : NULL;
 }
 
-gboolean project_file_load(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, FALSE);
-  g_return_val_if_fail(glide_is_ui_thread(), FALSE);
+ProjectFile *project_file_load(Project *project, const gchar *path) {
+  g_return_val_if_fail(project != NULL, NULL);
+  g_return_val_if_fail(path != NULL, NULL);
+  g_return_val_if_fail(glide_is_ui_thread(), NULL);
 
-  const gchar *path = project_file_get_path(file);
-  LOG(1, "project_file_load path=%s", path ? path : "(null)");
-  if (!path)
-    return FALSE;
+  LOG(1, "project_file_load path=%s", path);
 
   int fd = sys_open(path, O_RDONLY, 0);
   if (fd == -1) {
     g_printerr("Failed to open file using syscalls: %s (errno: %d)\n", path, errno);
-    return FALSE;
+    return NULL;
   }
 
   struct stat sb;
   if (sys_fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
     g_printerr("Not a regular file: %s\n", path);
     sys_close(fd);
-    return FALSE;
+    return NULL;
   }
 
   off_t length = sb.st_size;
@@ -160,7 +140,7 @@ gboolean project_file_load(ProjectFile *file) {
   if (!content) {
     g_printerr("Failed to allocate memory for file content.\n");
     sys_close(fd);
-    return FALSE;
+    return NULL;
   }
 
   ssize_t total_read = 0;
@@ -170,7 +150,7 @@ gboolean project_file_load(ProjectFile *file) {
       g_printerr("Error reading file: %s (errno: %d)\n", path, errno);
       g_free(content);
       sys_close(fd);
-      return FALSE;
+      return NULL;
     } else if (r == 0) {
       break;
     }
@@ -181,16 +161,12 @@ gboolean project_file_load(ProjectFile *file) {
   sys_close(fd);
 
   TextProvider *provider = string_text_provider_new(content);
-  project_file_set_provider(file, provider, NULL);
+  ProjectFile *file = project_file_create(project, provider, NULL, path,
+      PROJECT_FILE_LIVE);
   text_provider_unref(provider);
-  project_file_set_state(file, PROJECT_FILE_LIVE);
-
-  Project *self = file->project;
-  if (self)
-    project_file_loaded(self, file);
-
   g_free(content);
-  return TRUE;
+
+  return file;
 }
 
 const gchar *project_file_get_relative_path(ProjectFile *file) {
@@ -241,6 +217,29 @@ void project_file_add_error(ProjectFile *file, gsize start, gsize end,
       end, message ? message : "(null)");
   ProjectFileError err = { start, end, message ? g_strdup(message) : NULL };
   g_array_append_val(file->errors, err);
+}
+
+static ProjectFile *project_file_create(Project *project, TextProvider *provider,
+    GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
+  g_return_val_if_fail(provider != NULL, NULL);
+
+  ProjectFile *file = g_new0(ProjectFile, 1);
+  file->project = project;
+  file->state = state;
+  file->path = path ? g_strdup(path) : NULL;
+  file->error_tag = NULL;
+  file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
+  project_file_assign_provider(file, provider, buffer);
+  return file;
+}
+
+static void project_file_assign_provider(ProjectFile *file, TextProvider *provider,
+    GtkTextBuffer *buffer) {
+  file->provider = text_provider_ref(provider);
+  file->buffer = buffer ? g_object_ref(buffer) : NULL;
+  file->lexer = lisp_lexer_new(file->provider);
+  file->parser = lisp_parser_new();
+  file->error_tag = NULL;
 }
 
 static void project_file_ensure_error_tag(ProjectFile *file) {

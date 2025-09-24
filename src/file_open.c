@@ -11,7 +11,6 @@
 #include "editor.h"
 #include "lisp_source_notebook.h"
 #include "project.h"
-#include "string_text_provider.h"
 #include "file_save.h"
 #include "preferences.h"
 #include "asdf.h"
@@ -65,11 +64,9 @@ gboolean file_open_path(App *app, const gchar *filename) {
       gchar *path = g_build_filename(dir, comp->str, NULL);
       gchar *full = ensure_lisp_extension(path);
       g_free(path);
-      TextProvider *provider = string_text_provider_new("");
-      ProjectFile *pf = project_add_file(project, provider, NULL, full, PROJECT_FILE_LIVE);
-      text_provider_unref(provider);
-      if (pf)
-        project_file_load(pf);
+      ProjectFile *pf = project_add_loaded_file(project, full);
+      if (!pf)
+        g_warning("Failed to load %s", full);
       g_free(full);
     }
     g_free(dir);
@@ -80,11 +77,9 @@ gboolean file_open_path(App *app, const gchar *filename) {
     g_object_unref(asdf);
     gchar *dir = g_path_get_dirname(filename);
     project_set_path(project, dir);
-    TextProvider *provider = string_text_provider_new("");
-    ProjectFile *file = project_add_file(project, provider, NULL, filename, PROJECT_FILE_LIVE);
-    text_provider_unref(provider);
-    if (file)
-      project_file_load(file);
+    ProjectFile *file = project_add_loaded_file(project, filename);
+    if (!file)
+      g_warning("Failed to load %s", filename);
     g_free(dir);
   }
 

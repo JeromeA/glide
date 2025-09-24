@@ -2,7 +2,6 @@
 #include "file_add.h"
 #include "app.h"
 #include "project.h"
-#include "string_text_provider.h"
 #include "lisp_source_notebook.h"
 #include "editor.h"
 #include "project_file.h"
@@ -22,11 +21,8 @@ void file_add(GtkWidget */*widget*/, gpointer data) {
     gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), dir);
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-    TextProvider *provider = string_text_provider_new("");
-    ProjectFile *file = project_add_file(project, provider, NULL, filename, PROJECT_FILE_LIVE);
-    text_provider_unref(provider);
+    ProjectFile *file = project_add_loaded_file(project, filename);
     if (file) {
-      project_file_load(file);
       Editor *view = lisp_source_notebook_get_current_editor(app_get_notebook(app));
       if (view)
         app_connect_editor(app, view);
