@@ -39,9 +39,6 @@ SOURCES += \
   project.c \
   project_repl.c \
   project_file.c \
-  gtk_text_provider.c \
-  string_text_provider.c \
-  text_provider.c \
   asdf.c \
   project_view.c \
   status_bar.c \

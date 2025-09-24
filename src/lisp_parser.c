@@ -2,32 +2,10 @@
 #include "lisp_parser.h"
 
 struct _LispParser {
-  Node *ast; /* owns AST */
   ProjectFile *file;
 };
-
-static void lisp_ast_node_free(Node *node);
-static void lisp_parser_clear_ast(LispParser *parser);
 static Node *parse_expression(LispParser *parser, GArray *tokens, guint *position);
 static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position);
-
-static void lisp_ast_node_free(Node *node) {
-  if (!node) return;
-  if (node->children) {
-    for (guint i = 0; i < node->children->len; i++)
-      lisp_ast_node_free(g_array_index(node->children, Node*, i));
-    g_array_free(node->children, TRUE);
-    node->children = NULL;
-  }
-  node_unref(node);
-}
-
-static void lisp_parser_clear_ast(LispParser *parser) {
-  if (parser->ast) {
-    lisp_ast_node_free(parser->ast);
-    parser->ast = NULL;
-  }
-}
 
 LispParser *lisp_parser_new(void) {
   return g_new0(LispParser, 1);
@@ -35,25 +13,18 @@ LispParser *lisp_parser_new(void) {
 
 void lisp_parser_free(LispParser *parser) {
   g_return_if_fail(parser != NULL);
-  lisp_parser_clear_ast(parser);
   g_free(parser);
 }
 
-const Node *lisp_parser_get_ast(LispParser *parser) {
+Node *lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file) {
   g_return_val_if_fail(parser != NULL, NULL);
-  return parser->ast;
-}
-
-void lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file) {
-  g_return_if_fail(parser != NULL);
-  guint n_tokens = tokens ? tokens->len : 0;
 
   parser->file = file;
-  lisp_parser_clear_ast(parser);
 
-  parser->ast = node_new(LISP_AST_NODE_TYPE_LIST, file);
-  parser->ast->children = g_array_new(FALSE, FALSE, sizeof(Node*));
+  Node *ast = node_new(LISP_AST_NODE_TYPE_LIST, file);
+  ast->children = g_array_new(FALSE, FALSE, sizeof(Node*));
 
+  guint n_tokens = tokens ? tokens->len : 0;
   guint position = 0;
   while (position < n_tokens) {
     const LispToken *token = &g_array_index(tokens, LispToken, position);
@@ -63,10 +34,14 @@ void lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file) {
     }
     Node *expr = parse_expression(parser, tokens, &position);
     if (expr) {
-      expr->parent = parser->ast;
-      g_array_append_val(parser->ast->children, expr);
+      expr->parent = ast;
+      g_array_append_val(ast->children, expr);
     }
   }
+
+  parser->file = NULL;
+
+  return ast;
 }
 
 static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position) {

@@ -49,6 +49,7 @@ void node_set_sd_type(Node *node, StringDesignatorType sd_type, const gchar *pac
 Node *node_new(LispAstNodeType type, ProjectFile *file);
 Node *node_ref(Node *node);
 void node_unref(Node *node);
+void node_free_deep(Node *node);
 gboolean node_is(const Node *node, StringDesignatorType t);
 gboolean node_is_toplevel(const Node *node);
 gsize node_get_start_offset(const Node *node);

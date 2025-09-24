@@ -1,5 +1,4 @@
 #include "lisp_parser_view.h"
-#include "gtk_text_provider.h"
 #include "project.h"
 
 struct _LispParserView {
@@ -86,22 +85,26 @@ add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent) {
   const gchar *start_text = node->start_token ? node->start_token->text : "";
   gchar *text;
   gchar *info = NULL;
+  const GString *content = project_file_get_content(self->file);
 
   if (node->end_token && node->end_token != node->start_token) {
-    TextProvider *provider = project_file_get_provider(self->file);
     gsize start = node->start_token->start_offset;
     gsize end = node->end_token->end_offset;
-    gchar *full = text_provider_get_text(provider, start, end);
-    gsize len = g_utf8_strlen(full, -1);
-    if (len < 10) {
-      text = full;
-    } else if (len > 100) {
-      gchar *head = g_utf8_substring(full, 0, 9);
-      text = g_strconcat(head, "\xE2\x80\xA6", NULL);
-      g_free(head);
-      g_free(full);
+    if (!content || start >= end || end > content->len) {
+      text = g_strdup("");
     } else {
-      text = full;
+      gchar *full = g_strndup(content->str + start, end - start);
+      gsize len = g_utf8_strlen(full, -1);
+      if (len < 10) {
+        text = full;
+      } else if (len > 100) {
+        gchar *head = g_utf8_substring(full, 0, 9);
+        text = g_strconcat(head, "\xE2\x80\xA6", NULL);
+        g_free(head);
+        g_free(full);
+      } else {
+        text = full;
+      }
     }
   } else {
     text = g_strdup(start_text);
@@ -134,7 +137,9 @@ parser_view_populate_store(LispParserView *self) {
 
   gtk_tree_store_clear(self->store);
   LispParser *parser = project_file_get_parser(self->file);
-  const Node *ast = lisp_parser_get_ast(parser);
+  if (!parser)
+    return;
+  const Node *ast = project_file_get_ast(self->file);
   if (ast) {
     add_ast_node(self, ast, NULL);
     GtkTreePath *path = gtk_tree_path_new_from_indices(0, -1);

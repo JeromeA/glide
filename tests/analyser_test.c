@@ -2,9 +2,35 @@
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
 #include "node.h"
-#include "string_text_provider.h"
 #include "project.h"
 #include <glib.h>
+
+typedef struct {
+  LispLexer *lexer;
+  LispParser *parser;
+  GArray *tokens;
+  Node *ast;
+} ParseFixture;
+
+static ParseFixture parse_fixture_new(const gchar *text) {
+  ParseFixture fixture;
+  GString *content = g_string_new(text);
+  fixture.lexer = lisp_lexer_new();
+  fixture.tokens = lisp_lexer_lex(fixture.lexer, content);
+  fixture.parser = lisp_parser_new();
+  fixture.ast = lisp_parser_parse(fixture.parser, fixture.tokens, NULL);
+  g_string_free(content, TRUE);
+  return fixture;
+}
+
+static void parse_fixture_free(ParseFixture *fixture) {
+  if (fixture->ast)
+    node_free_deep(fixture->ast);
+  if (fixture->tokens)
+    g_array_free(fixture->tokens, TRUE);
+  lisp_parser_free(fixture->parser);
+  lisp_lexer_free(fixture->lexer);
+}
 
 static void test_analyse(void) {
   const gchar *text =
@@ -13,13 +39,8 @@ static void test_analyse(void) {
     "(in-package :my-pack)\n"
     "(defun bar ())\n"
     "(foo baz)";
-  TextProvider *provider = string_text_provider_new(text);
-  LispLexer *lexer = lisp_lexer_new(provider);
-  lisp_lexer_lex(lexer);
-  LispParser *parser = lisp_parser_new();
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens, NULL);
-  Node *ast = (Node*)lisp_parser_get_ast(parser);
+  ParseFixture fixture = parse_fixture_new(text);
+  Node *ast = fixture.ast;
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
@@ -48,9 +69,7 @@ static void test_analyse(void) {
   g_assert(node_is(var_use, SDT_VAR_USE));
   g_assert_cmpstr(var_use->package_context, ==, "MY-PACK");
 
-  lisp_parser_free(parser);
-  lisp_lexer_free(lexer);
-  text_provider_unref(provider);
+  parse_fixture_free(&fixture);
   project_unref(project);
 }
 
@@ -58,13 +77,8 @@ static void test_nested_defpackage(void) {
   const gchar *text =
     "(defpackage :top)\n"
     "(let () (defpackage :inner))";
-  TextProvider *provider = string_text_provider_new(text);
-  LispLexer *lexer = lisp_lexer_new(provider);
-  lisp_lexer_lex(lexer);
-  LispParser *parser = lisp_parser_new();
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens, NULL);
-  Node *ast = (Node*)lisp_parser_get_ast(parser);
+  ParseFixture fixture = parse_fixture_new(text);
+  Node *ast = fixture.ast;
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
@@ -77,9 +91,7 @@ static void test_nested_defpackage(void) {
   Node *inner_name = g_array_index(inner_expr->children, Node*, 1);
   g_assert(node_is(inner_name, SDT_PACKAGE_DEF));
 
-  lisp_parser_free(parser);
-  lisp_lexer_free(lexer);
-  text_provider_unref(provider);
+  parse_fixture_free(&fixture);
   project_unref(project);
 }
 
@@ -87,13 +99,8 @@ static void test_nested_defun(void) {
   const gchar *text =
     "(defun top ())\n"
     "(let () (defun inner ()))";
-  TextProvider *provider = string_text_provider_new(text);
-  LispLexer *lexer = lisp_lexer_new(provider);
-  lisp_lexer_lex(lexer);
-  LispParser *parser = lisp_parser_new();
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens, NULL);
-  Node *ast = (Node*)lisp_parser_get_ast(parser);
+  ParseFixture fixture = parse_fixture_new(text);
+  Node *ast = fixture.ast;
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
@@ -108,22 +115,15 @@ static void test_nested_defun(void) {
   g_assert_nonnull(inner_name);
   g_assert(node_is(inner_name, SDT_FUNCTION_DEF));
 
-  lisp_parser_free(parser);
-  lisp_lexer_free(lexer);
-  text_provider_unref(provider);
+  parse_fixture_free(&fixture);
   project_unref(project);
 }
 
 static void test_backquote_defpackage(void) {
   const gchar *text =
     "`(defpackage foo (:export ,(progn (defun inner ()) '(inner))))";
-  TextProvider *provider = string_text_provider_new(text);
-  LispLexer *lexer = lisp_lexer_new(provider);
-  lisp_lexer_lex(lexer);
-  LispParser *parser = lisp_parser_new();
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens, NULL);
-  Node *ast = (Node*)lisp_parser_get_ast(parser);
+  ParseFixture fixture = parse_fixture_new(text);
+  Node *ast = fixture.ast;
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
@@ -141,9 +141,7 @@ static void test_backquote_defpackage(void) {
   g_assert_nonnull(inner_name);
   g_assert(node_is(inner_name, SDT_FUNCTION_DEF));
 
-  lisp_parser_free(parser);
-  lisp_lexer_free(lexer);
-  text_provider_unref(provider);
+  parse_fixture_free(&fixture);
   project_unref(project);
 }
 

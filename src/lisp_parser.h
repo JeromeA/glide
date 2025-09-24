@@ -10,9 +10,8 @@ typedef struct _LispParser LispParser;
 typedef struct _ProjectFile ProjectFile;
 
 LispParser *lisp_parser_new(void);
-void lisp_parser_free(LispParser *parser);
-void lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file);
-const Node *lisp_parser_get_ast(LispParser *parser);
+void        lisp_parser_free(LispParser *parser);
+Node       *lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file);
 
 G_END_DECLS
 

@@ -2,7 +2,6 @@
 
 #include <glib.h>
 typedef struct _GtkTextBuffer GtkTextBuffer;
-#include "text_provider.h"
 #include "project_file.h"
 #include "node.h"
 #include "asdf.h"
@@ -24,7 +23,7 @@ void           project_set_file_removed_cb(Project *self, ProjectFileRemovedCb c
 void           project_set_changed_cb(Project *self, ProjectChangedCb cb, gpointer user_data);
 ProjectFile   *project_get_file(Project *self, guint index);
 guint          project_get_file_count(Project *self);
-ProjectFile   *project_add_file(Project *self, TextProvider *provider,
+ProjectFile   *project_add_file(Project *self, GString *content,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
 ProjectFile   *project_add_loaded_file(Project *self, const gchar *path);
 void           project_remove_file(Project *self, ProjectFile *file);

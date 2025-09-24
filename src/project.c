@@ -1,5 +1,4 @@
 #include "project_priv.h"
-#include "string_text_provider.h"
 #include "analyse.h"
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
@@ -36,21 +35,21 @@ Project *project_new(ReplSession *repl) {
   Project *self = project_init();
   self->repl = repl ? repl_session_ref(repl) : NULL;
   project_clear(self);
-  TextProvider *provider = string_text_provider_new("");
-  project_add_file(self, provider, NULL, "unnamed.lisp", PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  GString *content = g_string_new("");
+  project_add_file(self, content, NULL, "unnamed.lisp", PROJECT_FILE_LIVE);
   return self;
 }
 
-ProjectFile *project_add_file(Project *self, TextProvider *provider,
+ProjectFile *project_add_file(Project *self, GString *content,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
   g_return_val_if_fail(self != NULL, NULL);
-  g_return_val_if_fail(provider, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
 
   LOG(1, "project_add_file path=%s state=%d", path ? path : "(null)", state);
 
-  ProjectFile *file = project_file_new(self, provider, buffer, path, state);
+  if (!content)
+    content = g_string_new("");
+  ProjectFile *file = project_file_new(self, content, buffer, path, state);
 
   g_ptr_array_add(self->files, file);
 
@@ -92,7 +91,7 @@ void project_remove_file(Project *self, ProjectFile *file) {
   project_index_clear(self->index);
   for (guint i = 0; i < self->files->len; i++) {
     ProjectFile *f = g_ptr_array_index(self->files, i);
-    const Node *a = lisp_parser_get_ast(project_file_get_parser(f));
+    const Node *a = project_file_get_ast(f);
     if (a)
       project_index_walk(self->index, a);
   }
@@ -237,12 +236,15 @@ void project_file_changed(Project *self, ProjectFile *file) {
   project_index_remove_file(self->index, file);
   LispLexer *lexer = project_file_get_lexer(file);
   LispParser *parser = project_file_get_parser(file);
-  lisp_lexer_lex(lexer);
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens, file);
-  const Node *ast = lisp_parser_get_ast(parser);
+  const GString *content = project_file_get_content(file);
+  if (!content)
+    return;
+  GArray *tokens = lisp_lexer_lex(lexer, content);
+  project_file_set_tokens(file, tokens);
+  Node *ast = lisp_parser_parse(parser, tokens, file);
+  project_file_set_ast(file, ast);
   if (ast)
-    analyse_ast(self, (Node*)ast);
+    analyse_ast(self, ast);
   if (ast)
     project_index_walk(self->index, ast);
   project_file_apply_errors(file);

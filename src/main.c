@@ -18,7 +18,6 @@
 #include "file_delete.c"
 #include "project_new_wizard.c"
 #include "file_save.c"
-#include "gtk_text_provider.c"
 #include "interactions_view.c"
 #include "lisp_lexer.c"
 #include "lisp_parser.c"
@@ -40,8 +39,6 @@
 #include "reloc.c"
 #include "status_bar.c"
 #include "status_service.c"
-#include "string_text_provider.c"
-#include "text_provider.c"
 #endif
 
 #include "app.h"

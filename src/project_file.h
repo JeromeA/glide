@@ -2,7 +2,6 @@
 
 #include <glib.h>
 typedef struct _GtkTextBuffer GtkTextBuffer;
-#include "text_provider.h"
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
 
@@ -21,15 +20,20 @@ typedef struct {
   gchar *message;
 } ProjectFileError;
 
-ProjectFile *project_file_new(Project *project, TextProvider *provider,
+ProjectFile *project_file_new(Project *project, GString *content,
     GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
-ProjectFile *project_file_new_virtual(TextProvider *provider);
+ProjectFile *project_file_new_virtual(GString *content);
 void        project_file_free(ProjectFile *file);
 ProjectFileState project_file_get_state(ProjectFile *file);
 void        project_file_set_state(ProjectFile *file, ProjectFileState state);
-void        project_file_set_provider(ProjectFile *file, TextProvider *provider,
+void        project_file_set_content(ProjectFile *file, GString *content,
     GtkTextBuffer *buffer);
-TextProvider *project_file_get_provider(ProjectFile *file);
+void        project_file_bind_buffer(ProjectFile *file, GtkTextBuffer *buffer);
+const GString *project_file_get_content(ProjectFile *file);
+const GArray  *project_file_get_tokens(ProjectFile *file);
+const Node    *project_file_get_ast(ProjectFile *file);
+void        project_file_set_tokens(ProjectFile *file, GArray *tokens);
+void        project_file_set_ast(ProjectFile *file, Node *ast);
 LispParser  *project_file_get_parser(ProjectFile *file);
 LispLexer   *project_file_get_lexer(ProjectFile *file);
 GtkTextBuffer *project_file_get_buffer(ProjectFile *file);
