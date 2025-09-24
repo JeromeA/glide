@@ -132,7 +132,7 @@ editor_new_for_file (Project *project, ProjectFile *file)
     gtk_source_buffer_end_not_undoable_action(self->buffer);
   }
 
-  project_file_set_content(self->file, NULL, GTK_TEXT_BUFFER(self->buffer));
+  project_file_bind_buffer(self->file, GTK_TEXT_BUFFER(self->buffer));
   project_file_changed (self->project, self->file);
   gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);

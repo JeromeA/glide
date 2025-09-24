@@ -100,6 +100,20 @@ void project_file_set_content(ProjectFile *file, GString *content,
   project_file_assign_content(file, content, buffer);
 }
 
+void project_file_bind_buffer(ProjectFile *file, GtkTextBuffer *buffer) {
+  g_return_if_fail(file != NULL);
+  g_return_if_fail(glide_is_ui_thread());
+  if (file->buffer == buffer)
+    return;
+  if (file->buffer) {
+    g_object_unref(file->buffer);
+    file->buffer = NULL;
+  }
+  if (buffer)
+    file->buffer = g_object_ref(buffer);
+  file->error_tag = NULL;
+}
+
 const GString *project_file_get_content(ProjectFile *file) {
   g_return_val_if_fail(file != NULL, NULL);
   project_file_refresh_content(file);

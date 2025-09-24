@@ -28,6 +28,7 @@ ProjectFileState project_file_get_state(ProjectFile *file);
 void        project_file_set_state(ProjectFile *file, ProjectFileState state);
 void        project_file_set_content(ProjectFile *file, GString *content,
     GtkTextBuffer *buffer);
+void        project_file_bind_buffer(ProjectFile *file, GtkTextBuffer *buffer);
 const GString *project_file_get_content(ProjectFile *file);
 const GArray  *project_file_get_tokens(ProjectFile *file);
 const Node    *project_file_get_ast(ProjectFile *file);
