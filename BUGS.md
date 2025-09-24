@@ -3,6 +3,12 @@
 This document lists past bugs, their symptoms, and how they were fixed. The goal is to detect patterns and avoid similar
 mistakes in the future. A typical entry includes what the goal was, what went wrong, and how it was fixed.
 
+## Editor tooltip always displayed empty sections
+
+The editor tooltip window showed both the diagnostic and documentation areas even when only one had content. The
+window called `gtk_widget_show_all` after updating the sections, which forced the hidden widgets to reappear. The
+tooltip now simply shows the container, allowing each section's visibility flag to hide the empty area and separator.
+
 ## Crash while clearing the project at startup
 
 The application crashed on startup because `editor_dispose` explicitly unreferenced its `GtkSourceView` child
