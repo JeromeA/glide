@@ -24,7 +24,7 @@
 #include "lisp_parser.c"
 #include "lisp_parser_view.c"
 #include "lisp_source_notebook.c"
-#include "editor_tooltip_widget.c"
+#include "editor_tooltip_window.c"
 #include "editor.c"
 #include "node.c"
 #include "package.c"
