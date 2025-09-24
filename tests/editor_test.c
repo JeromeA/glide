@@ -1,5 +1,4 @@
 #include "editor.h"
-#include "string_text_provider.h"
 #include <gtk/gtk.h>
 
 static gboolean have_display;
@@ -11,9 +10,7 @@ static void test_undo_pristine(void)
     return;
   }
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(a b)");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  ProjectFile *file = project_add_file(project, g_string_new("(a b)"), NULL, NULL, PROJECT_FILE_LIVE);
 
   GtkWidget *widget = editor_new_for_file(project, file);
   Editor *editor = GLIDE_EDITOR(widget);
@@ -32,10 +29,8 @@ static void test_toplevel_range_eof_without_newline(void)
     return;
   }
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(+ 1 2)");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL,
+  ProjectFile *file = project_add_file(project, g_string_new("(+ 1 2)"), NULL, NULL,
       PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
 
   GtkWidget *widget = editor_new_for_file(project, file);
   Editor *editor = GLIDE_EDITOR(widget);

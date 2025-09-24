@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glib.h>
-#include "text_provider.h"
 
 G_BEGIN_DECLS
 
@@ -30,9 +29,8 @@ typedef struct {
   gsize end_offset;
 } LispToken;
 
-LispLexer *lisp_lexer_new(TextProvider *provider);
-void lisp_lexer_free(LispLexer *lexer);
-void lisp_lexer_lex(LispLexer *lexer);
-GArray *lisp_lexer_get_tokens(LispLexer *lexer);
+LispLexer *lisp_lexer_new(void);
+void       lisp_lexer_free(LispLexer *lexer);
+GArray    *lisp_lexer_lex(LispLexer *lexer, const GString *text);
 
 G_END_DECLS

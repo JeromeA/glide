@@ -1,5 +1,4 @@
 #include "editor.h"
-#include "gtk_text_provider.h"
 #include "editor_tooltip_window.h"
 #include "project.h"
 #include "util.h"
@@ -126,19 +125,14 @@ editor_new_for_file (Project *project, ProjectFile *file)
   self->project = project_ref(project);
   self->file = file;
 
-  TextProvider *existing = project_file_get_provider(self->file);
-  if (existing) {
-    gsize len = text_provider_get_length(existing);
-    gchar *text = text_provider_get_text(existing, 0, len);
+  const GString *existing = project_file_get_content(self->file);
+  if (existing && existing->str) {
     gtk_source_buffer_begin_not_undoable_action(self->buffer);
-    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(self->buffer), text, -1);
+    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(self->buffer), existing->str, -1);
     gtk_source_buffer_end_not_undoable_action(self->buffer);
-    g_free(text);
   }
 
-  TextProvider *provider = gtk_text_provider_new (GTK_TEXT_BUFFER (self->buffer));
-  project_file_set_provider (self->file, provider, GTK_TEXT_BUFFER (self->buffer));
-  text_provider_unref (provider);
+  project_file_set_content(self->file, NULL, GTK_TEXT_BUFFER(self->buffer));
   project_file_changed (self->project, self->file);
   gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);
@@ -235,7 +229,7 @@ editor_update_function_highlight (Editor *self)
   LispParser *parser = project_file_get_parser (self->file);
   if (!parser)
     return;
-  const Node *ast = lisp_parser_get_ast (parser);
+  const Node *ast = project_file_get_ast (self->file);
   if (!ast)
     return;
   const Node *node = node_find_containing_range (ast, offset, end);
@@ -358,8 +352,7 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
 static gchar *
 editor_build_function_tooltip_markup (Editor *self, gsize offset, gsize end)
 {
-  LispParser *parser = project_file_get_parser (self->file);
-  const Node *ast = lisp_parser_get_ast (parser);
+  const Node *ast = project_file_get_ast (self->file);
   const Node *node = node_find_containing_range (ast, offset, end);
   if (!node) {
     LOG (1, "Editor.build_function_tooltip_markup: no node");
@@ -424,8 +417,7 @@ find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
 
   LOG(1, "find_parent_range start=%zu end=%zu", start, end);
 
-  LispParser *parser = project_file_get_parser (file);
-  const Node *ast = lisp_parser_get_ast (parser);
+  const Node *ast = project_file_get_ast (file);
   const Node *node = node_find_containing_range (ast, start, end);
   if (!node) {
     LOG(1, "no node found");

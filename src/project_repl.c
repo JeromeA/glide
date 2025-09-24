@@ -1,11 +1,11 @@
 #include "project_repl.h"
 #include "project_priv.h"
-#include "string_text_provider.h"
 #include "analyse_defpackage.h"
 #include "analyse.h"
 #include "project_file.h"
 #include "repl_session.h"
 #include "interaction.h"
+#include "node.h"
 #include "util.h"
 #include <string.h>
 
@@ -26,9 +26,10 @@ typedef struct {
 typedef struct {
   Project *project;
   Node *expr;
+  Node *ast;
+  GArray *tokens;
   LispParser *parser;
   LispLexer *lexer;
-  TextProvider *provider;
 } PackageDefinitionData;
 
 typedef struct {
@@ -50,7 +51,10 @@ static gboolean analyse_defpackage_cb(gpointer data) {
   g_free(ctx.package);
   lisp_parser_free(pd->parser);
   lisp_lexer_free(pd->lexer);
-  text_provider_unref(pd->provider);
+  if (pd->tokens)
+    g_array_free(pd->tokens, TRUE);
+  if (pd->ast)
+    node_free_deep(pd->ast);
   g_free(pd);
   return G_SOURCE_REMOVE;
 }
@@ -146,13 +150,11 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
     res = g_strdup(interaction->result->str);
   g_mutex_unlock(&interaction->lock);
   g_assert(res);
-  TextProvider *provider = string_text_provider_new(res);
-  LispLexer *lexer = lisp_lexer_new(provider);
-  lisp_lexer_lex(lexer);
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  GString *text = g_string_new(res);
+  LispLexer *lexer = lisp_lexer_new();
+  GArray *tokens = lisp_lexer_lex(lexer, text);
   LispParser *parser = lisp_parser_new();
-  lisp_parser_parse(parser, tokens, NULL);
-  const Node *ast = lisp_parser_get_ast(parser);
+  Node *ast = lisp_parser_parse(parser, tokens, NULL);
   g_assert(ast && ast->children && ast->children->len > 0);
   Node *expr = g_array_index(ast->children, Node*, 0);
   Node *name_node = (expr->children && expr->children->len > 1) ?
@@ -165,9 +167,10 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   PackageDefinitionData *pd = g_new0(PackageDefinitionData, 1);
   pd->project = project;
   pd->expr = expr;
+  pd->ast = ast;
+  pd->tokens = tokens;
   pd->parser = parser;
   pd->lexer = lexer;
-  pd->provider = provider;
   g_main_context_invoke(NULL, analyse_defpackage_cb, pd);
   for (guint i = 0; i < exports->len; i++) {
     const gchar *sym = g_ptr_array_index(exports, i);
@@ -179,6 +182,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   interaction_clear(interaction);
   g_free(interaction);
   g_free(res);
+  g_string_free(text, TRUE);
 }
 
 static void project_handle_special_variable(Project *project,
@@ -276,15 +280,14 @@ static void project_handle_function_section(Project *project,
   ProjectFile *file = NULL;
   Node *lambda_node = NULL;
   if (lambda_list) {
-    TextProvider *provider = string_text_provider_new(lambda_list);
-    file = project_file_new_virtual(provider);
-    text_provider_unref(provider);
+    file = project_file_new_virtual(g_string_new(lambda_list));
     LispLexer *lexer = project_file_get_lexer(file);
-    lisp_lexer_lex(lexer);
-    GArray *tokens = lisp_lexer_get_tokens(lexer);
+    const GString *content = project_file_get_content(file);
+    GArray *tokens = lisp_lexer_lex(lexer, content);
     LispParser *parser = project_file_get_parser(file);
-    lisp_parser_parse(parser, tokens, file);
-    const Node *ast = lisp_parser_get_ast(parser);
+    Node *ast = lisp_parser_parse(parser, tokens, file);
+    project_file_set_tokens(file, tokens);
+    project_file_set_ast(file, ast);
     if (ast && ast->children && ast->children->len > 0)
       lambda_node = g_array_index(ast->children, Node*, 0);
   }

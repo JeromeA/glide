@@ -1,22 +1,38 @@
 #include "project.h"
-#include "string_text_provider.h"
 #include "node.h"
 #include "function.h"
 #include <glib.h>
 #include <glib/gstdio.h>
 #include <string.h>
 
+static void project_file_prepare(ProjectFile *file) {
+  g_return_if_fail(file);
+  LispLexer *lexer = project_file_get_lexer(file);
+  const GString *content = project_file_get_content(file);
+  GArray *tokens = lisp_lexer_lex(lexer, content);
+  LispParser *parser = project_file_get_parser(file);
+  Node *ast = lisp_parser_parse(parser, tokens, file);
+  project_file_set_tokens(file, tokens);
+  project_file_set_ast(file, ast);
+}
+
+static void project_file_set_text(ProjectFile *file, const gchar *text) {
+  g_return_if_fail(file);
+  g_return_if_fail(text);
+  project_file_set_content(file, g_string_new(text), NULL);
+  project_file_prepare(file);
+}
+
+static ProjectFile *create_virtual_file(const gchar *text) {
+  ProjectFile *file = project_file_new_virtual(g_string_new(text));
+  project_file_prepare(file);
+  return file;
+}
+
 static Function *create_function_with_lambda(const gchar *name,
     const gchar *lambda) {
-  TextProvider *provider = string_text_provider_new(lambda);
-  ProjectFile *file = project_file_new_virtual(provider);
-  text_provider_unref(provider);
-  LispLexer *lexer = project_file_get_lexer(file);
-  lisp_lexer_lex(lexer);
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  LispParser *parser = project_file_get_parser(file);
-  lisp_parser_parse(parser, tokens, file);
-  const Node *ast = lisp_parser_get_ast(parser);
+  ProjectFile *file = create_virtual_file(lambda);
+  const Node *ast = project_file_get_ast(file);
   Node *lambda_node = NULL;
   if (ast && ast->children && ast->children->len > 0)
     lambda_node = g_array_index(ast->children, Node*, 0);
@@ -37,18 +53,14 @@ static void test_default_file(void)
 static void test_parse_on_change(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(a)");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  ProjectFile *file = project_add_file(project, g_string_new("(a)"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
-  LispParser *parser = project_file_get_parser(file);
-  LispLexer *lexer = project_file_get_lexer(file);
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
+  const GArray *tokens = project_file_get_tokens(file);
   g_assert_cmpint(tokens->len, ==, 3); /* (, a, ) */
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_START);
   project_file_changed(project, file); /* should still parse without error */
-  const Node *ast = lisp_parser_get_ast(parser);
+  const Node *ast = project_file_get_ast(file);
   g_assert_cmpint(ast->children->len, ==, 1);
   project_file_changed(project, file);
   project_unref(project);
@@ -77,11 +89,9 @@ static void test_file_load(void)
   g_assert_nonnull(file);
   g_assert_cmpint(count, ==, 1);
 
-  TextProvider *tp = project_file_get_provider(file);
-  gsize len = text_provider_get_length(tp);
-  gchar *text = text_provider_get_text(tp, 0, len);
-  g_assert_cmpstr(text, ==, contents);
-  g_free(text);
+  const GString *content = project_file_get_content(file);
+  g_assert_nonnull(content);
+  g_assert_cmpstr(content->str, ==, contents);
 
   project_unref(project);
   g_remove(filepath);
@@ -93,12 +103,9 @@ static void test_file_load(void)
 static void test_function_analysis(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
-  LispParser *parser = project_file_get_parser(file);
-  const Node *ast = lisp_parser_get_ast(parser);
+  const Node *ast = project_file_get_ast(file);
   const Node *form = g_array_index(ast->children, Node*, 0);
   Node *defsym_symbol = g_array_index(form->children, Node*, 0);
   Node *defsym = node_get_symbol_name_node(defsym_symbol);
@@ -119,13 +126,10 @@ static void test_function_analysis(void)
 static void test_index(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(defun foo () (bar))");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL,
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL, NULL,
       PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
   project_file_changed(project, file);
-  LispParser *parser = project_file_get_parser(file);
-  const Node *ast = lisp_parser_get_ast(parser);
+  const Node *ast = project_file_get_ast(file);
   const Node *form = g_array_index(ast->children, Node*, 0);
   Node *defsym_symbol = g_array_index(form->children, Node*, 0);
   Node *defsym = node_get_symbol_name_node(defsym_symbol);
@@ -157,9 +161,7 @@ static void test_index(void)
 static void test_functions_table(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(defun foo () \"doc\")");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () \"doc\")"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
   Function *fn = project_get_function(project, "FOO");
   g_assert_nonnull(fn);
@@ -175,9 +177,7 @@ static void test_functions_table(void)
 static void test_function_tooltip(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(defun foo (x &rest rest) \"doc\")");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo (x &rest rest) \"doc\")"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
   Function *fn = project_get_function(project, "FOO");
   gchar *tooltip = function_tooltip(fn);
@@ -193,9 +193,7 @@ static void test_function_tooltip(void)
 static void test_defun_requires_symbol_name(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(defun \"foo\" () nil)");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun \"foo\" () nil)"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
 
   const GArray *errors = project_file_get_errors(file);
@@ -211,9 +209,7 @@ static void test_defun_requires_symbol_name(void)
 static void test_defun_requires_parameter_list(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("(defun foo \"bad-params\" nil)");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo \"bad-params\" nil)"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
 
   const GArray *errors = project_file_get_errors(file);
@@ -229,23 +225,17 @@ static void test_defun_requires_parameter_list(void)
 static void test_incremental_index(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *p1 = string_text_provider_new("(defun foo () nil)");
-  ProjectFile *f1 = project_add_file(project, p1, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(p1);
+  ProjectFile *f1 = project_add_file(project, g_string_new("(defun foo () nil)"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, f1);
 
-  TextProvider *p2 = string_text_provider_new("(defun bar () nil)");
-  ProjectFile *f2 = project_add_file(project, p2, NULL, NULL, PROJECT_FILE_LIVE);
-  text_provider_unref(p2);
+  ProjectFile *f2 = project_add_file(project, g_string_new("(defun bar () nil)"), NULL, NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, f2);
 
   GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
   g_assert_nonnull(g_hash_table_lookup(defs, "BAR"));
 
-  StringTextProvider *stp2 = (StringTextProvider*)project_file_get_provider(f2);
-  g_free(stp2->text);
-  stp2->text = g_strdup("(defun baz () nil)");
+  project_file_set_text(f2, "(defun baz () nil)");
   project_file_changed(project, f2);
 
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
@@ -266,10 +256,8 @@ static void test_function_call_argument_mismatch(void)
   project_add_function(project, fn);
   function_unref(fn);
 
-  TextProvider *provider = string_text_provider_new("(bar 1)");
-  ProjectFile *file = project_add_file(project, provider, NULL, NULL,
+  ProjectFile *file = project_add_file(project, g_string_new("(bar 1)"), NULL, NULL,
       PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
   project_file_changed(project, file);
 
   const GArray *errors = project_file_get_errors(file);
@@ -278,25 +266,22 @@ static void test_function_call_argument_mismatch(void)
   const ProjectFileError *err = &g_array_index((GArray*)errors,
       ProjectFileError, 0);
   g_assert_cmpuint(err->start, ==, 0);
-  TextProvider *file_provider = project_file_get_provider(file);
-  gsize len = text_provider_get_length(file_provider);
+  const GString *file_content = project_file_get_content(file);
+  gsize len = file_content ? file_content->len : 0;
   g_assert_cmpuint(err->end, ==, len);
   g_assert_nonnull(err->message);
   g_assert_nonnull(project_get_function(project, "BAR"));
   g_assert_cmpstr(err->message, ==,
       "Expected 2 arguments for BAR but found 1");
 
-  StringTextProvider *stp = (StringTextProvider*)file_provider;
-  g_free(stp->text);
-  stp->text = g_strdup("(bar 1 2)");
+  project_file_set_text(file, "(bar 1 2)");
   project_file_changed(project, file);
 
   errors = project_file_get_errors(file);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 0);
 
-  g_free(stp->text);
-  stp->text = g_strdup("(bar 1 2 3)");
+  project_file_set_text(file, "(bar 1 2 3)");
   project_file_changed(project, file);
 
   errors = project_file_get_errors(file);
@@ -307,8 +292,7 @@ static void test_function_call_argument_mismatch(void)
   g_assert_cmpstr(err->message, ==,
       "Expected 2 arguments for BAR but found 3");
 
-  g_free(stp->text);
-  stp->text = g_strdup("(bar 1 2)");
+  project_file_set_text(file, "(bar 1 2)");
   project_file_changed(project, file);
 
   errors = project_file_get_errors(file);
@@ -323,11 +307,9 @@ static void test_relative_path(void)
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
   Project *project = project_new(NULL);
   project_set_path(project, tmpdir);
-  TextProvider *provider = string_text_provider_new("");
   gchar *filepath = g_build_filename(tmpdir, "file.lisp", NULL);
-  ProjectFile *file = project_add_file(project, provider, NULL, filepath,
+  ProjectFile *file = project_add_file(project, g_string_new(""), NULL, filepath,
       PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
   const gchar *rel = project_file_get_relative_path(file);
   g_assert_cmpstr(rel, ==, "file.lisp");
   project_unref(project);
@@ -345,10 +327,8 @@ static void on_removed(Project * /*project*/, ProjectFile * /*file*/, gpointer u
 static void test_remove_file(void)
 {
   Project *project = project_new(NULL);
-  TextProvider *provider = string_text_provider_new("");
-  ProjectFile *file = project_add_file(project, provider, NULL, "foo.lisp",
+  ProjectFile *file = project_add_file(project, g_string_new(""), NULL, "foo.lisp",
       PROJECT_FILE_LIVE);
-  text_provider_unref(provider);
   guint before = project_get_file_count(project);
   gboolean removed = FALSE;
   project_set_file_removed_cb(project, on_removed, &removed);

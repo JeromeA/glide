@@ -19,10 +19,13 @@ LispSourceNotebook "1" o-- "*" Editor
 
 Project "1" o-- "*" ProjectFile
 
+ProjectFile *-- LispLexer
 ProjectFile *-- LispParser
-ProjectFile *-- TextProvider
 ProjectFile : path
 ProjectFile : project
+ProjectFile : content
+ProjectFile : tokens
+ProjectFile : ast
 ProjectFile --> Project
 
 GtkBox <|-- InteractionsView
@@ -45,13 +48,7 @@ Process : in_fd
 Process : out_fd
 Process : err_fd
 
-LispParser : tokens
-LispParser : ast
-LispParser --> TextProvider
-interface TextProvider
-TextProvider <|.. GtkTextProvider
-TextProvider <|.. StringTextProvider
-TextProvider : getChar(offset)
-TextProvider : getNextOffset(offset)
+LispLexer : lex(text)
+LispParser : parse(tokens)
 
 @enduml

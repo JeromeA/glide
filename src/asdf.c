@@ -1,7 +1,7 @@
 #include "asdf.h"
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
-#include "string_text_provider.h"
+#include "node.h"
 #include <glib/gstdio.h>
 
 struct _Asdf {
@@ -146,14 +146,11 @@ uint asdf_get_dependency_count(Asdf *self) {
 }
 
 static void parse_file_contents(Asdf *self, const gchar *contents) {
-  TextProvider *provider = string_text_provider_new(contents);
-  LispLexer *lexer = lisp_lexer_new(provider);
-  lisp_lexer_lex(lexer);
+  GString *text = g_string_new(contents ? contents : "");
+  LispLexer *lexer = lisp_lexer_new();
+  GArray *tokens = lisp_lexer_lex(lexer, text);
   LispParser *parser = lisp_parser_new();
-  GArray *tokens = lisp_lexer_get_tokens(lexer);
-  lisp_parser_parse(parser, tokens, NULL);
-
-  const Node *ast = lisp_parser_get_ast(parser);
+  Node *ast = lisp_parser_parse(parser, tokens, NULL);
   if (!ast)
     goto cleanup;
 
@@ -213,9 +210,13 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
   }
 
 cleanup:
+  if (ast)
+    node_free_deep(ast);
+  if (tokens)
+    g_array_free(tokens, TRUE);
   lisp_parser_free(parser);
   lisp_lexer_free(lexer);
-  text_provider_unref(provider);
+  g_string_free(text, TRUE);
 }
 
 static GString *get_system_name(Asdf *self) {

@@ -36,6 +36,18 @@ void node_unref(Node *node) {
   }
 }
 
+void node_free_deep(Node *node) {
+  if (!node)
+    return;
+  if (node->children) {
+    for (guint i = 0; i < node->children->len; i++)
+      node_free_deep(g_array_index(node->children, Node*, i));
+    g_array_free(node->children, TRUE);
+    node->children = NULL;
+  }
+  node_unref(node);
+}
+
 gboolean node_is(const Node *node, StringDesignatorType t) {
   return node && node->sd_type == t;
 }
