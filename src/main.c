@@ -22,7 +22,7 @@
 #include "lisp_lexer.c"
 #include "lisp_parser.c"
 #include "lisp_parser_view.c"
-#include "lisp_source_notebook.c"
+#include "editor_container.c"
 #include "editor_tooltip_window.c"
 #include "editor.c"
 #include "node.c"

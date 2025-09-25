@@ -6,7 +6,7 @@
 #include "repl_session.h"
 #include "project.h"
 #include "editor.h"
-#include "lisp_source_notebook.h"
+#include "editor_container.h"
 #include "status_service.h"
 
 #ifndef STATIC
@@ -20,7 +20,7 @@ G_DECLARE_FINAL_TYPE(App, app, GLIDE, APP, GtkApplication)
 
 STATIC App *app_new (Preferences *prefs, ReplSession *glide, StatusService *status_service);
 STATIC Editor *app_get_editor(App *self);
-STATIC LispSourceNotebook *app_get_notebook(App *self);
+STATIC EditorContainer *app_get_notebook(App *self);
 STATIC Project *app_get_project(App *self);
 STATIC void app_connect_editor(App *self, Editor *editor);
 STATIC ProjectFile *app_get_current_file(App *self);

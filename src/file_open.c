@@ -9,7 +9,7 @@
 #include "file_open.h"
 #include "app.h"
 #include "editor.h"
-#include "lisp_source_notebook.h"
+#include "editor_container.h"
 #include "project.h"
 #include "file_save.h"
 #include "preferences.h"
@@ -47,7 +47,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
     return FALSE;
 
   Project *project = app_get_project(app);
-  LispSourceNotebook *notebook = app_get_notebook(app);
+  EditorContainer *notebook = app_get_notebook(app);
   project_clear(project);
 
   gboolean is_asdf = g_str_has_suffix(filename, ".asd");
@@ -89,7 +89,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
   app_update_recent_menu(app);
 
   app_restore_last_file(app);
-  Editor *view = lisp_source_notebook_get_current_editor(notebook);
+  Editor *view = editor_container_get_current_editor(notebook);
   if (view)
     app_connect_editor(app, view);
   app_update_project_view(app);

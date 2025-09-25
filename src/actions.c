@@ -10,7 +10,7 @@
 #include "evaluate.h"
 #include "lisp_parser_view.h"
 #include "project_file.h"
-#include "lisp_source_notebook.h"
+#include "editor_container.h"
 #include "editor.h"
 #include "util.h"
 
@@ -82,8 +82,8 @@ static void
 extend_selection(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   App *self = data;
-  LispSourceNotebook *notebook = app_get_notebook(self);
-  Editor *view = lisp_source_notebook_get_current_editor(notebook);
+  EditorContainer *notebook = app_get_notebook(self);
+  Editor *view = editor_container_get_current_editor(notebook);
   if (view)
     editor_extend_selection(view);
 }
@@ -92,8 +92,8 @@ static void
 shrink_selection(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   App *self = data;
-  LispSourceNotebook *notebook = app_get_notebook(self);
-  Editor *view = lisp_source_notebook_get_current_editor(notebook);
+  EditorContainer *notebook = app_get_notebook(self);
+  Editor *view = editor_container_get_current_editor(notebook);
   if (view)
     editor_shrink_selection(view);
 }
@@ -138,8 +138,8 @@ static void
 eval_current(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   App *self = data;
-  LispSourceNotebook *notebook = app_get_notebook(self);
-  Editor *view = lisp_source_notebook_get_current_editor(notebook);
+  EditorContainer *notebook = app_get_notebook(self);
+  Editor *view = editor_container_get_current_editor(notebook);
   GtkTextBuffer *buffer = view ?
       GTK_TEXT_BUFFER(editor_get_buffer(view)) : NULL;
   GtkTextIter it_start;
@@ -220,8 +220,8 @@ show_parser(App *self)
 {
   GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(win), "Parser View");
-  LispSourceNotebook *notebook = app_get_notebook(self);
-  Editor *current = lisp_source_notebook_get_current_editor(notebook);
+  EditorContainer *notebook = app_get_notebook(self);
+  Editor *current = editor_container_get_current_editor(notebook);
   ProjectFile *file = editor_get_file(current);
   GtkWidget *view = lisp_parser_view_new(file);
   GtkWidget *scrolled = gtk_scrolled_window_new(NULL, NULL);
@@ -236,13 +236,13 @@ show_editor_tooltip(App *self)
   g_assert(glide_is_ui_thread());
   g_return_if_fail(self != NULL);
 
-  LispSourceNotebook *notebook = app_get_notebook(self);
+  EditorContainer *notebook = app_get_notebook(self);
   if (!notebook) {
     LOG(1, "Actions.show_editor_tooltip: no notebook");
     return;
   }
 
-  Editor *current = lisp_source_notebook_get_current_editor(notebook);
+  Editor *current = editor_container_get_current_editor(notebook);
   if (!current) {
     LOG(1, "Actions.show_editor_tooltip: no current editor");
     return;
@@ -255,7 +255,7 @@ show_editor_tooltip(App *self)
 static gboolean
 app_maybe_save_all(App *self)
 {
-  LispSourceNotebook *notebook = app_get_notebook(self);
+  EditorContainer *notebook = app_get_notebook(self);
   if (!notebook)
     return TRUE;
   gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));

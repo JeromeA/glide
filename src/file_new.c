@@ -2,7 +2,7 @@
 #include "file_new.h"
 #include "app.h"
 #include "project.h"
-#include "lisp_source_notebook.h"
+#include "editor_container.h"
 #include "editor.h"
 #include "project_file.h"
 #include "asdf.h"
@@ -31,7 +31,7 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
       g_file_set_contents(path, "", 0, NULL);
       ProjectFile *file = project_add_loaded_file(project, path);
       if (file) {
-        Editor *view = lisp_source_notebook_get_current_editor(app_get_notebook(app));
+        Editor *view = editor_container_get_current_editor(app_get_notebook(app));
         if (view)
           app_connect_editor(app, view);
         Asdf *asdf = project_get_asdf(project);

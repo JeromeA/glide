@@ -2,7 +2,7 @@
 #include "file_add.h"
 #include "app.h"
 #include "project.h"
-#include "lisp_source_notebook.h"
+#include "editor_container.h"
 #include "editor.h"
 #include "project_file.h"
 #include "asdf.h"
@@ -23,7 +23,7 @@ void file_add(GtkWidget */*widget*/, gpointer data) {
     gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
     ProjectFile *file = project_add_loaded_file(project, filename);
     if (file) {
-      Editor *view = lisp_source_notebook_get_current_editor(app_get_notebook(app));
+      Editor *view = editor_container_get_current_editor(app_get_notebook(app));
       if (view)
         app_connect_editor(app, view);
       Asdf *asdf = project_get_asdf(project);
