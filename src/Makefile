@@ -23,7 +23,7 @@ SOURCES += \
   actions.c \
   menu_bar.c \
   app.c \
-  lisp_source_notebook.c \
+  editor_container.c \
   editor_tooltip_window.c \
   editor.c \
   lisp_lexer.c \

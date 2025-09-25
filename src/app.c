@@ -3,7 +3,7 @@
 #include "file_open.h"
 #include "interactions_view.h"
 #include "editor.h"
-#include "lisp_source_notebook.h"
+#include "editor_container.h"
 #include "project.h"
 #include "project_file.h"
 #include "status_bar.h"
@@ -26,7 +26,7 @@ struct _App
 
   /* UI pointers we want to reuse */
   GtkWidget      *window;
-  LispSourceNotebook *notebook;
+  EditorContainer *notebook;
   Preferences    *preferences;
   ReplSession   *glide;
   Project        *project;
@@ -74,8 +74,8 @@ app_activate (GApplication *app)
       G_CALLBACK(on_window_size_allocate), self);
 
   /* Source views notebook */
-  GtkWidget *notebook = lisp_source_notebook_new (self->project);
-  self->notebook = LISP_SOURCE_NOTEBOOK(notebook);
+  GtkWidget *notebook = editor_container_new(self->project);
+  self->notebook = EDITOR_CONTAINER(notebook);
   self->notebook_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
   g_signal_connect(self->notebook_paned, "notify::position",
       G_CALLBACK(on_notebook_paned_position), self);
@@ -109,7 +109,7 @@ app_activate (GApplication *app)
   app_update_project_view(self);
   app_update_recent_menu(self);
   gtk_widget_show_all(self->window);
-  Editor *current_view = lisp_source_notebook_get_current_editor(self->notebook);
+  Editor *current_view = editor_container_get_current_editor(self->notebook);
   if (current_view)
     gtk_widget_grab_focus(editor_get_view(current_view));
 }
@@ -216,10 +216,10 @@ app_get_editor(App *self)
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
   if (!self->notebook)
     return NULL;
-  return lisp_source_notebook_get_current_editor(self->notebook);
+  return editor_container_get_current_editor(self->notebook);
 }
 
-STATIC LispSourceNotebook *
+STATIC EditorContainer *
 app_get_notebook(App *self)
 {
   g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
@@ -288,7 +288,7 @@ app_restore_last_file(App *self)
     ProjectFile *pf = project_get_file(project, i);
     if (g_strcmp0(project_file_get_path(pf), last) == 0) {
       gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
-      Editor *view = lisp_source_notebook_get_current_editor(self->notebook);
+      Editor *view = editor_container_get_current_editor(self->notebook);
       if (!view)
         return;
       GtkWidget *text_view = editor_get_view(view);

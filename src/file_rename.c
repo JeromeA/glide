@@ -56,7 +56,7 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
         g_string_free(new_str, TRUE);
         asdf_save(asdf, asdf_get_filename(asdf));
         app_update_project_view(app);
-        LispSourceNotebook *notebook = app_get_notebook(app);
+        EditorContainer *notebook = app_get_notebook(app);
         if (notebook) {
           gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
           GtkWidget *scrolled = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), page);
