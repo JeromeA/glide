@@ -4,6 +4,7 @@
 #include "interactions_view.h"
 #include "editor.h"
 #include "editor_container.h"
+#include "editor_manager.h"
 #include "project.h"
 #include "project_file.h"
 #include "status_bar.h"
@@ -27,6 +28,7 @@ struct _App
   /* UI pointers we want to reuse */
   GtkWidget      *window;
   EditorContainer *notebook;
+  EditorManager *editor_manager;
   Preferences    *preferences;
   ReplSession   *glide;
   Project        *project;
@@ -74,8 +76,10 @@ app_activate (GApplication *app)
       G_CALLBACK(on_window_size_allocate), self);
 
   /* Source views notebook */
-  GtkWidget *notebook = editor_container_new(self->project);
+  GtkWidget *notebook = editor_container_new();
   self->notebook = EDITOR_CONTAINER(notebook);
+  g_clear_object(&self->editor_manager);
+  self->editor_manager = editor_manager_new(self->project, self->notebook);
   self->notebook_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
   g_signal_connect(self->notebook_paned, "notify::position",
       G_CALLBACK(on_notebook_paned_position), self);
@@ -146,6 +150,7 @@ app_dispose (GObject *object)
 
   LOG(1, "App.dispose");
 
+  g_clear_object(&self->editor_manager);
   if (self->project) {
     project_unref(self->project);
     self->project = NULL;
@@ -183,6 +188,7 @@ app_init (App *self)
   self->glide = NULL;
   self->project = NULL;
   self->notebook = NULL;
+  self->editor_manager = NULL;
   self->statusbar = NULL;
   self->status_service = NULL;
   self->notebook_paned = NULL;
@@ -224,6 +230,13 @@ app_get_notebook(App *self)
 {
   g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
   return self->notebook;
+}
+
+STATIC EditorManager *
+app_get_editor_manager(App *self)
+{
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
+  return self->editor_manager;
 }
 
 STATIC Project *
@@ -365,7 +378,8 @@ on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*pag
   Preferences *prefs = app_get_preferences(self);
   if (prefs) {
     preferences_set_last_file(prefs, project_file_get_path(file));
-    GtkTextBuffer *buffer = project_file_get_buffer(file);
+    EditorManager *manager = app_get_editor_manager(self);
+    GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, file) : NULL;
     g_return_if_fail(buffer);
     GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
     GtkTextIter iter;
@@ -439,7 +453,8 @@ app_on_quit (App *self)
   if (prefs && pf) {
     const gchar *path = project_file_get_path(pf);
     preferences_set_last_file(prefs, path);
-    GtkTextBuffer *buffer = project_file_get_buffer(pf);
+    EditorManager *manager = app_get_editor_manager(self);
+    GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, pf) : NULL;
     if (buffer) {
       GtkTextMark *insert_mark = gtk_text_buffer_get_insert(buffer);
       GtkTextIter iter;

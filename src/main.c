@@ -23,6 +23,7 @@
 #include "lisp_parser.c"
 #include "lisp_parser_view.c"
 #include "editor_container.c"
+#include "editor_manager.c"
 #include "editor_tooltip_window.c"
 #include "editor.c"
 #include "node.c"

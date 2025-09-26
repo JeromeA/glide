@@ -57,7 +57,7 @@ static void
 save_all(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   App *self = data;
-  file_save_all(app_get_project(self));
+  file_save_all(app_get_editor_manager(self), app_get_project(self));
 }
 
 static void
@@ -140,8 +140,7 @@ eval_current(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
   App *self = data;
   EditorContainer *notebook = app_get_notebook(self);
   Editor *view = editor_container_get_current_editor(notebook);
-  GtkTextBuffer *buffer = view ?
-      GTK_TEXT_BUFFER(editor_get_buffer(view)) : NULL;
+  GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(editor_get_buffer(view)) : NULL;
   GtkTextIter it_start;
   GtkTextIter it_end;
   if (buffer && gtk_text_buffer_get_selection_bounds(buffer,
@@ -223,7 +222,8 @@ show_parser(App *self)
   EditorContainer *notebook = app_get_notebook(self);
   Editor *current = editor_container_get_current_editor(notebook);
   ProjectFile *file = editor_get_file(current);
-  GtkWidget *view = lisp_parser_view_new(file);
+  EditorManager *manager = app_get_editor_manager(self);
+  GtkWidget *view = lisp_parser_view_new(manager, file);
   GtkWidget *scrolled = gtk_scrolled_window_new(NULL, NULL);
   gtk_container_add(GTK_CONTAINER(scrolled), view);
   gtk_container_add(GTK_CONTAINER(win), scrolled);
@@ -262,8 +262,7 @@ app_maybe_save_all(App *self)
   gboolean modified = FALSE;
   for (gint i = 0; i < pages; i++) {
     GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
-    GtkTextBuffer *buffer = view ?
-        GTK_TEXT_BUFFER(editor_get_buffer(GLIDE_EDITOR(view))) : NULL;
+    GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(editor_get_buffer(GLIDE_EDITOR(view))) : NULL;
     if (buffer && gtk_text_buffer_get_modified(buffer)) {
       modified = TRUE;
       break;
@@ -282,7 +281,7 @@ app_maybe_save_all(App *self)
   if (res == GTK_RESPONSE_CANCEL)
     return FALSE;
   if (res == GTK_RESPONSE_ACCEPT)
-    file_save_all(app_get_project(self));
+    file_save_all(app_get_editor_manager(self), app_get_project(self));
   return TRUE;
 }
 

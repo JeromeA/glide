@@ -24,6 +24,7 @@ SOURCES += \
   menu_bar.c \
   app.c \
   editor_container.c \
+  editor_manager.c \
   editor_tooltip_window.c \
   editor.c \
   lisp_lexer.c \

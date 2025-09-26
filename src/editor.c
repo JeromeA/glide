@@ -1,6 +1,7 @@
 #include "editor.h"
 #include "editor_tooltip_window.h"
 #include "project.h"
+#include "project_file.h"
 #include "util.h"
 
 typedef struct {
@@ -19,6 +20,7 @@ struct _Editor
   GArray *selection_stack;
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
+  GtkTextTag *error_tag;
   EditorTooltipWindow *tooltip_window;
 };
 
@@ -37,6 +39,8 @@ static void editor_highlight_nodes (Editor *self, GPtrArray *nodes,
 static void editor_highlight_node (Editor *self, const Node *node,
     GtkTextTag *tag);
 static gchar *editor_build_error_tooltip_markup (Editor *self, gsize offset);
+static void editor_clear_errors(Editor *self);
+static void editor_sync_content(Editor *self);
 
 static void
 editor_init (Editor *self)
@@ -68,6 +72,8 @@ editor_init (Editor *self)
       "function-def-highlight", "background", "#fef", NULL);
   self->function_use_tag = gtk_text_buffer_create_tag (buffer,
       "function-use-highlight", "background", "#eef", NULL);
+  self->error_tag = gtk_text_buffer_create_tag(buffer,
+      "error-highlight", "underline", PANGO_UNDERLINE_ERROR, NULL);
   g_signal_connect (buffer, "mark-set", G_CALLBACK (editor_on_mark_set), self);
 }
 
@@ -76,8 +82,11 @@ static void
 on_buffer_changed (GtkTextBuffer * /*buffer*/, gpointer user_data)
 {
   Editor *self = GLIDE_EDITOR (user_data);
-  if (self && self->project && self->file)
+  if (self && self->project && self->file) {
+    editor_clear_errors(self);
+    editor_sync_content(self);
     project_file_changed(self->project, self->file);
+  }
   if (self)
     editor_update_function_highlight (self);
 }
@@ -97,6 +106,7 @@ editor_dispose (GObject *object)
 
   self->function_def_tag = NULL;
   self->function_use_tag = NULL;
+  self->error_tag = NULL;
   g_clear_object (&self->buffer);
   self->view = NULL;
   if (self->selection_stack) {
@@ -132,7 +142,6 @@ editor_new_for_file (Project *project, ProjectFile *file)
     gtk_source_buffer_end_not_undoable_action(self->buffer);
   }
 
-  project_file_bind_buffer(self->file, GTK_TEXT_BUFFER(self->buffer));
   project_file_changed (self->project, self->file);
   gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);
@@ -178,6 +187,34 @@ editor_clear_function_highlight (Editor *self)
 }
 
 static void
+editor_clear_errors(Editor *self)
+{
+  if (!self || !self->buffer || !self->error_tag)
+    return;
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
+  GtkTextIter start;
+  GtkTextIter end;
+  gtk_text_buffer_get_bounds(buffer, &start, &end);
+  gtk_text_buffer_remove_tag(buffer, self->error_tag, &start, &end);
+}
+
+static void
+editor_sync_content(Editor *self)
+{
+  if (!self || !self->buffer || !self->file)
+    return;
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
+  GtkTextIter start;
+  GtkTextIter end;
+  gtk_text_buffer_get_start_iter(buffer, &start);
+  gtk_text_buffer_get_end_iter(buffer, &end);
+  gchar *text = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
+  GString *content = g_string_new(text ? text : "");
+  g_free(text);
+  project_file_set_content(self->file, content);
+}
+
+static void
 editor_highlight_nodes (Editor *self, GPtrArray *nodes, GtkTextTag *tag)
 {
   if (!nodes || !tag)
@@ -185,6 +222,24 @@ editor_highlight_nodes (Editor *self, GPtrArray *nodes, GtkTextTag *tag)
   for (guint i = 0; i < nodes->len; i++) {
     Node *node = g_ptr_array_index (nodes, i);
     editor_highlight_node (self, node, tag);
+  }
+}
+
+void
+editor_set_errors(Editor *self, const GArray *errors)
+{
+  g_return_if_fail(GLIDE_IS_EDITOR(self));
+  editor_clear_errors(self);
+  if (!errors || !self->buffer || !self->error_tag)
+    return;
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
+  for (guint i = 0; i < errors->len; i++) {
+    const ProjectFileError *err = &g_array_index(errors, ProjectFileError, i);
+    GtkTextIter start;
+    GtkTextIter end;
+    gtk_text_buffer_get_iter_at_offset(buffer, &start, (gint)err->start);
+    gtk_text_buffer_get_iter_at_offset(buffer, &end, (gint)err->end);
+    gtk_text_buffer_apply_tag(buffer, self->error_tag, &start, &end);
   }
 }
 

@@ -16,6 +16,12 @@ static Project *project_init(void) {
   self->path = NULL;
   self->changed_cb = NULL;
   self->changed_data = NULL;
+  self->file_loaded_cb = NULL;
+  self->file_loaded_data = NULL;
+  self->file_removed_cb = NULL;
+  self->file_removed_data = NULL;
+  self->file_changed_cb = NULL;
+  self->file_changed_data = NULL;
   return self;
 }
 
@@ -36,12 +42,12 @@ Project *project_new(ReplSession *repl) {
   self->repl = repl ? repl_session_ref(repl) : NULL;
   project_clear(self);
   GString *content = g_string_new("");
-  project_add_file(self, content, NULL, "unnamed.lisp", PROJECT_FILE_LIVE);
+  project_add_file(self, content, "unnamed.lisp", PROJECT_FILE_LIVE);
   return self;
 }
 
 ProjectFile *project_add_file(Project *self, GString *content,
-    GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
+    const gchar *path, ProjectFileState state) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
 
@@ -49,10 +55,11 @@ ProjectFile *project_add_file(Project *self, GString *content,
 
   if (!content)
     content = g_string_new("");
-  ProjectFile *file = project_file_new(self, content, buffer, path, state);
+  ProjectFile *file = project_file_new(self, content, path, state);
 
   g_ptr_array_add(self->files, file);
 
+  project_file_loaded(self, file);
   project_changed(self);
 
   return file;
@@ -247,7 +254,8 @@ void project_file_changed(Project *self, ProjectFile *file) {
     analyse_ast(self, ast);
   if (ast)
     project_index_walk(self->index, ast);
-  project_file_apply_errors(file);
+  if (self->file_changed_cb)
+    self->file_changed_cb(self, file, self->file_changed_data);
   project_changed(self);
 }
 
@@ -269,6 +277,13 @@ void project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer 
   g_return_if_fail(glide_is_ui_thread());
   self->file_loaded_cb = cb;
   self->file_loaded_data = user_data;
+}
+
+void project_set_file_changed_cb(Project *self, ProjectFileChangedCb cb, gpointer user_data) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(glide_is_ui_thread());
+  self->file_changed_cb = cb;
+  self->file_changed_data = user_data;
 }
 
 void project_file_loaded(Project *self, ProjectFile *file) {

@@ -6,44 +6,38 @@
 #include <unistd.h>
 #include <errno.h>
 #include <glib-object.h>
-#include <gtk/gtk.h>
 #include "syscalls.h"
 #include "util.h"
 
 struct _ProjectFile {
   ProjectFileState state;
   gchar *path;
-  GtkTextBuffer *buffer; /* nullable */
   GString *content; /* owned */
   GArray *tokens; /* owned, LispToken */
   Node *ast; /* owned */
   LispLexer *lexer; /* owned */
   LispParser *parser; /* owned */
   Project *project;
-  GtkTextTag *error_tag;
   GArray *errors; /* ProjectFileError */
 };
 
-static void project_file_ensure_error_tag(ProjectFile *file);
 static ProjectFile *project_file_create(Project *project, GString *content,
-    GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
-static void project_file_assign_content(ProjectFile *file, GString *content,
-    GtkTextBuffer *buffer);
+    const gchar *path, ProjectFileState state);
+static void project_file_assign_content(ProjectFile *file, GString *content);
 static void project_file_clear_tokens(ProjectFile *file);
 void project_file_set_tokens(ProjectFile *file, GArray *tokens);
 static void project_file_clear_ast(ProjectFile *file);
 void project_file_set_ast(ProjectFile *file, Node *ast);
-static void project_file_refresh_content(ProjectFile *file);
 
 ProjectFile *project_file_new(Project *project, GString *content,
-    GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
+    const gchar *path, ProjectFileState state) {
   g_return_val_if_fail(project != NULL, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
-  return project_file_create(project, content, buffer, path, state);
+  return project_file_create(project, content, path, state);
 }
 
 ProjectFile *project_file_new_virtual(GString *content) {
-  return project_file_create(NULL, content, NULL, NULL, PROJECT_FILE_LIVE);
+  return project_file_create(NULL, content, NULL, PROJECT_FILE_LIVE);
 }
 
 void project_file_free(ProjectFile *file) {
@@ -54,7 +48,6 @@ void project_file_free(ProjectFile *file) {
   project_file_clear_tokens(file);
   if (file->content)
     g_string_free(file->content, TRUE);
-  if (file->buffer) g_object_unref(file->buffer);
   if (file->errors) {
     project_file_clear_errors(file);
     g_array_free(file->errors, TRUE);
@@ -74,8 +67,7 @@ void project_file_set_state(ProjectFile *file, ProjectFileState state) {
   file->state = state;
 }
 
-void project_file_set_content(ProjectFile *file, GString *content,
-    GtkTextBuffer *buffer) {
+void project_file_set_content(ProjectFile *file, GString *content) {
   g_return_if_fail(file != NULL);
   g_return_if_fail(glide_is_ui_thread());
   project_file_clear_errors(file);
@@ -93,30 +85,11 @@ void project_file_set_content(ProjectFile *file, GString *content,
     g_string_free(file->content, TRUE);
     file->content = NULL;
   }
-  if (file->buffer) {
-    g_object_unref(file->buffer);
-    file->buffer = NULL;
-  }
-  project_file_assign_content(file, content, buffer);
-}
-
-void project_file_bind_buffer(ProjectFile *file, GtkTextBuffer *buffer) {
-  g_return_if_fail(file != NULL);
-  g_return_if_fail(glide_is_ui_thread());
-  if (file->buffer == buffer)
-    return;
-  if (file->buffer) {
-    g_object_unref(file->buffer);
-    file->buffer = NULL;
-  }
-  if (buffer)
-    file->buffer = g_object_ref(buffer);
-  file->error_tag = NULL;
+  project_file_assign_content(file, content);
 }
 
 const GString *project_file_get_content(ProjectFile *file) {
   g_return_val_if_fail(file != NULL, NULL);
-  project_file_refresh_content(file);
   return file->content;
 }
 
@@ -138,11 +111,6 @@ LispParser *project_file_get_parser(ProjectFile *file) {
 LispLexer *project_file_get_lexer(ProjectFile *file) {
   g_return_val_if_fail(file != NULL, NULL);
   return file->lexer;
-}
-
-GtkTextBuffer *project_file_get_buffer(ProjectFile *file) {
-  g_return_val_if_fail(file != NULL, NULL);
-  return file->buffer;
 }
 
 const gchar *project_file_get_path(ProjectFile *file) {
@@ -203,7 +171,7 @@ ProjectFile *project_file_load(Project *project, const gchar *path) {
   sys_close(fd);
 
   GString *text = g_string_new_len(content, total_read);
-  ProjectFile *file = project_file_create(project, text, NULL, path,
+  ProjectFile *file = project_file_create(project, text, path,
       PROJECT_FILE_LIVE);
   g_free(content);
 
@@ -238,12 +206,6 @@ void project_file_clear_errors(ProjectFile *file) {
     }
     g_array_set_size(file->errors, 0);
   }
-  if (file->buffer && file->error_tag) {
-    GtkTextIter start;
-    GtkTextIter end;
-    gtk_text_buffer_get_bounds(file->buffer, &start, &end);
-    gtk_text_buffer_remove_tag(file->buffer, file->error_tag, &start, &end);
-  }
 }
 
 void project_file_add_error(ProjectFile *file, gsize start, gsize end,
@@ -261,26 +223,22 @@ void project_file_add_error(ProjectFile *file, gsize start, gsize end,
 }
 
 static ProjectFile *project_file_create(Project *project, GString *content,
-    GtkTextBuffer *buffer, const gchar *path, ProjectFileState state) {
+    const gchar *path, ProjectFileState state) {
   ProjectFile *file = g_new0(ProjectFile, 1);
   file->project = project;
   file->state = state;
   file->path = path ? g_strdup(path) : NULL;
-  file->error_tag = NULL;
   file->errors = g_array_new(FALSE, FALSE, sizeof(ProjectFileError));
-  project_file_assign_content(file, content, buffer);
+  project_file_assign_content(file, content);
   return file;
 }
 
-static void project_file_assign_content(ProjectFile *file, GString *content,
-    GtkTextBuffer *buffer) {
+static void project_file_assign_content(ProjectFile *file, GString *content) {
   file->content = content ? content : g_string_new("");
-  file->buffer = buffer ? g_object_ref(buffer) : NULL;
   file->lexer = lisp_lexer_new();
   file->parser = lisp_parser_new();
   file->tokens = NULL;
   file->ast = NULL;
-  file->error_tag = NULL;
 }
 
 static void project_file_clear_tokens(ProjectFile *file) {
@@ -309,51 +267,6 @@ void project_file_set_ast(ProjectFile *file, Node *ast) {
     return;
   project_file_clear_ast(file);
   file->ast = ast;
-}
-
-static void project_file_refresh_content(ProjectFile *file) {
-  if (!file || !file->buffer)
-    return;
-  GtkTextIter start;
-  GtkTextIter end;
-  gtk_text_buffer_get_start_iter(file->buffer, &start);
-  gtk_text_buffer_get_end_iter(file->buffer, &end);
-  gchar *text = gtk_text_buffer_get_text(file->buffer, &start, &end, FALSE);
-  if (!file->content)
-    file->content = g_string_new(text ? text : "");
-  else
-    g_string_assign(file->content, text ? text : "");
-  g_free(text);
-}
-
-static void project_file_ensure_error_tag(ProjectFile *file) {
-  if (!file->buffer)
-    return;
-  if (!file->error_tag) {
-    file->error_tag = gtk_text_buffer_create_tag(file->buffer, NULL,
-        "underline", PANGO_UNDERLINE_ERROR, NULL);
-  }
-}
-
-void project_file_apply_errors(ProjectFile *file) {
-  g_return_if_fail(file != NULL);
-  if (!file->buffer || !file->errors || file->errors->len == 0)
-    return;
-  const gchar *path = file->path ? file->path : "(null)";
-  LOG(1, "project_file_apply_errors path=%s count=%u", path, file->errors->len);
-  project_file_ensure_error_tag(file);
-  if (!file->error_tag)
-    return;
-  for (guint i = 0; i < file->errors->len; i++) {
-    ProjectFileError *err = &g_array_index(file->errors, ProjectFileError, i);
-    LOG(1, "project_file_apply_errors applying range=[%zu,%zu) message=%s",
-        err->start, err->end, err->message ? err->message : "(null)");
-    GtkTextIter start;
-    GtkTextIter end;
-    gtk_text_buffer_get_iter_at_offset(file->buffer, &start, (gint)err->start);
-    gtk_text_buffer_get_iter_at_offset(file->buffer, &end, (gint)err->end);
-    gtk_text_buffer_apply_tag(file->buffer, file->error_tag, &start, &end);
-  }
 }
 
 const GArray *project_file_get_errors(ProjectFile *file) {
