@@ -181,8 +181,7 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
         asdf_set_description(self, g_string_new(node_get_name(val)));
     } else if (g_strcmp0(kw, "SERIAL") == 0) {
       if (val->type == LISP_AST_NODE_TYPE_SYMBOL || val->type == LISP_AST_NODE_TYPE_NUMBER) {
-        const gchar *v = val->type == LISP_AST_NODE_TYPE_SYMBOL ?
-          node_get_name(val) : val->start_token->text;
+        const gchar *v = val->type == LISP_AST_NODE_TYPE_SYMBOL ? node_get_name(val) : val->start_token->text;
         self->serial = g_strcmp0(v, "T") == 0 || g_strcmp0(v, "1") == 0;
       }
     } else if (g_strcmp0(kw, "COMPONENTS") == 0) {

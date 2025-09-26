@@ -12,6 +12,8 @@ struct _Project {
   gpointer file_loaded_data;
   ProjectFileRemovedCb file_removed_cb;
   gpointer file_removed_data;
+  ProjectFileChangedCb file_changed_cb;
+  gpointer file_changed_data;
   ProjectChangedCb changed_cb;
   gpointer changed_data;
   Asdf *asdf; /* owned, nullable */

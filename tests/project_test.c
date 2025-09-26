@@ -19,7 +19,7 @@ static void project_file_prepare(ProjectFile *file) {
 static void project_file_set_text(ProjectFile *file, const gchar *text) {
   g_return_if_fail(file);
   g_return_if_fail(text);
-  project_file_set_content(file, g_string_new(text), NULL);
+  project_file_set_content(file, g_string_new(text));
   project_file_prepare(file);
 }
 
@@ -53,7 +53,7 @@ static void test_default_file(void)
 static void test_parse_on_change(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(a)"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *file = project_add_file(project, g_string_new("(a)"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
   const GArray *tokens = project_file_get_tokens(file);
   g_assert_cmpint(tokens->len, ==, 3); /* (, a, ) */
@@ -103,7 +103,7 @@ static void test_file_load(void)
 static void test_function_analysis(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
   const Node *ast = project_file_get_ast(file);
   const Node *form = g_array_index(ast->children, Node*, 0);
@@ -126,7 +126,7 @@ static void test_function_analysis(void)
 static void test_index(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL, NULL,
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL,
       PROJECT_FILE_LIVE);
   project_file_changed(project, file);
   const Node *ast = project_file_get_ast(file);
@@ -161,7 +161,7 @@ static void test_index(void)
 static void test_functions_table(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () \"doc\")"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () \"doc\")"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
   Function *fn = project_get_function(project, "FOO");
   g_assert_nonnull(fn);
@@ -177,7 +177,7 @@ static void test_functions_table(void)
 static void test_function_tooltip(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo (x &rest rest) \"doc\")"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo (x &rest rest) \"doc\")"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
   Function *fn = project_get_function(project, "FOO");
   gchar *tooltip = function_tooltip(fn);
@@ -193,7 +193,7 @@ static void test_function_tooltip(void)
 static void test_defun_requires_symbol_name(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun \"foo\" () nil)"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun \"foo\" () nil)"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
 
   const GArray *errors = project_file_get_errors(file);
@@ -209,7 +209,7 @@ static void test_defun_requires_symbol_name(void)
 static void test_defun_requires_parameter_list(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo \"bad-params\" nil)"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *file = project_add_file(project, g_string_new("(defun foo \"bad-params\" nil)"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, file);
 
   const GArray *errors = project_file_get_errors(file);
@@ -225,10 +225,10 @@ static void test_defun_requires_parameter_list(void)
 static void test_incremental_index(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *f1 = project_add_file(project, g_string_new("(defun foo () nil)"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *f1 = project_add_file(project, g_string_new("(defun foo () nil)"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, f1);
 
-  ProjectFile *f2 = project_add_file(project, g_string_new("(defun bar () nil)"), NULL, NULL, PROJECT_FILE_LIVE);
+  ProjectFile *f2 = project_add_file(project, g_string_new("(defun bar () nil)"), NULL, PROJECT_FILE_LIVE);
   project_file_changed(project, f2);
 
   GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
@@ -256,7 +256,7 @@ static void test_function_call_argument_mismatch(void)
   project_add_function(project, fn);
   function_unref(fn);
 
-  ProjectFile *file = project_add_file(project, g_string_new("(bar 1)"), NULL, NULL,
+  ProjectFile *file = project_add_file(project, g_string_new("(bar 1)"), NULL,
       PROJECT_FILE_LIVE);
   project_file_changed(project, file);
 
@@ -308,7 +308,7 @@ static void test_relative_path(void)
   Project *project = project_new(NULL);
   project_set_path(project, tmpdir);
   gchar *filepath = g_build_filename(tmpdir, "file.lisp", NULL);
-  ProjectFile *file = project_add_file(project, g_string_new(""), NULL, filepath,
+  ProjectFile *file = project_add_file(project, g_string_new(""), filepath,
       PROJECT_FILE_LIVE);
   const gchar *rel = project_file_get_relative_path(file);
   g_assert_cmpstr(rel, ==, "file.lisp");
@@ -327,7 +327,7 @@ static void on_removed(Project * /*project*/, ProjectFile * /*file*/, gpointer u
 static void test_remove_file(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new(""), NULL, "foo.lisp",
+  ProjectFile *file = project_add_file(project, g_string_new(""), "foo.lisp",
       PROJECT_FILE_LIVE);
   guint before = project_get_file_count(project);
   gboolean removed = FALSE;

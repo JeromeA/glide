@@ -1,7 +1,6 @@
 #pragma once
 
 #include <glib.h>
-typedef struct _GtkTextBuffer GtkTextBuffer;
 #include "project_file.h"
 #include "node.h"
 #include "asdf.h"
@@ -14,17 +13,19 @@ typedef struct _ReplSession ReplSession;
 typedef void (*ProjectFileLoadedCb)(Project *self, ProjectFile *file, gpointer user_data);
 typedef void (*ProjectFileRemovedCb)(Project *self, ProjectFile *file, gpointer user_data);
 typedef void (*ProjectChangedCb)(Project *self, gpointer user_data);
+typedef void (*ProjectFileChangedCb)(Project *self, ProjectFile *file, gpointer user_data);
 
 Project       *project_new(ReplSession *repl);
 Project       *project_ref(Project *self);
 void           project_unref(Project *self);
 void           project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer user_data);
 void           project_set_file_removed_cb(Project *self, ProjectFileRemovedCb cb, gpointer user_data);
+void           project_set_file_changed_cb(Project *self, ProjectFileChangedCb cb, gpointer user_data);
 void           project_set_changed_cb(Project *self, ProjectChangedCb cb, gpointer user_data);
 ProjectFile   *project_get_file(Project *self, guint index);
 guint          project_get_file_count(Project *self);
 ProjectFile   *project_add_file(Project *self, GString *content,
-    GtkTextBuffer *buffer, const gchar *path, ProjectFileState state);
+    const gchar *path, ProjectFileState state);
 ProjectFile   *project_add_loaded_file(Project *self, const gchar *path);
 void           project_remove_file(Project *self, ProjectFile *file);
 void           project_file_changed(Project *self, ProjectFile *file);

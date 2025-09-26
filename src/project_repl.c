@@ -157,8 +157,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   Node *ast = lisp_parser_parse(parser, tokens, NULL);
   g_assert(ast && ast->children && ast->children->len > 0);
   Node *expr = g_array_index(ast->children, Node*, 0);
-  Node *name_node = (expr->children && expr->children->len > 1) ?
-    g_array_index(expr->children, Node*, 1) : NULL;
+  Node *name_node = (expr->children && expr->children->len > 1) ? g_array_index(expr->children, Node*, 1) : NULL;
   gchar *pkg_name = g_strdup(node_get_name(name_node));
   g_assert(pkg_name);
   LOG(1, "project_on_package_definition built package %s", pkg_name);

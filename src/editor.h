@@ -19,5 +19,6 @@ gboolean        editor_get_toplevel_range (Editor *self,
 void            editor_extend_selection (Editor *self);
 void            editor_shrink_selection (Editor *self);
 gboolean        editor_show_tooltip_window (Editor *self);
+void            editor_set_errors(Editor *self, const GArray *errors);
 
 G_END_DECLS

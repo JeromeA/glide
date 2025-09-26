@@ -10,6 +10,7 @@
 #include "app.h"
 #include "editor.h"
 #include "editor_container.h"
+#include "editor_manager.h"
 #include "project.h"
 #include "file_save.h"
 #include "preferences.h"
@@ -19,10 +20,11 @@
 
 static gboolean save_if_modified(App *app) {
   Project *project = app_get_project(app);
+  EditorManager *manager = app_get_editor_manager(app);
   if (project_get_file_count(project) == 0)
     return TRUE;
   ProjectFile *file = project_get_file(project, 0);
-  GtkTextBuffer *buffer = project_file_get_buffer(file);
+  GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, file) : NULL;
   if (buffer && gtk_text_buffer_get_modified(buffer)) {
     GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
         GTK_MESSAGE_QUESTION, GTK_BUTTONS_NONE,
@@ -35,7 +37,7 @@ static gboolean save_if_modified(App *app) {
     if (res == GTK_RESPONSE_CANCEL)
       return FALSE;
     if (res == GTK_RESPONSE_ACCEPT)
-      file_save(file);
+      file_save(manager, file);
   }
   return TRUE;
 }

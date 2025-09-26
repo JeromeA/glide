@@ -5,6 +5,7 @@ struct _LispParserView {
   GtkTreeView parent_instance;
   ProjectFile *file;
   GtkTreeStore *store;
+  GtkTextBuffer *buffer;
 };
 
 G_DEFINE_TYPE(LispParserView, lisp_parser_view, GTK_TYPE_TREE_VIEW)
@@ -21,6 +22,7 @@ lisp_parser_view_init(LispParserView *self)
 
   self->file = NULL;
   self->store = gtk_tree_store_new(PARSER_VIEW_N_COLS, G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING);
+  self->buffer = NULL;
 
   gtk_tree_view_set_model(GTK_TREE_VIEW(self), GTK_TREE_MODEL(self->store));
 
@@ -43,9 +45,10 @@ lisp_parser_view_dispose(GObject *object)
   LispParserView *self = LISP_PARSER_VIEW(object);
 
   if (self->file) {
-    GtkTextBuffer *buf = project_file_get_buffer(self->file);
-    if (buf)
-      g_signal_handlers_disconnect_by_data(buf, self);
+    if (self->buffer) {
+      g_signal_handlers_disconnect_by_data(self->buffer, self);
+      g_clear_object(&self->buffer);
+    }
     self->file = NULL;
   }
   g_clear_object(&self->store);
@@ -156,15 +159,17 @@ parser_view_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer data)
 }
 
 GtkWidget *
-lisp_parser_view_new(ProjectFile *file)
+lisp_parser_view_new(EditorManager *manager, ProjectFile *file)
 {
   g_return_val_if_fail(file != NULL, NULL);
   LispParserView *self = g_object_new(LISP_TYPE_PARSER_VIEW, NULL);
   self->file = file;
   parser_view_populate_store(self);
-  GtkTextBuffer *buf = project_file_get_buffer(file);
-  if (buf)
+  GtkTextBuffer *buf = manager ? editor_manager_get_buffer(manager, file) : NULL;
+  if (buf) {
+    self->buffer = GTK_TEXT_BUFFER(g_object_ref(buf));
     g_signal_connect_after(buf, "changed", G_CALLBACK(parser_view_buffer_changed), self);
+  }
   return GTK_WIDGET(self);
 }
 
