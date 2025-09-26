@@ -4,7 +4,7 @@
 #include "node.h"
 #include "package.h"
 #include "function.h"
-#include "project_file.h"
+#include "document.h"
 
 typedef struct _ProjectIndex ProjectIndex;
 
@@ -13,7 +13,7 @@ void          project_index_free(ProjectIndex *self);
 
 void          project_index_walk(ProjectIndex *self, const Node *node);
 GHashTable   *project_index_get(ProjectIndex *self, StringDesignatorType sd_type);
-void          project_index_remove_file(ProjectIndex *self, ProjectFile *file);
+void          project_index_remove_document(ProjectIndex *self, Document *document);
 void          project_index_clear(ProjectIndex *self);
 
 void          project_index_add_package(ProjectIndex *self, Package *package);

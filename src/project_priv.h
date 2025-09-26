@@ -6,14 +6,14 @@
 #include "asdf.h"
 
 struct _Project {
-  GPtrArray *files; /* ProjectFile* */
+  GPtrArray *documents; /* Document* */
   ProjectIndex *index;
-  ProjectFileLoadedCb file_loaded_cb;
-  gpointer file_loaded_data;
-  ProjectFileRemovedCb file_removed_cb;
-  gpointer file_removed_data;
-  ProjectFileChangedCb file_changed_cb;
-  gpointer file_changed_data;
+  DocumentLoadedCb document_loaded_cb;
+  gpointer document_loaded_data;
+  DocumentRemovedCb document_removed_cb;
+  gpointer document_removed_data;
+  DocumentChangedCb document_changed_cb;
+  gpointer document_changed_data;
   ProjectChangedCb changed_cb;
   gpointer changed_data;
   Asdf *asdf; /* owned, nullable */

@@ -29,7 +29,7 @@ typedef enum {
 } StringDesignatorType;
 
 typedef struct Node Node;
-typedef struct _ProjectFile ProjectFile;
+typedef struct _Document Document;
 
 struct Node {
   LispAstNodeType type;
@@ -37,7 +37,7 @@ struct Node {
   const LispToken *end_token;
   Node *parent;
   GArray *children; /* Node* */
-  ProjectFile *file;
+  Document *document;
 
   StringDesignatorType sd_type;
   gint ref;
@@ -46,7 +46,7 @@ struct Node {
 };
 void node_set_sd_type(Node *node, StringDesignatorType sd_type, const gchar *package_context);
 
-Node *node_new(LispAstNodeType type, ProjectFile *file);
+Node *node_new(LispAstNodeType type, Document *document);
 Node *node_ref(Node *node);
 void node_unref(Node *node);
 void node_free_deep(Node *node);

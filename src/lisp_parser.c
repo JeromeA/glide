@@ -2,7 +2,7 @@
 #include "lisp_parser.h"
 
 struct _LispParser {
-  ProjectFile *file;
+  Document *document;
 };
 static Node *parse_expression(LispParser *parser, GArray *tokens, guint *position);
 static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position);
@@ -16,12 +16,12 @@ void lisp_parser_free(LispParser *parser) {
   g_free(parser);
 }
 
-Node *lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file) {
+Node *lisp_parser_parse(LispParser *parser, GArray *tokens, Document *document) {
   g_return_val_if_fail(parser != NULL, NULL);
 
-  parser->file = file;
+  parser->document = document;
 
-  Node *ast = node_new(LISP_AST_NODE_TYPE_LIST, file);
+  Node *ast = node_new(LISP_AST_NODE_TYPE_LIST, document);
   ast->children = g_array_new(FALSE, FALSE, sizeof(Node*));
 
   guint n_tokens = tokens ? tokens->len : 0;
@@ -39,7 +39,7 @@ Node *lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file) {
     }
   }
 
-  parser->file = NULL;
+  parser->document = NULL;
 
   return ast;
 }
@@ -47,21 +47,21 @@ Node *lisp_parser_parse(LispParser *parser, GArray *tokens, ProjectFile *file) {
 static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position) {
   guint n_tokens = tokens ? tokens->len : 0;
   const LispToken *token = &g_array_index(tokens, LispToken, *position);
-  Node *sym = node_new(LISP_AST_NODE_TYPE_SYMBOL, parser->file);
+  Node *sym = node_new(LISP_AST_NODE_TYPE_SYMBOL, parser->document);
   sym->children = g_array_new(FALSE, FALSE, sizeof(Node*));
   sym->start_token = token;
 
   if (token->type == LISP_TOKEN_TYPE_SYMBOL) {
     const LispToken *next = (*position + 1 < n_tokens) ? &g_array_index(tokens, LispToken, *position + 1) : NULL;
     if (next && next->type == LISP_TOKEN_TYPE_SYMBOL_SEPARATOR) {
-      Node *pkg = node_new(LISP_AST_NODE_TYPE_SYMBOL_PACKAGE, parser->file);
+      Node *pkg = node_new(LISP_AST_NODE_TYPE_SYMBOL_PACKAGE, parser->document);
       pkg->start_token = token;
       pkg->end_token = token;
       g_array_append_val(sym->children, pkg);
       pkg->parent = sym;
       (*position)++;
       const LispToken *sep_tok = &g_array_index(tokens, LispToken, *position);
-      Node *sep = node_new(LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR, parser->file);
+      Node *sep = node_new(LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR, parser->document);
       sep->start_token = sep_tok;
       sep->end_token = sep_tok;
       g_array_append_val(sym->children, sep);
@@ -71,7 +71,7 @@ static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position) {
       if (*position < n_tokens) {
         const LispToken *name_tok = &g_array_index(tokens, LispToken, *position);
         if (name_tok->type == LISP_TOKEN_TYPE_SYMBOL) {
-          Node *name = node_new(LISP_AST_NODE_TYPE_SYMBOL_NAME, parser->file);
+          Node *name = node_new(LISP_AST_NODE_TYPE_SYMBOL_NAME, parser->document);
           name->start_token = name_tok;
           name->end_token = name_tok;
           g_array_append_val(sym->children, name);
@@ -81,7 +81,7 @@ static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position) {
         }
       }
     } else {
-      Node *name = node_new(LISP_AST_NODE_TYPE_SYMBOL_NAME, parser->file);
+      Node *name = node_new(LISP_AST_NODE_TYPE_SYMBOL_NAME, parser->document);
       name->start_token = token;
       name->end_token = token;
       g_array_append_val(sym->children, name);
@@ -90,7 +90,7 @@ static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position) {
       (*position)++;
     }
   } else if (token->type == LISP_TOKEN_TYPE_SYMBOL_SEPARATOR) {
-    Node *sep = node_new(LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR, parser->file);
+    Node *sep = node_new(LISP_AST_NODE_TYPE_SYMBOL_SEPARATOR, parser->document);
     sep->start_token = token;
     sep->end_token = token;
     g_array_append_val(sym->children, sep);
@@ -100,7 +100,7 @@ static Node *parse_symbol(LispParser *parser, GArray *tokens, guint *position) {
     if (*position < n_tokens) {
       const LispToken *name_tok = &g_array_index(tokens, LispToken, *position);
       if (name_tok->type == LISP_TOKEN_TYPE_SYMBOL) {
-        Node *name = node_new(LISP_AST_NODE_TYPE_SYMBOL_NAME, parser->file);
+        Node *name = node_new(LISP_AST_NODE_TYPE_SYMBOL_NAME, parser->document);
         name->start_token = name_tok;
         name->end_token = name_tok;
         g_array_append_val(sym->children, name);
@@ -131,7 +131,7 @@ static Node *parse_expression(LispParser *parser, GArray *tokens, guint *positio
   const LispToken *token = &g_array_index(tokens, LispToken, *position);
 
   if (token->type == LISP_TOKEN_TYPE_LIST_START) {
-    Node *list_node = node_new(LISP_AST_NODE_TYPE_LIST, parser->file);
+    Node *list_node = node_new(LISP_AST_NODE_TYPE_LIST, parser->document);
     list_node->start_token = token;
     list_node->children = g_array_new(FALSE, FALSE, sizeof(Node*));
 
@@ -174,7 +174,7 @@ static Node *parse_expression(LispParser *parser, GArray *tokens, guint *positio
         type = LISP_AST_NODE_TYPE_UNQUOTE_SPLICING;
         break;
     }
-    Node *macro_node = node_new(type, parser->file);
+    Node *macro_node = node_new(type, parser->document);
     macro_node->start_token = token;
     macro_node->children = g_array_new(FALSE, FALSE, sizeof(Node*));
     (*position)++;
@@ -190,9 +190,9 @@ static Node *parse_expression(LispParser *parser, GArray *tokens, guint *positio
   } else if (token->type == LISP_TOKEN_TYPE_NUMBER || token->type == LISP_TOKEN_TYPE_STRING) {
     Node *atom_node;
     if (token->type == LISP_TOKEN_TYPE_STRING)
-      atom_node = node_new(LISP_AST_NODE_TYPE_STRING, parser->file);
+      atom_node = node_new(LISP_AST_NODE_TYPE_STRING, parser->document);
     else
-      atom_node = node_new(LISP_AST_NODE_TYPE_NUMBER, parser->file);
+      atom_node = node_new(LISP_AST_NODE_TYPE_NUMBER, parser->document);
     atom_node->start_token = token;
     atom_node->end_token = token;
     (*position)++;

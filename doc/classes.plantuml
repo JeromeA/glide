@@ -13,20 +13,20 @@ StatusBar *-- StatusService
 GtkSourceView <|-- Editor
 Editor *-- GtkSourceBuffer
 Editor --> Project
-Editor --> ProjectFile
+Editor --> Document
 GtkNotebook <|-- EditorContainer
 EditorContainer "1" o-- "*" Editor
 
-Project "1" o-- "*" ProjectFile
+Project "1" o-- "*" Document
 
-ProjectFile *-- LispLexer
-ProjectFile *-- LispParser
-ProjectFile : path
-ProjectFile : project
-ProjectFile : content
-ProjectFile : tokens
-ProjectFile : ast
-ProjectFile --> Project
+Document *-- LispLexer
+Document *-- LispParser
+Document : path
+Document : project
+Document : content
+Document : tokens
+Document : ast
+Document --> Project
 
 GtkBox <|-- InteractionsView
 GtkBox <|-- StatusBar

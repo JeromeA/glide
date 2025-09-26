@@ -41,7 +41,7 @@ terminated the program.
 Triggering an argument arity error only underlined the offending call. Hovering
 the underline produced no tooltip and the log contained no trace of the error,
 so diagnosing analysis problems required stepping through the code.
-`project_file_add_error` and the error-application path now emit structured log
+`document_add_error` and the error-application path now emit structured log
 entries for each diagnostic, and the editor's tooltip handler displays the
 associated message when hovering the underline.
 
@@ -249,10 +249,10 @@ empty, so pristine buffers no longer crash.
 Loading preferences invoked the setter functions, which saved the configuration file for each key.
 Initialization now disables auto-saving while preferences are loaded, avoiding unnecessary writes.
 
-## project_file_changed cleared all indexes
+## project_document_changed cleared all indexes
 
 Editing a file reindexed the whole project and wiped out symbol information from other files.
-`project_file_changed` now scans existing indexes and removes only entries originating from the
+`project_document_changed` now scans existing indexes and removes only entries originating from the
 modified file, keeping definitions from untouched files intact.
 
 ## Packages were unsorted in project view
@@ -369,7 +369,7 @@ dispatch, preventing the deadlock.
 
 ## Synchronous project file analysis blocked startup
 
-`project_file_changed` performed lexing and parsing on the UI thread, delaying
+`project_document_changed` performed lexing and parsing on the UI thread, delaying
 application startup when loading projects. The heavy work now happens on a
 worker thread and applies results through the main loop.
 
@@ -383,7 +383,7 @@ queuing the callback and frees the copy after use.
 
 ## Async project file analysis raced with edits
 
-`project_file_changed` parsed files on a worker thread while the UI could modify the buffer, producing
+`project_document_changed` parsed files on a worker thread while the UI could modify the buffer, producing
 inconsistent ASTs and indexes. The analysis now runs synchronously on the UI thread to avoid races.
 
 ## Duplicate add_package_cb broke inline build

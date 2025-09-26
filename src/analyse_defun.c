@@ -1,16 +1,16 @@
 #include "analyse_defun.h"
 #include "analyse.h"
 #include "function.h"
-#include "project_file.h"
+#include "document.h"
 
 static void analyse_defun_mark_error(Node *node, const gchar *message) {
-  if (!node || !node->file)
+  if (!node || !node->document)
     return;
   gsize start = node_get_start_offset(node);
   gsize end = node_get_end_offset(node);
   if (end <= start)
     return;
-  project_file_add_error(node->file, start, end, message);
+  document_add_error(node->document, start, end, message);
 }
 
 void analyse_defun(Project *project, Node *expr, AnalyseContext *context) {

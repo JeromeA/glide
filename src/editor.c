@@ -1,7 +1,7 @@
 #include "editor.h"
 #include "editor_tooltip_window.h"
 #include "project.h"
-#include "project_file.h"
+#include "document.h"
 #include "util.h"
 
 typedef struct {
@@ -16,7 +16,7 @@ struct _Editor
   GtkSourceView *view;
   GtkSourceBuffer *buffer;
   Project *project;
-  ProjectFile *file;
+  Document *document;
   GArray *selection_stack;
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
@@ -59,7 +59,7 @@ editor_init (Editor *self)
   g_signal_connect (self->view, "query-tooltip", G_CALLBACK (editor_on_query_tooltip), self);
 
   self->project = NULL;
-  self->file = NULL;
+  self->document = NULL;
   self->selection_stack = g_array_new (FALSE, FALSE, sizeof (SelectionRange));
   self->tooltip_window = editor_tooltip_window_new ();
   if (self->tooltip_window) {
@@ -82,10 +82,10 @@ static void
 on_buffer_changed (GtkTextBuffer * /*buffer*/, gpointer user_data)
 {
   Editor *self = GLIDE_EDITOR (user_data);
-  if (self && self->project && self->file) {
+  if (self && self->project && self->document) {
     editor_clear_errors(self);
     editor_sync_content(self);
-    project_file_changed(self->project, self->file);
+    project_document_changed(self->project, self->document);
   }
   if (self)
     editor_update_function_highlight (self);
@@ -126,23 +126,23 @@ editor_class_init (EditorClass *klass)
 }
 
 GtkWidget *
-editor_new_for_file (Project *project, ProjectFile *file)
+editor_new_for_document (Project *project, Document *document)
 {
   g_return_val_if_fail(project != NULL, NULL);
-  g_return_val_if_fail(file != NULL, NULL);
+  g_return_val_if_fail(document != NULL, NULL);
 
   Editor *self = g_object_new (EDITOR_TYPE, NULL);
   self->project = project_ref(project);
-  self->file = file;
+  self->document = document;
 
-  const GString *existing = project_file_get_content(self->file);
+  const GString *existing = document_get_content(self->document);
   if (existing && existing->str) {
     gtk_source_buffer_begin_not_undoable_action(self->buffer);
     gtk_text_buffer_set_text(GTK_TEXT_BUFFER(self->buffer), existing->str, -1);
     gtk_source_buffer_end_not_undoable_action(self->buffer);
   }
 
-  project_file_changed (self->project, self->file);
+  project_document_changed (self->project, self->document);
   gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);
   editor_update_function_highlight (self);
@@ -157,11 +157,11 @@ editor_get_buffer (Editor *self)
   return self->buffer;
 }
 
-ProjectFile *
-editor_get_file(Editor *self)
+Document *
+editor_get_document(Editor *self)
 {
   g_return_val_if_fail(GLIDE_IS_EDITOR(self), NULL);
-  return self->file;
+  return self->document;
 }
 
 GtkWidget *
@@ -201,7 +201,7 @@ editor_clear_errors(Editor *self)
 static void
 editor_sync_content(Editor *self)
 {
-  if (!self || !self->buffer || !self->file)
+  if (!self || !self->buffer || !self->document)
     return;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   GtkTextIter start;
@@ -211,7 +211,7 @@ editor_sync_content(Editor *self)
   gchar *text = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
   GString *content = g_string_new(text ? text : "");
   g_free(text);
-  project_file_set_content(self->file, content);
+  document_set_content(self->document, content);
 }
 
 static void
@@ -234,7 +234,7 @@ editor_set_errors(Editor *self, const GArray *errors)
     return;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   for (guint i = 0; i < errors->len; i++) {
-    const ProjectFileError *err = &g_array_index(errors, ProjectFileError, i);
+    const DocumentError *err = &g_array_index(errors, DocumentError, i);
     GtkTextIter start;
     GtkTextIter end;
     gtk_text_buffer_get_iter_at_offset(buffer, &start, (gint)err->start);
@@ -248,7 +248,7 @@ editor_highlight_node (Editor *self, const Node *node, GtkTextTag *tag)
 {
   if (!node || !tag)
     return;
-  if (node->file != self->file)
+  if (node->document != self->document)
     return;
   const Node *highlight = node_get_symbol_name_node_const (node);
   if (!highlight)
@@ -270,7 +270,7 @@ editor_update_function_highlight (Editor *self)
 {
   g_return_if_fail (GLIDE_IS_EDITOR (self));
   editor_clear_function_highlight (self);
-  if (!self->project || !self->file)
+  if (!self->project || !self->document)
     return;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
   GtkTextMark *insert = gtk_text_buffer_get_insert (buffer);
@@ -281,10 +281,10 @@ editor_update_function_highlight (Editor *self)
   gsize len = gtk_text_iter_get_offset (&end_iter);
   gsize offset = gtk_text_iter_get_offset (&iter);
   gsize end = offset < len ? offset + 1 : offset;
-  LispParser *parser = project_file_get_parser (self->file);
+  LispParser *parser = document_get_parser (self->document);
   if (!parser)
     return;
-  const Node *ast = project_file_get_ast (self->file);
+  const Node *ast = document_get_ast (self->document);
   if (!ast)
     return;
   const Node *node = node_find_containing_range (ast, offset, end);
@@ -319,7 +319,7 @@ editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
   editor_update_function_highlight (self);
 }
 
-static gboolean find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
+static gboolean find_parent_range (GtkTextBuffer *buffer, Document *document,
     gsize start, gsize end, gsize *new_start, gsize *new_end);
 static gchar *editor_build_function_tooltip_markup (Editor *self, gsize offset,
     gsize end);
@@ -332,7 +332,7 @@ editor_get_toplevel_range (Editor *self, gsize offset,
   g_return_val_if_fail (start != NULL, FALSE);
   g_return_val_if_fail (end != NULL, FALSE);
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
-  if (!self->file)
+  if (!self->document)
     return FALSE;
 
   GtkTextIter end_iter;
@@ -344,7 +344,7 @@ editor_get_toplevel_range (Editor *self, gsize offset,
   gsize new_start;
   gsize new_end;
 
-  while (find_parent_range(buffer, self->file, cur_start, cur_end, &new_start, &new_end)) {
+  while (find_parent_range(buffer, self->document, cur_start, cur_end, &new_start, &new_end)) {
     cur_start = new_start;
     cur_end = new_end;
     if (cur_start == 0 && cur_end == len)
@@ -366,7 +366,7 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   g_assert (glide_is_ui_thread ());
   Editor *self = GLIDE_EDITOR (user_data);
   g_return_val_if_fail (self != NULL, FALSE);
-  g_return_val_if_fail (self->file != NULL, FALSE);
+  g_return_val_if_fail (self->document != NULL, FALSE);
   g_return_val_if_fail (self->project != NULL, FALSE);
   GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (widget));
   GtkTextIter iter;
@@ -407,7 +407,7 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
 static gchar *
 editor_build_function_tooltip_markup (Editor *self, gsize offset, gsize end)
 {
-  const Node *ast = project_file_get_ast (self->file);
+  const Node *ast = document_get_ast (self->document);
   const Node *node = node_find_containing_range (ast, offset, end);
   if (!node) {
     LOG (1, "Editor.build_function_tooltip_markup: no node");
@@ -443,13 +443,13 @@ editor_build_function_tooltip_markup (Editor *self, gsize offset, gsize end)
 static gchar *
 editor_build_error_tooltip_markup (Editor *self, gsize offset)
 {
-  const GArray *errors = project_file_get_errors (self->file);
+  const GArray *errors = document_get_errors (self->document);
   if (!errors || errors->len == 0)
     return NULL;
   LOG (1, "Editor.build_error_tooltip checking %u errors", errors->len);
   for (guint i = 0; i < errors->len; i++) {
-    const ProjectFileError *err = &g_array_index ((GArray*) errors,
-        ProjectFileError, i);
+    const DocumentError *err = &g_array_index ((GArray*) errors,
+        DocumentError, i);
     if (offset < err->start || offset >= err->end)
       continue;
     LOG (1, "Editor.build_error_tooltip: match range=[%zu,%zu) message=%s",
@@ -463,7 +463,7 @@ editor_build_error_tooltip_markup (Editor *self, gsize offset)
 }
 
 static gboolean
-find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
+find_parent_range (GtkTextBuffer *buffer, Document *document,
     gsize start, gsize end, gsize *new_start, gsize *new_end)
 {
   GtkTextIter end_iter;
@@ -472,7 +472,7 @@ find_parent_range (GtkTextBuffer *buffer, ProjectFile *file,
 
   LOG(1, "find_parent_range start=%zu end=%zu", start, end);
 
-  const Node *ast = project_file_get_ast (file);
+  const Node *ast = document_get_ast (document);
   const Node *node = node_find_containing_range (ast, start, end);
   if (!node) {
     LOG(1, "no node found");
@@ -547,7 +547,7 @@ editor_extend_selection (Editor *self)
 
   gsize new_start = start;
   gsize new_end = end;
-  if (!find_parent_range (buffer, self->file, start, end, &new_start, &new_end)) {
+  if (!find_parent_range (buffer, self->document, start, end, &new_start, &new_end)) {
     LOG(1, "no parent range found, resetting");
     SelectionRange orig = g_array_index (self->selection_stack, SelectionRange, 0);
     select_range (buffer, orig.start, orig.end);

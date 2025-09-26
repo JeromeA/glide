@@ -10,9 +10,9 @@ G_BEGIN_DECLS
 #define EDITOR_TYPE (editor_get_type ())
 G_DECLARE_FINAL_TYPE (Editor, editor, GLIDE, EDITOR, GtkScrolledWindow)
 
-GtkWidget      *editor_new_for_file (Project *project, ProjectFile *file);
+GtkWidget      *editor_new_for_document (Project *project, Document *document);
 GtkSourceBuffer *editor_get_buffer (Editor *self);
-ProjectFile    *editor_get_file (Editor *self);
+Document    *editor_get_document (Editor *self);
 GtkWidget      *editor_get_view (Editor *self);
 gboolean        editor_get_toplevel_range (Editor *self,
                     gsize offset, gsize *start, gsize *end);

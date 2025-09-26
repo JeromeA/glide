@@ -1,5 +1,5 @@
 #include "function.h"
-#include "project_file.h"
+#include "document.h"
 #include <string.h>
 
 struct Function {
@@ -11,13 +11,13 @@ struct Function {
   gchar *name;
   gchar *package;
   FunctionKind kind;
-  ProjectFile *file;
+  Document *document;
 };
 
 Function *
 function_new(Node *symbol, Node *lambda_list, const gchar *doc_string,
     Node *type, FunctionKind kind, const gchar *name, const gchar *package,
-    ProjectFile *file)
+    Document *document)
 {
   Function *function = g_new0(Function, 1);
   g_atomic_int_set(&function->ref, 1);
@@ -31,7 +31,7 @@ function_new(Node *symbol, Node *lambda_list, const gchar *doc_string,
   function->package = package ? g_strdup(package) :
     (symbol_name ? g_strdup(symbol_name->package_context) : NULL);
   function->kind = kind;
-  function->file = file;
+  function->document = document;
   return function;
 }
 
@@ -55,8 +55,8 @@ function_finalize(Function *function)
   g_clear_pointer(&function->doc_string, g_free);
   g_clear_pointer(&function->name, g_free);
   g_clear_pointer(&function->package, g_free);
-  if (function->file)
-    project_file_free(function->file);
+  if (function->document)
+    document_free(function->document);
 }
 
 void
@@ -182,8 +182,8 @@ function_tooltip(Function *function)
     g_free(ls);
   }
   const Node *sym = function_get_symbol(function);
-  if (sym && sym->file) {
-    const gchar *rel = project_file_get_relative_path(sym->file);
+  if (sym && sym->document) {
+    const gchar *rel = document_get_relative_path(sym->document);
     if (rel) {
       gchar *rel_esc = g_markup_escape_text(rel, -1);
       if (tt->len)

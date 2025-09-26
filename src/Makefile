@@ -39,7 +39,7 @@ SOURCES += \
   project_index.c \
   project.c \
   project_repl.c \
-  project_file.c \
+  document.c \
   asdf.c \
   project_view.c \
   status_bar.c \

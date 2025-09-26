@@ -11,7 +11,7 @@ G_BEGIN_DECLS
 G_DECLARE_FINAL_TYPE(EditorManager, editor_manager, EDITOR, MANAGER, GObject)
 
 EditorManager *editor_manager_new(Project *project, EditorContainer *container);
-GtkTextBuffer *editor_manager_get_buffer(EditorManager *self, ProjectFile *file);
-Editor        *editor_manager_get_editor(EditorManager *self, ProjectFile *file);
+GtkTextBuffer *editor_manager_get_buffer(EditorManager *self, Document *document);
+Editor        *editor_manager_get_editor(EditorManager *self, Document *document);
 
 G_END_DECLS

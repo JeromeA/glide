@@ -2,7 +2,7 @@
 #include "node.h"
 #include "package.h"
 #include "function.h"
-#include "project_file.h"
+#include "document.h"
 #include "util.h"
 
 struct _ProjectIndex {
@@ -22,7 +22,7 @@ struct _ProjectIndex {
 static GHashTable *project_index_table(ProjectIndex *self, StringDesignatorType sd_type);
 static void project_index_add_to(GHashTable *table, const gchar *name, Node *node);
 static void project_index_node(ProjectIndex *self, const Node *node);
-static void project_index_remove_from_table(GHashTable *table, ProjectFile *file);
+static void project_index_remove_from_table(GHashTable *table, Document *document);
 
 ProjectIndex *project_index_new(void) {
   ProjectIndex *self = g_new0(ProjectIndex, 1);
@@ -137,7 +137,7 @@ void project_index_clear(ProjectIndex *self) {
   }
 }
 
-static void project_index_remove_from_table(GHashTable *table, ProjectFile *file) {
+static void project_index_remove_from_table(GHashTable *table, Document *document) {
   if (!table) return;
   GHashTableIter iter;
   g_hash_table_iter_init(&iter, table);
@@ -146,7 +146,7 @@ static void project_index_remove_from_table(GHashTable *table, ProjectFile *file
     GPtrArray *arr = value;
     for (guint i = 0; i < arr->len; ) {
       Node *n = g_ptr_array_index(arr, i);
-      if (n->file == file) {
+      if (n->document == document) {
         LOG(1, "Index: removed %s as %s", (const gchar*)key,
             node_sd_type_to_string(n->sd_type));
         g_ptr_array_remove_index(arr, i);
@@ -160,13 +160,13 @@ static void project_index_remove_from_table(GHashTable *table, ProjectFile *file
   }
 }
 
-void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
+void project_index_remove_document(ProjectIndex *self, Document *document) {
   g_return_if_fail(glide_is_ui_thread());
   GHashTable *tables[] = { self->function_defs, self->function_uses,
     self->variable_defs, self->variable_uses, self->package_defs,
     self->package_uses };
   for (guint t = 0; t < G_N_ELEMENTS(tables); t++)
-    project_index_remove_from_table(tables[t], file);
+    project_index_remove_from_table(tables[t], document);
 
   if (self->functions) {
     GHashTableIter iter;
@@ -175,7 +175,7 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
     while (g_hash_table_iter_next(&iter, &key, &value)) {
       Function *fn = value;
       const Node *sym = function_get_symbol(fn);
-      if (sym && sym->file == file) {
+      if (sym && sym->document == document) {
         LOG(1, "Index: removed function %s", (const gchar*)key);
         g_hash_table_iter_remove(&iter);
       }
@@ -194,7 +194,7 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
       while (g_hash_table_iter_next(&iter, &nkey, &nvalue)) {
         Function *fn = nvalue;
         const Node *sym = function_get_symbol(fn);
-        if (sym && sym->file == file) {
+        if (sym && sym->document == document) {
           LOG(1, "Index: removed function %s from package %s",
               (const gchar*)nkey, (const gchar*)pkey);
           g_hash_table_iter_remove(&iter);
@@ -216,7 +216,7 @@ void project_index_remove_file(ProjectIndex *self, ProjectFile *file) {
       GPtrArray *arr = value;
       for (guint i = 0; i < arr->len; i++) {
         Node *n = g_ptr_array_index(arr, i);
-        if (n->file == file) {
+        if (n->document == document) {
           LOG(1, "Index: removed package %s", (const gchar*)key);
           g_hash_table_remove(self->packages, key);
           break;

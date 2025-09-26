@@ -4,7 +4,7 @@
 #include "project.h"
 #include "editor_container.h"
 #include "editor.h"
-#include "project_file.h"
+#include "document.h"
 #include "asdf.h"
 #include "file_utilities.h"
 
@@ -29,13 +29,13 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
       const gchar *dir = project_get_path(project);
       gchar *path = g_build_filename(dir ? dir : ".", fname, NULL);
       g_file_set_contents(path, "", 0, NULL);
-      ProjectFile *file = project_add_loaded_file(project, path);
-      if (file) {
+      Document *document = project_add_loaded_document(project, path);
+      if (document) {
         Editor *view = editor_container_get_current_editor(app_get_editor_container(app));
         if (view)
           app_connect_editor(app, view);
         Asdf *asdf = project_get_asdf(project);
-        const gchar *rel = project_file_get_relative_path(file);
+        const gchar *rel = document_get_relative_path(document);
         GString *comp = g_string_new(rel);
         if (g_str_has_suffix(comp->str, ".lisp"))
           g_string_truncate(comp, comp->len - 5);

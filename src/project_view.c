@@ -1,6 +1,6 @@
 #include "project_view.h"
 #include <gdk-pixbuf/gdk-pixbuf.h>
-#include "project_file.h"
+#include "document.h"
 #include "project.h"
 #include "app.h"
 #include "file_new.h"
@@ -32,7 +32,7 @@ static void project_view_append_root(ProjectView *self, GtkTreeIter *root);
 static void project_view_append_source_folder(ProjectView *self, GtkTreeIter *root);
 static void project_view_append_component(ProjectView *self, GtkTreeIter *parent,
     const GString *component);
-static ProjectFile *project_view_find_component_file(ProjectView *self,
+static Document *project_view_find_component_file(ProjectView *self,
     const gchar *component);
 static void project_view_append_package_folder(ProjectView *self, GtkTreeIter *root);
 static void project_view_append_package(ProjectView *self, GtkTreeIter *parent,
@@ -183,16 +183,16 @@ project_view_append_root(ProjectView *self, GtkTreeIter *root)
   g_free(basename);
 }
 
-static ProjectFile *
+static Document *
 project_view_find_component_file(ProjectView *self, const gchar *component)
 {
   if (!self->project)
     return NULL;
-  for (guint j = 0; j < project_get_file_count(self->project); j++) {
-    ProjectFile *file = project_get_file(self->project, j);
-    const gchar *rel = project_file_get_relative_path(file);
+  for (guint j = 0; j < project_get_document_count(self->project); j++) {
+    Document *document = project_get_document(self->project, j);
+    const gchar *rel = document_get_relative_path(document);
     if (filename_matches(component, rel))
-      return file;
+      return document;
   }
   return NULL;
 }
@@ -201,14 +201,14 @@ static void
 project_view_append_component(ProjectView *self, GtkTreeIter *parent,
     const GString *component)
 {
-  ProjectFile *pf = project_view_find_component_file(self, component->str);
+  Document *document = project_view_find_component_file(self, component->str);
   GtkTreeIter child;
   gtk_tree_store_append(self->store, &child, parent);
   gtk_tree_store_set(self->store, &child,
       PROJECT_VIEW_COL_ICON, self->icon_lisp,
       PROJECT_VIEW_COL_TEXT, component->str,
       PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC,
-      PROJECT_VIEW_COL_OBJECT, pf,
+      PROJECT_VIEW_COL_OBJECT, document,
       -1);
 }
 
