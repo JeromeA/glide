@@ -139,9 +139,6 @@ parser_view_populate_store(LispParserView *self) {
     return;
 
   gtk_tree_store_clear(self->store);
-  LispParser *parser = document_get_parser(self->document);
-  if (!parser)
-    return;
   const Node *ast = document_get_ast(self->document);
   if (ast) {
     add_ast_node(self, ast, NULL);
