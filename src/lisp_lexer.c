@@ -1,5 +1,6 @@
 // Ensure all dependency headers are processed before our own header.
 #include <glib.h>
+#include "util.h"
 #include "lisp_lexer.h"
 
 static void lisp_token_free(gpointer token);
@@ -23,7 +24,7 @@ static inline gsize gstring_next_offset(const GString *text, gsize offset) {
   if (!text || offset >= text->len)
     return text ? text->len : 0;
   const gchar *ptr = text->str + offset;
-  ptr = g_utf8_next_char(ptr);
+  ptr = utf8_next_char(ptr);
   return (gsize)(ptr - text->str);
 }
 

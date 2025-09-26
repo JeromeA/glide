@@ -2,6 +2,21 @@
 
 #include <glib.h>
 
+static inline const char *utf8_next_char(const char *p)
+{
+  unsigned char c = (unsigned char)*p;
+  if ((c & 0x80) == 0)
+    return p + 1;
+  if ((c & 0xE0) == 0xC0)
+    return p + 2;
+  if ((c & 0xF0) == 0xE0)
+    return p + 3;
+  if ((c & 0xF8) == 0xF0)
+    return p + 4;
+  /* fallback: treat as single byte to avoid infinite loop */
+  return p + 1;
+}
+
 static inline gboolean glide_is_ui_thread(void)
 {
   return g_main_context_is_owner(g_main_context_default());
