@@ -281,9 +281,6 @@ editor_update_function_highlight (Editor *self)
   gsize len = gtk_text_iter_get_offset (&end_iter);
   gsize offset = gtk_text_iter_get_offset (&iter);
   gsize end = offset < len ? offset + 1 : offset;
-  LispParser *parser = document_get_parser (self->document);
-  if (!parser)
-    return;
   const Node *ast = document_get_ast (self->document);
   if (!ast)
     return;
