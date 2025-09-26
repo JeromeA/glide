@@ -3,27 +3,27 @@
 #include "file_delete.h"
 #include "app.h"
 #include "project.h"
-#include "project_file.h"
+#include "document.h"
 #include "asdf.h"
 
 void file_delete(GtkWidget */*widget*/, gpointer data) {
   App *app = data;
-  ProjectFile *file = app_get_current_file(app);
-  if (!file)
+  Document *document = app_get_current_document(app);
+  if (!document)
     return;
-  const gchar *path = project_file_get_path(file);
+  const gchar *path = document_get_path(document);
   if (!path)
     return;
   gchar *basename = g_path_get_basename(path);
   GtkWidget *dialog = gtk_message_dialog_new(NULL, 0,
       GTK_MESSAGE_QUESTION, GTK_BUTTONS_NONE,
-      "Delete file '%s' and all its references", basename);
+      "Delete document '%s' and all its references", basename);
   gtk_dialog_add_buttons(GTK_DIALOG(dialog),
       "_Cancel", GTK_RESPONSE_CANCEL,
       "_Delete", GTK_RESPONSE_ACCEPT,
       NULL);
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
-    const gchar *rel = project_file_get_relative_path(file);
+    const gchar *rel = document_get_relative_path(document);
     gchar *comp = NULL;
     if (rel) {
       comp = g_path_get_basename(rel);
@@ -41,7 +41,7 @@ void file_delete(GtkWidget */*widget*/, gpointer data) {
       app_update_project_view(app);
     }
     Project *project = app_get_project(app);
-    project_remove_file(project, file);
+    project_remove_document(project, document);
     g_free(comp);
   }
   gtk_widget_destroy(dialog);

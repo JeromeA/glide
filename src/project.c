@@ -9,26 +9,26 @@
 static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
   self->refcnt = 1;
-  self->files = g_ptr_array_new_with_free_func((GDestroyNotify)project_file_free);
+  self->documents = g_ptr_array_new_with_free_func((GDestroyNotify)document_free);
   self->index = project_index_new();
   self->asdf = asdf_new();
   self->repl = NULL;
   self->path = NULL;
   self->changed_cb = NULL;
   self->changed_data = NULL;
-  self->file_loaded_cb = NULL;
-  self->file_loaded_data = NULL;
-  self->file_removed_cb = NULL;
-  self->file_removed_data = NULL;
-  self->file_changed_cb = NULL;
-  self->file_changed_data = NULL;
+  self->document_loaded_cb = NULL;
+  self->document_loaded_data = NULL;
+  self->document_removed_cb = NULL;
+  self->document_removed_data = NULL;
+  self->document_changed_cb = NULL;
+  self->document_changed_data = NULL;
   return self;
 }
 
 static void project_free(Project *self) {
   g_clear_pointer(&self->index, project_index_free);
-  if (self->files)
-    g_ptr_array_free(self->files, TRUE);
+  if (self->documents)
+    g_ptr_array_free(self->documents, TRUE);
   g_clear_object(&self->asdf);
   g_clear_pointer(&self->repl, repl_session_unref);
   g_free(self->path);
@@ -42,63 +42,63 @@ Project *project_new(ReplSession *repl) {
   self->repl = repl ? repl_session_ref(repl) : NULL;
   project_clear(self);
   GString *content = g_string_new("");
-  project_add_file(self, content, "unnamed.lisp", PROJECT_FILE_LIVE);
+  project_add_document(self, content, "unnamed.lisp", DOCUMENT_LIVE);
   return self;
 }
 
-ProjectFile *project_add_file(Project *self, GString *content,
-    const gchar *path, ProjectFileState state) {
+Document *project_add_document(Project *self, GString *content,
+    const gchar *path, DocumentState state) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
 
-  LOG(1, "project_add_file path=%s state=%d", path ? path : "(null)", state);
+  LOG(1, "project_add_document path=%s state=%d", path ? path : "(null)", state);
 
   if (!content)
     content = g_string_new("");
-  ProjectFile *file = project_file_new(self, content, path, state);
+  Document *document = document_new(self, content, path, state);
 
-  g_ptr_array_add(self->files, file);
+  g_ptr_array_add(self->documents, document);
 
-  project_file_loaded(self, file);
+  project_document_loaded(self, document);
   project_changed(self);
 
-  return file;
+  return document;
 }
 
-ProjectFile *project_add_loaded_file(Project *self, const gchar *path) {
+Document *project_add_loaded_document(Project *self, const gchar *path) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
 
-  LOG(1, "project_add_loaded_file path=%s", path);
+  LOG(1, "project_add_loaded_document path=%s", path);
 
-  ProjectFile *file = project_file_load(self, path);
-  if (!file)
+  Document *document = document_load(self, path);
+  if (!document)
     return NULL;
 
-  g_ptr_array_add(self->files, file);
+  g_ptr_array_add(self->documents, document);
 
   project_changed(self);
-  project_file_loaded(self, file);
+  project_document_loaded(self, document);
 
-  return file;
+  return document;
 }
 
-void project_remove_file(Project *self, ProjectFile *file) {
+void project_remove_document(Project *self, Document *document) {
   g_return_if_fail(self != NULL);
-  g_return_if_fail(file != NULL);
+  g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  for (guint i = 0; i < self->files->len; i++) {
-    if (g_ptr_array_index(self->files, i) == file) {
-      project_file_removed(self, file);
-      g_ptr_array_remove_index(self->files, i);
+  for (guint i = 0; i < self->documents->len; i++) {
+    if (g_ptr_array_index(self->documents, i) == document) {
+      project_document_removed(self, document);
+      g_ptr_array_remove_index(self->documents, i);
       break;
     }
   }
   project_index_clear(self->index);
-  for (guint i = 0; i < self->files->len; i++) {
-    ProjectFile *f = g_ptr_array_index(self->files, i);
-    const Node *a = project_file_get_ast(f);
+  for (guint i = 0; i < self->documents->len; i++) {
+    Document *f = g_ptr_array_index(self->documents, i);
+    const Node *a = document_get_ast(f);
     if (a)
       project_index_walk(self->index, a);
   }
@@ -106,16 +106,16 @@ void project_remove_file(Project *self, ProjectFile *file) {
   project_changed(self);
 }
 
-guint project_get_file_count(Project *self) {
+guint project_get_document_count(Project *self) {
   g_return_val_if_fail(self != NULL, 0);
-  return self->files->len;
+  return self->documents->len;
 }
 
-ProjectFile *project_get_file(Project *self, guint index) {
+Document *project_get_document(Project *self, guint index) {
   g_return_val_if_fail(self != NULL, NULL);
-  if (index >= self->files->len)
+  if (index >= self->documents->len)
     return NULL;
-  return g_ptr_array_index(self->files, index);
+  return g_ptr_array_index(self->documents, index);
 }
 
 GHashTable *project_get_index(Project *self, StringDesignatorType sd_type) {
@@ -215,12 +215,12 @@ void project_clear(Project *self) {
   g_return_if_fail(glide_is_ui_thread());
   LOG(1, "project_clear");
   project_index_clear(self->index);
-  if (self->files) {
-    for (guint i = 0; i < self->files->len; i++) {
-      ProjectFile *file = g_ptr_array_index(self->files, i);
-      project_file_removed(self, file);
+  if (self->documents) {
+    for (guint i = 0; i < self->documents->len; i++) {
+      Document *document = g_ptr_array_index(self->documents, i);
+      project_document_removed(self, document);
     }
-    g_ptr_array_set_size(self->files, 0);
+    g_ptr_array_set_size(self->documents, 0);
   }
   Asdf *asdf = asdf_new();
   project_set_asdf(self, asdf);
@@ -232,30 +232,30 @@ void project_clear(Project *self) {
   project_changed(self);
 }
 
-void project_file_changed(Project *self, ProjectFile *file) {
+void project_document_changed(Project *self, Document *document) {
   g_return_if_fail(self != NULL);
-  g_return_if_fail(file != NULL);
+  g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  LOG(1, "project_file_changed path=%s", project_file_get_path(file));
-  if (!project_file_get_lexer(file) || !project_file_get_parser(file))
+  LOG(1, "project_document_changed path=%s", document_get_path(document));
+  if (!document_get_lexer(document) || !document_get_parser(document))
     return;
-  project_file_clear_errors(file);
-  project_index_remove_file(self->index, file);
-  LispLexer *lexer = project_file_get_lexer(file);
-  LispParser *parser = project_file_get_parser(file);
-  const GString *content = project_file_get_content(file);
+  document_clear_errors(document);
+  project_index_remove_document(self->index, document);
+  LispLexer *lexer = document_get_lexer(document);
+  LispParser *parser = document_get_parser(document);
+  const GString *content = document_get_content(document);
   if (!content)
     return;
   GArray *tokens = lisp_lexer_lex(lexer, content);
-  project_file_set_tokens(file, tokens);
-  Node *ast = lisp_parser_parse(parser, tokens, file);
-  project_file_set_ast(file, ast);
+  document_set_tokens(document, tokens);
+  Node *ast = lisp_parser_parse(parser, tokens, document);
+  document_set_ast(document, ast);
   if (ast)
     analyse_ast(self, ast);
   if (ast)
     project_index_walk(self->index, ast);
-  if (self->file_changed_cb)
-    self->file_changed_cb(self, file, self->file_changed_data);
+  if (self->document_changed_cb)
+    self->document_changed_cb(self, document, self->document_changed_data);
   project_changed(self);
 }
 
@@ -272,42 +272,42 @@ void project_unref(Project *self) {
     project_free(self);
 }
 
-void project_set_file_loaded_cb(Project *self, ProjectFileLoadedCb cb, gpointer user_data) {
+void project_set_document_loaded_cb(Project *self, DocumentLoadedCb cb, gpointer user_data) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  self->file_loaded_cb = cb;
-  self->file_loaded_data = user_data;
+  self->document_loaded_cb = cb;
+  self->document_loaded_data = user_data;
 }
 
-void project_set_file_changed_cb(Project *self, ProjectFileChangedCb cb, gpointer user_data) {
+void project_set_document_changed_cb(Project *self, DocumentChangedCb cb, gpointer user_data) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  self->file_changed_cb = cb;
-  self->file_changed_data = user_data;
+  self->document_changed_cb = cb;
+  self->document_changed_data = user_data;
 }
 
-void project_file_loaded(Project *self, ProjectFile *file) {
+void project_document_loaded(Project *self, Document *document) {
   g_return_if_fail(self != NULL);
-  g_return_if_fail(file != NULL);
+  g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  if (self->file_loaded_cb)
-    self->file_loaded_cb(self, file, self->file_loaded_data);
+  if (self->document_loaded_cb)
+    self->document_loaded_cb(self, document, self->document_loaded_data);
   project_changed(self);
 }
 
-void project_set_file_removed_cb(Project *self, ProjectFileRemovedCb cb, gpointer user_data) {
+void project_set_document_removed_cb(Project *self, DocumentRemovedCb cb, gpointer user_data) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  self->file_removed_cb = cb;
-  self->file_removed_data = user_data;
+  self->document_removed_cb = cb;
+  self->document_removed_data = user_data;
 }
 
-void project_file_removed(Project *self, ProjectFile *file) {
+void project_document_removed(Project *self, Document *document) {
   g_return_if_fail(self != NULL);
-  g_return_if_fail(file != NULL);
+  g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  if (self->file_removed_cb)
-    self->file_removed_cb(self, file, self->file_removed_data);
+  if (self->document_removed_cb)
+    self->document_removed_cb(self, document, self->document_removed_data);
 }
 
 void project_set_changed_cb(Project *self, ProjectChangedCb cb, gpointer user_data) {

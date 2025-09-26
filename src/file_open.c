@@ -21,14 +21,14 @@
 static gboolean save_if_modified(App *app) {
   Project *project = app_get_project(app);
   EditorManager *manager = app_get_editor_manager(app);
-  if (project_get_file_count(project) == 0)
+  if (project_get_document_count(project) == 0)
     return TRUE;
-  ProjectFile *file = project_get_file(project, 0);
-  GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, file) : NULL;
+  Document *document = project_get_document(project, 0);
+  GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, document) : NULL;
   if (buffer && gtk_text_buffer_get_modified(buffer)) {
     GtkWidget *dialog = gtk_message_dialog_new(NULL, GTK_DIALOG_MODAL,
         GTK_MESSAGE_QUESTION, GTK_BUTTONS_NONE,
-        "Save changes to %s?", project_file_get_path(file));
+        "Save changes to %s?", document_get_path(document));
     gtk_dialog_add_button(GTK_DIALOG(dialog), "_Cancel", GTK_RESPONSE_CANCEL);
     gtk_dialog_add_button(GTK_DIALOG(dialog), "_Discard", GTK_RESPONSE_REJECT);
     gtk_dialog_add_button(GTK_DIALOG(dialog), "_Save", GTK_RESPONSE_ACCEPT);
@@ -37,7 +37,7 @@ static gboolean save_if_modified(App *app) {
     if (res == GTK_RESPONSE_CANCEL)
       return FALSE;
     if (res == GTK_RESPONSE_ACCEPT)
-      file_save(manager, file);
+      file_save(manager, document);
   }
   return TRUE;
 }
@@ -66,7 +66,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
       gchar *path = g_build_filename(dir, comp->str, NULL);
       gchar *full = ensure_lisp_extension(path);
       g_free(path);
-      ProjectFile *pf = project_add_loaded_file(project, full);
+      Document *pf = project_add_loaded_document(project, full);
       if (!pf)
         g_warning("Failed to load %s", full);
       g_free(full);
@@ -79,8 +79,8 @@ gboolean file_open_path(App *app, const gchar *filename) {
     g_object_unref(asdf);
     gchar *dir = g_path_get_dirname(filename);
     project_set_path(project, dir);
-    ProjectFile *file = project_add_loaded_file(project, filename);
-    if (!file)
+    Document *document = project_add_loaded_document(project, filename);
+    if (!document)
       g_warning("Failed to load %s", filename);
     g_free(dir);
   }

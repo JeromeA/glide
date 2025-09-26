@@ -5,68 +5,68 @@
 #include <glib/gstdio.h>
 #include <string.h>
 
-static void project_file_prepare(ProjectFile *file) {
-  g_return_if_fail(file);
-  LispLexer *lexer = project_file_get_lexer(file);
-  const GString *content = project_file_get_content(file);
+static void document_prepare(Document *document) {
+  g_return_if_fail(document);
+  LispLexer *lexer = document_get_lexer(document);
+  const GString *content = document_get_content(document);
   GArray *tokens = lisp_lexer_lex(lexer, content);
-  LispParser *parser = project_file_get_parser(file);
-  Node *ast = lisp_parser_parse(parser, tokens, file);
-  project_file_set_tokens(file, tokens);
-  project_file_set_ast(file, ast);
+  LispParser *parser = document_get_parser(document);
+  Node *ast = lisp_parser_parse(parser, tokens, document);
+  document_set_tokens(document, tokens);
+  document_set_ast(document, ast);
 }
 
-static void project_file_set_text(ProjectFile *file, const gchar *text) {
-  g_return_if_fail(file);
+static void document_set_text(Document *document, const gchar *text) {
+  g_return_if_fail(document);
   g_return_if_fail(text);
-  project_file_set_content(file, g_string_new(text));
-  project_file_prepare(file);
+  document_set_content(document, g_string_new(text));
+  document_prepare(document);
 }
 
-static ProjectFile *create_virtual_file(const gchar *text) {
-  ProjectFile *file = project_file_new_virtual(g_string_new(text));
-  project_file_prepare(file);
-  return file;
+static Document *create_virtual_file(const gchar *text) {
+  Document *document = document_new_virtual(g_string_new(text));
+  document_prepare(document);
+  return document;
 }
 
 static Function *create_function_with_lambda(const gchar *name,
     const gchar *lambda) {
-  ProjectFile *file = create_virtual_file(lambda);
-  const Node *ast = project_file_get_ast(file);
+  Document *document = create_virtual_file(lambda);
+  const Node *ast = document_get_ast(document);
   Node *lambda_node = NULL;
   if (ast && ast->children && ast->children->len > 0)
     lambda_node = g_array_index(ast->children, Node*, 0);
   return function_new(NULL, lambda_node, NULL, NULL, FUNCTION_KIND_FUNCTION,
-      name, "CL-USER", file);
+      name, "CL-USER", document);
 }
 
 static void test_default_file(void)
 {
   Project *project = project_new(NULL);
-  g_assert_cmpuint(project_get_file_count(project), ==, 1);
-  ProjectFile *file = project_get_file(project, 0);
-  g_assert_cmpint(project_file_get_state(file), ==, PROJECT_FILE_LIVE);
-  g_assert_cmpstr(project_file_get_path(file), ==, "unnamed.lisp");
+  g_assert_cmpuint(project_get_document_count(project), ==, 1);
+  Document *document = project_get_document(project, 0);
+  g_assert_cmpint(document_get_state(document), ==, DOCUMENT_LIVE);
+  g_assert_cmpstr(document_get_path(document), ==, "unnamed.lisp");
   project_unref(project);
 }
 
 static void test_parse_on_change(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(a)"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
-  const GArray *tokens = project_file_get_tokens(file);
+  Document *document = project_add_document(project, g_string_new("(a)"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, document);
+  const GArray *tokens = document_get_tokens(document);
   g_assert_cmpint(tokens->len, ==, 3); /* (, a, ) */
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_START);
-  project_file_changed(project, file); /* should still parse without error */
-  const Node *ast = project_file_get_ast(file);
+  project_document_changed(project, document); /* should still parse without error */
+  const Node *ast = document_get_ast(document);
   g_assert_cmpint(ast->children->len, ==, 1);
-  project_file_changed(project, file);
+  project_document_changed(project, document);
   project_unref(project);
 }
 
-static void on_file_loaded(Project * /*project*/, ProjectFile * /*file*/,
+static void on_file_loaded(Project * /*project*/, Document * /*document*/,
     gpointer user_data)
 {
   int *count = user_data;
@@ -76,20 +76,20 @@ static void on_file_loaded(Project * /*project*/, ProjectFile * /*file*/,
 static void test_file_load(void)
 {
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
-  gchar *filepath = g_build_filename(tmpdir, "file.lisp", NULL);
+  gchar *filepath = g_build_filename(tmpdir, "document.lisp", NULL);
   const gchar *contents = "(a b c)";
   g_file_set_contents(filepath, contents, -1, NULL);
 
   Project *project = project_new(NULL);
 
   int count = 0;
-  project_set_file_loaded_cb(project, on_file_loaded, &count);
+  project_set_document_loaded_cb(project, on_file_loaded, &count);
 
-  ProjectFile *file = project_add_loaded_file(project, filepath);
-  g_assert_nonnull(file);
+  Document *document = project_add_loaded_document(project, filepath);
+  g_assert_nonnull(document);
   g_assert_cmpint(count, ==, 1);
 
-  const GString *content = project_file_get_content(file);
+  const GString *content = document_get_content(document);
   g_assert_nonnull(content);
   g_assert_cmpstr(content->str, ==, contents);
 
@@ -103,9 +103,9 @@ static void test_file_load(void)
 static void test_function_analysis(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
-  const Node *ast = project_file_get_ast(file);
+  Document *document = project_add_document(project, g_string_new("(defun foo () (bar))"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, document);
+  const Node *ast = document_get_ast(document);
   const Node *form = g_array_index(ast->children, Node*, 0);
   Node *defsym_symbol = g_array_index(form->children, Node*, 0);
   Node *defsym = node_get_symbol_name_node(defsym_symbol);
@@ -126,10 +126,10 @@ static void test_function_analysis(void)
 static void test_index(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () (bar))"), NULL,
-      PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
-  const Node *ast = project_file_get_ast(file);
+  Document *document = project_add_document(project, g_string_new("(defun foo () (bar))"), NULL,
+      DOCUMENT_LIVE);
+  project_document_changed(project, document);
+  const Node *ast = document_get_ast(document);
   const Node *form = g_array_index(ast->children, Node*, 0);
   Node *defsym_symbol = g_array_index(form->children, Node*, 0);
   Node *defsym = node_get_symbol_name_node(defsym_symbol);
@@ -161,8 +161,8 @@ static void test_index(void)
 static void test_functions_table(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo () \"doc\")"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
+  Document *document = project_add_document(project, g_string_new("(defun foo () \"doc\")"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, document);
   Function *fn = project_get_function(project, "FOO");
   g_assert_nonnull(fn);
   const gchar *doc = function_get_doc_string(fn);
@@ -177,8 +177,8 @@ static void test_functions_table(void)
 static void test_function_tooltip(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo (x &rest rest) \"doc\")"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
+  Document *document = project_add_document(project, g_string_new("(defun foo (x &rest rest) \"doc\")"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, document);
   Function *fn = project_get_function(project, "FOO");
   gchar *tooltip = function_tooltip(fn);
   g_assert_nonnull(tooltip);
@@ -193,13 +193,13 @@ static void test_function_tooltip(void)
 static void test_defun_requires_symbol_name(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun \"foo\" () nil)"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
+  Document *document = project_add_document(project, g_string_new("(defun \"foo\" () nil)"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, document);
 
-  const GArray *errors = project_file_get_errors(file);
+  const GArray *errors = document_get_errors(document);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 1);
-  const ProjectFileError *err = &g_array_index((GArray*)errors, ProjectFileError, 0);
+  const DocumentError *err = &g_array_index((GArray*)errors, DocumentError, 0);
   g_assert_nonnull(err->message);
   g_assert_cmpstr(err->message, ==, "DEFUN requires a symbol name.");
 
@@ -209,13 +209,13 @@ static void test_defun_requires_symbol_name(void)
 static void test_defun_requires_parameter_list(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new("(defun foo \"bad-params\" nil)"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
+  Document *document = project_add_document(project, g_string_new("(defun foo \"bad-params\" nil)"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, document);
 
-  const GArray *errors = project_file_get_errors(file);
+  const GArray *errors = document_get_errors(document);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 1);
-  const ProjectFileError *err = &g_array_index((GArray*)errors, ProjectFileError, 0);
+  const DocumentError *err = &g_array_index((GArray*)errors, DocumentError, 0);
   g_assert_nonnull(err->message);
   g_assert_cmpstr(err->message, ==, "DEFUN requires a parameter list.");
 
@@ -225,18 +225,18 @@ static void test_defun_requires_parameter_list(void)
 static void test_incremental_index(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *f1 = project_add_file(project, g_string_new("(defun foo () nil)"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, f1);
+  Document *f1 = project_add_document(project, g_string_new("(defun foo () nil)"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, f1);
 
-  ProjectFile *f2 = project_add_file(project, g_string_new("(defun bar () nil)"), NULL, PROJECT_FILE_LIVE);
-  project_file_changed(project, f2);
+  Document *f2 = project_add_document(project, g_string_new("(defun bar () nil)"), NULL, DOCUMENT_LIVE);
+  project_document_changed(project, f2);
 
   GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
   g_assert_nonnull(g_hash_table_lookup(defs, "BAR"));
 
-  project_file_set_text(f2, "(defun baz () nil)");
-  project_file_changed(project, f2);
+  document_set_text(f2, "(defun baz () nil)");
+  project_document_changed(project, f2);
 
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
   g_assert_null(g_hash_table_lookup(defs, "BAR"));
@@ -256,17 +256,17 @@ static void test_function_call_argument_mismatch(void)
   project_add_function(project, fn);
   function_unref(fn);
 
-  ProjectFile *file = project_add_file(project, g_string_new("(bar 1)"), NULL,
-      PROJECT_FILE_LIVE);
-  project_file_changed(project, file);
+  Document *document = project_add_document(project, g_string_new("(bar 1)"), NULL,
+      DOCUMENT_LIVE);
+  project_document_changed(project, document);
 
-  const GArray *errors = project_file_get_errors(file);
+  const GArray *errors = document_get_errors(document);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 1);
-  const ProjectFileError *err = &g_array_index((GArray*)errors,
-      ProjectFileError, 0);
+  const DocumentError *err = &g_array_index((GArray*)errors,
+      DocumentError, 0);
   g_assert_cmpuint(err->start, ==, 0);
-  const GString *file_content = project_file_get_content(file);
+  const GString *file_content = document_get_content(document);
   gsize len = file_content ? file_content->len : 0;
   g_assert_cmpuint(err->end, ==, len);
   g_assert_nonnull(err->message);
@@ -274,28 +274,28 @@ static void test_function_call_argument_mismatch(void)
   g_assert_cmpstr(err->message, ==,
       "Expected 2 arguments for BAR but found 1");
 
-  project_file_set_text(file, "(bar 1 2)");
-  project_file_changed(project, file);
+  document_set_text(document, "(bar 1 2)");
+  project_document_changed(project, document);
 
-  errors = project_file_get_errors(file);
+  errors = document_get_errors(document);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 0);
 
-  project_file_set_text(file, "(bar 1 2 3)");
-  project_file_changed(project, file);
+  document_set_text(document, "(bar 1 2 3)");
+  project_document_changed(project, document);
 
-  errors = project_file_get_errors(file);
+  errors = document_get_errors(document);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 1);
-  err = &g_array_index((GArray*)errors, ProjectFileError, 0);
+  err = &g_array_index((GArray*)errors, DocumentError, 0);
   g_assert_nonnull(err->message);
   g_assert_cmpstr(err->message, ==,
       "Expected 2 arguments for BAR but found 3");
 
-  project_file_set_text(file, "(bar 1 2)");
-  project_file_changed(project, file);
+  document_set_text(document, "(bar 1 2)");
+  project_document_changed(project, document);
 
-  errors = project_file_get_errors(file);
+  errors = document_get_errors(document);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 0);
 
@@ -307,18 +307,18 @@ static void test_relative_path(void)
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
   Project *project = project_new(NULL);
   project_set_path(project, tmpdir);
-  gchar *filepath = g_build_filename(tmpdir, "file.lisp", NULL);
-  ProjectFile *file = project_add_file(project, g_string_new(""), filepath,
-      PROJECT_FILE_LIVE);
-  const gchar *rel = project_file_get_relative_path(file);
-  g_assert_cmpstr(rel, ==, "file.lisp");
+  gchar *filepath = g_build_filename(tmpdir, "document.lisp", NULL);
+  Document *document = project_add_document(project, g_string_new(""), filepath,
+      DOCUMENT_LIVE);
+  const gchar *rel = document_get_relative_path(document);
+  g_assert_cmpstr(rel, ==, "document.lisp");
   project_unref(project);
   g_free(filepath);
   g_rmdir(tmpdir);
   g_free(tmpdir);
 }
 
-static void on_removed(Project * /*project*/, ProjectFile * /*file*/, gpointer user_data)
+static void on_removed(Project * /*project*/, Document * /*document*/, gpointer user_data)
 {
   gboolean *flag = user_data;
   *flag = TRUE;
@@ -327,14 +327,14 @@ static void on_removed(Project * /*project*/, ProjectFile * /*file*/, gpointer u
 static void test_remove_file(void)
 {
   Project *project = project_new(NULL);
-  ProjectFile *file = project_add_file(project, g_string_new(""), "foo.lisp",
-      PROJECT_FILE_LIVE);
-  guint before = project_get_file_count(project);
+  Document *document = project_add_document(project, g_string_new(""), "foo.lisp",
+      DOCUMENT_LIVE);
+  guint before = project_get_document_count(project);
   gboolean removed = FALSE;
-  project_set_file_removed_cb(project, on_removed, &removed);
-  project_remove_file(project, file);
+  project_set_document_removed_cb(project, on_removed, &removed);
+  project_remove_document(project, document);
   g_assert_true(removed);
-  g_assert_cmpuint(project_get_file_count(project), ==, before - 1);
+  g_assert_cmpuint(project_get_document_count(project), ==, before - 1);
   project_unref(project);
 }
 

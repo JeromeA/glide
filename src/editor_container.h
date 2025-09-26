@@ -11,8 +11,8 @@ G_DECLARE_FINAL_TYPE(EditorContainer, editor_container, EDITOR, CONTAINER, GtkNo
 
 GtkWidget *editor_container_new(void);
 Editor *editor_container_get_current_editor(EditorContainer *self);
-gint editor_container_add_editor(EditorContainer *self, ProjectFile *file, Editor *editor);
-void editor_container_remove_file(EditorContainer *self, ProjectFile *file);
+gint editor_container_add_editor(EditorContainer *self, Document *document, Editor *editor);
+void editor_container_remove_document(EditorContainer *self, Document *document);
 void editor_container_clear(EditorContainer *self);
 
 G_END_DECLS

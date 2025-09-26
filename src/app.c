@@ -6,7 +6,7 @@
 #include "editor_container.h"
 #include "editor_manager.h"
 #include "project.h"
-#include "project_file.h"
+#include "document.h"
 #include "status_bar.h"
 #include "project_view.h"
 #include "menu_bar.h"
@@ -253,12 +253,12 @@ app_connect_editor(App *self, Editor *editor)
   g_return_if_fail(GLIDE_IS_EDITOR(editor));
 }
 
-STATIC ProjectFile *
-app_get_current_file(App *self)
+STATIC Document *
+app_get_current_document(App *self)
 {
   g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
   Editor *view = app_get_editor(self);
-  return view ? editor_get_file(view) : NULL;
+  return view ? editor_get_document(view) : NULL;
 }
 
 
@@ -296,10 +296,10 @@ app_restore_last_file(App *self)
   Project *project = app_get_project(self);
   if (!project)
     return;
-  guint count = project_get_file_count(project);
+  guint count = project_get_document_count(project);
   for (guint i = 0; i < count; i++) {
-    ProjectFile *pf = project_get_file(project, i);
-    if (g_strcmp0(project_file_get_path(pf), last) == 0) {
+    Document *document = project_get_document(project, i);
+    if (g_strcmp0(document_get_path(document), last) == 0) {
       gtk_notebook_set_current_page(GTK_NOTEBOOK(self->editor_container), i);
       Editor *view = editor_container_get_current_editor(self->editor_container);
       if (!view)
@@ -344,15 +344,15 @@ on_project_view_selection_changed(GtkTreeSelection *selection, gpointer data)
   if (kind != PROJECT_VIEW_KIND_SRC)
     return;
 
-  ProjectFile *file = NULL;
+  Document *document = NULL;
   gtk_tree_model_get(model, &iter,
-      PROJECT_VIEW_COL_OBJECT, &file,
+      PROJECT_VIEW_COL_OBJECT, &document,
       -1);
-  if (!file)
+  if (!document)
     return;
-  guint count = project_get_file_count(self->project);
+  guint count = project_get_document_count(self->project);
   for (guint i = 0; i < count; i++) {
-    if (project_get_file(self->project, i) == file) {
+    if (project_get_document(self->project, i) == document) {
       gtk_notebook_set_current_page(GTK_NOTEBOOK(self->editor_container), i);
       break;
     }
@@ -368,18 +368,18 @@ on_notebook_switch_page(GtkNotebook * /*notebook*/, GtkWidget *page, guint /*pag
     return;
   if (!page)
     return;
-  ProjectFile *file = editor_get_file(GLIDE_EDITOR(page));
-  if (!file)
+  Document *document = editor_get_document(GLIDE_EDITOR(page));
+  if (!document)
     return;
-  const gchar *rel = project_file_get_relative_path(file);
+  const gchar *rel = document_get_relative_path(document);
   if (rel)
     project_view_select_file(PROJECT_VIEW(view), rel);
 
   Preferences *prefs = app_get_preferences(self);
   if (prefs) {
-    preferences_set_last_file(prefs, project_file_get_path(file));
+    preferences_set_last_file(prefs, document_get_path(document));
     EditorManager *manager = app_get_editor_manager(self);
-    GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, file) : NULL;
+    GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, document) : NULL;
     g_return_if_fail(buffer);
     GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
     GtkTextIter iter;
@@ -449,12 +449,12 @@ app_on_quit (App *self)
   LOG(1, "App.on_quit");
   g_return_if_fail (GLIDE_IS_APP (self));
   Preferences *prefs = app_get_preferences(self);
-  ProjectFile *pf = app_get_current_file(self);
-  if (prefs && pf) {
-    const gchar *path = project_file_get_path(pf);
+  Document *document = app_get_current_document(self);
+  if (prefs && document) {
+    const gchar *path = document_get_path(document);
     preferences_set_last_file(prefs, path);
     EditorManager *manager = app_get_editor_manager(self);
-    GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, pf) : NULL;
+    GtkTextBuffer *buffer = manager ? editor_manager_get_buffer(manager, document) : NULL;
     if (buffer) {
       GtkTextMark *insert_mark = gtk_text_buffer_get_insert(buffer);
       GtkTextIter iter;

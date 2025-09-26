@@ -2,7 +2,7 @@
 #include "project_priv.h"
 #include "analyse_defpackage.h"
 #include "analyse.h"
-#include "project_file.h"
+#include "document.h"
 #include "repl_session.h"
 #include "interaction.h"
 #include "node.h"
@@ -276,22 +276,22 @@ static void project_handle_function_section(Project *project,
   LOG(1, "describe %s %s lambda=%s", symbol,
       kind_name, lambda_list ? lambda_list : "(unknown)");
   LOG_LONG(1, "↳ doc: ", doc ? doc->str : "");
-  ProjectFile *file = NULL;
+  Document *document = NULL;
   Node *lambda_node = NULL;
   if (lambda_list) {
-    file = project_file_new_virtual(g_string_new(lambda_list));
-    LispLexer *lexer = project_file_get_lexer(file);
-    const GString *content = project_file_get_content(file);
+    document = document_new_virtual(g_string_new(lambda_list));
+    LispLexer *lexer = document_get_lexer(document);
+    const GString *content = document_get_content(document);
     GArray *tokens = lisp_lexer_lex(lexer, content);
-    LispParser *parser = project_file_get_parser(file);
-    Node *ast = lisp_parser_parse(parser, tokens, file);
-    project_file_set_tokens(file, tokens);
-    project_file_set_ast(file, ast);
+    LispParser *parser = document_get_parser(document);
+    Node *ast = lisp_parser_parse(parser, tokens, document);
+    document_set_tokens(document, tokens);
+    document_set_ast(document, ast);
     if (ast && ast->children && ast->children->len > 0)
       lambda_node = g_array_index(ast->children, Node*, 0);
   }
   Function *function = function_new(NULL, lambda_node, doc ? doc->str : NULL,
-      NULL, kind, symbol, package, file);
+      NULL, kind, symbol, package, document);
   FunctionData *fd = g_new0(FunctionData, 1);
   fd->project = project;
   fd->function = function;

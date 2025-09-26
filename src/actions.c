@@ -9,7 +9,7 @@
 #include "preferences_dialog.h"
 #include "evaluate.h"
 #include "lisp_parser_view.h"
-#include "project_file.h"
+#include "document.h"
 #include "editor_container.h"
 #include "editor.h"
 #include "util.h"
@@ -221,9 +221,9 @@ show_parser(App *self)
   gtk_window_set_title(GTK_WINDOW(win), "Parser View");
   EditorContainer *editor_container = app_get_editor_container(self);
   Editor *current = editor_container_get_current_editor(editor_container);
-  ProjectFile *file = editor_get_file(current);
+  Document *document = editor_get_document(current);
   EditorManager *manager = app_get_editor_manager(self);
-  GtkWidget *view = lisp_parser_view_new(manager, file);
+  GtkWidget *view = lisp_parser_view_new(manager, document);
   GtkWidget *scrolled = gtk_scrolled_window_new(NULL, NULL);
   gtk_container_add(GTK_CONTAINER(scrolled), view);
   gtk_container_add(GTK_CONTAINER(win), scrolled);

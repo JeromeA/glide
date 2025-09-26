@@ -31,7 +31,7 @@
 #include "preferences.c"
 #include "preferences_dialog.c"
 #include "process.c"
-#include "project_file.c"
+#include "document.c"
 #include "project_index.c"
 #include "project.c"
 #include "project_repl.c"

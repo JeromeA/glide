@@ -4,7 +4,7 @@
 #include "project.h"
 #include "editor_container.h"
 #include "editor.h"
-#include "project_file.h"
+#include "document.h"
 #include "asdf.h"
 
 void file_add(GtkWidget */*widget*/, gpointer data) {
@@ -21,13 +21,13 @@ void file_add(GtkWidget */*widget*/, gpointer data) {
     gtk_file_chooser_set_current_folder(GTK_FILE_CHOOSER(dialog), dir);
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-    ProjectFile *file = project_add_loaded_file(project, filename);
-    if (file) {
+    Document *document = project_add_loaded_document(project, filename);
+    if (document) {
       Editor *view = editor_container_get_current_editor(app_get_editor_container(app));
       if (view)
         app_connect_editor(app, view);
       Asdf *asdf = project_get_asdf(project);
-      const gchar *rel = project_file_get_relative_path(file);
+      const gchar *rel = document_get_relative_path(document);
       GString *comp = g_string_new(rel);
       if (g_str_has_suffix(comp->str, ".lisp"))
         g_string_truncate(comp, comp->len - 5);

@@ -33,14 +33,14 @@ editor_container_new(void)
 }
 
 gint
-editor_container_add_editor(EditorContainer *self, ProjectFile *file, Editor *editor)
+editor_container_add_editor(EditorContainer *self, Document *document, Editor *editor)
 {
   g_return_val_if_fail(EDITOR_IS_CONTAINER(self), -1);
-  g_return_val_if_fail(file != NULL, -1);
+  g_return_val_if_fail(document != NULL, -1);
   g_return_val_if_fail(GLIDE_IS_EDITOR(editor), -1);
 
   GtkWidget *view = GTK_WIDGET(editor);
-  const gchar *path = project_file_get_relative_path(file);
+  const gchar *path = document_get_relative_path(document);
   GtkWidget *label = gtk_label_new(path ? path : "untitled");
   gint page = gtk_notebook_append_page(GTK_NOTEBOOK(self), view, label);
   GtkWidget *page_widget = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page);
@@ -50,15 +50,15 @@ editor_container_add_editor(EditorContainer *self, ProjectFile *file, Editor *ed
 }
 
 void
-editor_container_remove_file(EditorContainer *self, ProjectFile *file)
+editor_container_remove_document(EditorContainer *self, Document *document)
 {
   g_return_if_fail(EDITOR_IS_CONTAINER(self));
-  g_return_if_fail(file != NULL);
+  g_return_if_fail(document != NULL);
   gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(self));
   for (gint i = 0; i < pages; i++) {
     GtkWidget *page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), i);
-    ProjectFile *pf = editor_get_file(GLIDE_EDITOR(page));
-    if (pf == file) {
+    Document *pf = editor_get_document(GLIDE_EDITOR(page));
+    if (pf == document) {
       gtk_notebook_remove_page(GTK_NOTEBOOK(self), i);
       break;
     }

@@ -4,15 +4,15 @@
 #include "app.h"
 #include "editor.h"
 #include "project.h"
-#include "project_file.h"
+#include "document.h"
 #include "asdf.h"
 
 void file_rename(GtkWidget */*widget*/, gpointer data) {
   App *app = data;
-  ProjectFile *file = app_get_current_file(app);
-  if (!file)
+  Document *document = app_get_current_document(app);
+  if (!document)
     return;
-  const gchar *old_path = project_file_get_path(file);
+  const gchar *old_path = document_get_path(document);
   if (!old_path)
     return;
   gchar *basename = g_path_get_basename(old_path);
@@ -21,7 +21,7 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
       "_Refactor", GTK_RESPONSE_ACCEPT,
       NULL);
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gchar *label_text = g_strdup_printf("Rename file '%s' and its usages to:", basename);
+  gchar *label_text = g_strdup_printf("Rename document '%s' and its usages to:", basename);
   GtkWidget *label = gtk_label_new(label_text);
   GtkWidget *entry = gtk_entry_new();
   gtk_entry_set_text(GTK_ENTRY(entry), basename);
@@ -35,7 +35,7 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
     if (new_name && *new_name && g_strcmp0(new_name, basename) != 0) {
       gchar *dir = g_path_get_dirname(old_path);
       gchar *new_path = g_build_filename(dir, new_name, NULL);
-      const gchar *old_rel = project_file_get_relative_path(file);
+      const gchar *old_rel = document_get_relative_path(document);
       gchar *old_base = g_path_get_basename(old_rel);
       GString *old_str = g_string_new(old_base);
       g_free(old_base);
@@ -43,8 +43,8 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
       if (dot)
         g_string_truncate(old_str, dot - old_str->str);
       if (g_rename(old_path, new_path) == 0) {
-        project_file_set_path(file, new_path);
-        const gchar *new_rel = project_file_get_relative_path(file);
+        document_set_path(document, new_path);
+        const gchar *new_rel = document_get_relative_path(document);
         gchar *new_base = g_path_get_basename(new_rel);
         GString *new_str = g_string_new(new_base);
         g_free(new_base);
