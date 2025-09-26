@@ -15,8 +15,6 @@ struct _Document {
   GString *content; /* owned */
   GArray *tokens; /* owned, LispToken */
   Node *ast; /* owned */
-  LispLexer *lexer; /* owned */
-  LispParser *parser; /* owned */
   Project *project;
   GArray *errors; /* DocumentError */
 };
@@ -42,8 +40,6 @@ Document *document_new_virtual(GString *content) {
 
 void document_free(Document *document) {
   if (!document) return;
-  if (document->parser) lisp_parser_free(document->parser);
-  if (document->lexer) lisp_lexer_free(document->lexer);
   document_clear_ast(document);
   document_clear_tokens(document);
   if (document->content)
@@ -73,14 +69,6 @@ void document_set_content(Document *document, GString *content) {
   document_clear_errors(document);
   document_clear_ast(document);
   document_clear_tokens(document);
-  if (document->parser) {
-    lisp_parser_free(document->parser);
-    document->parser = NULL;
-  }
-  if (document->lexer) {
-    lisp_lexer_free(document->lexer);
-    document->lexer = NULL;
-  }
   if (document->content) {
     g_string_free(document->content, TRUE);
     document->content = NULL;
@@ -101,16 +89,6 @@ const GArray *document_get_tokens(Document *document) {
 const Node *document_get_ast(Document *document) {
   g_return_val_if_fail(document != NULL, NULL);
   return document->ast;
-}
-
-LispParser *document_get_parser(Document *document) {
-  g_return_val_if_fail(document != NULL, NULL);
-  return document->parser;
-}
-
-LispLexer *document_get_lexer(Document *document) {
-  g_return_val_if_fail(document != NULL, NULL);
-  return document->lexer;
 }
 
 const gchar *document_get_path(Document *document) {
@@ -235,8 +213,6 @@ static Document *document_create(Project *project, GString *content,
 
 static void document_assign_content(Document *document, GString *content) {
   document->content = content ? content : g_string_new("");
-  document->lexer = lisp_lexer_new();
-  document->parser = lisp_parser_new();
   document->tokens = NULL;
   document->ast = NULL;
 }

@@ -1,24 +1,10 @@
 #include <glib.h>
 #include "lisp_parser.h"
 
-struct _LispParser {
-  guint reserved;
-};
 static Node *parse_expression(Document *document, GArray *tokens, guint *position);
 static Node *parse_symbol(Document *document, GArray *tokens, guint *position);
 
-LispParser *lisp_parser_new(void) {
-  return g_new0(LispParser, 1);
-}
-
-void lisp_parser_free(LispParser *parser) {
-  g_return_if_fail(parser != NULL);
-  g_free(parser);
-}
-
-Node *lisp_parser_parse(LispParser *parser, GArray *tokens, Document *document) {
-  g_return_val_if_fail(parser != NULL, NULL);
-
+Node *lisp_parser_parse(GArray *tokens, Document *document) {
   Node *ast = node_new(LISP_AST_NODE_TYPE_LIST, document);
   ast->children = g_array_new(FALSE, FALSE, sizeof(Node*));
 

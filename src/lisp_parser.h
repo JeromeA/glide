@@ -6,12 +6,9 @@
 
 G_BEGIN_DECLS
 
-typedef struct _LispParser LispParser;
 typedef struct _Document Document;
 
-LispParser *lisp_parser_new(void);
-void        lisp_parser_free(LispParser *parser);
-Node       *lisp_parser_parse(LispParser *parser, GArray *tokens, Document *document);
+Node       *lisp_parser_parse(GArray *tokens, Document *document);
 
 G_END_DECLS
 

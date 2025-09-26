@@ -28,8 +28,6 @@ typedef struct {
   Node *expr;
   Node *ast;
   GArray *tokens;
-  LispParser *parser;
-  LispLexer *lexer;
 } PackageDefinitionData;
 
 typedef struct {
@@ -49,8 +47,6 @@ static gboolean analyse_defpackage_cb(gpointer data) {
   AnalyseContext ctx = { g_strdup("CL-USER"), FALSE };
   analyse_defpackage(pd->project, pd->expr, &ctx);
   g_free(ctx.package);
-  lisp_parser_free(pd->parser);
-  lisp_lexer_free(pd->lexer);
   if (pd->tokens)
     g_array_free(pd->tokens, TRUE);
   if (pd->ast)
@@ -151,10 +147,8 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   g_mutex_unlock(&interaction->lock);
   g_assert(res);
   GString *text = g_string_new(res);
-  LispLexer *lexer = lisp_lexer_new();
-  GArray *tokens = lisp_lexer_lex(lexer, text);
-  LispParser *parser = lisp_parser_new();
-  Node *ast = lisp_parser_parse(parser, tokens, NULL);
+  GArray *tokens = lisp_lexer_lex(text);
+  Node *ast = lisp_parser_parse(tokens, NULL);
   g_assert(ast && ast->children && ast->children->len > 0);
   Node *expr = g_array_index(ast->children, Node*, 0);
   Node *name_node = (expr->children && expr->children->len > 1) ? g_array_index(expr->children, Node*, 1) : NULL;
@@ -168,8 +162,6 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   pd->expr = expr;
   pd->ast = ast;
   pd->tokens = tokens;
-  pd->parser = parser;
-  pd->lexer = lexer;
   g_main_context_invoke(NULL, analyse_defpackage_cb, pd);
   for (guint i = 0; i < exports->len; i++) {
     const gchar *sym = g_ptr_array_index(exports, i);
@@ -280,11 +272,9 @@ static void project_handle_function_section(Project *project,
   Node *lambda_node = NULL;
   if (lambda_list) {
     document = document_new_virtual(g_string_new(lambda_list));
-    LispLexer *lexer = document_get_lexer(document);
     const GString *content = document_get_content(document);
-    GArray *tokens = lisp_lexer_lex(lexer, content);
-    LispParser *parser = document_get_parser(document);
-    Node *ast = lisp_parser_parse(parser, tokens, document);
+    GArray *tokens = lisp_lexer_lex(content);
+    Node *ast = lisp_parser_parse(tokens, document);
     document_set_tokens(document, tokens);
     document_set_ast(document, ast);
     if (ast && ast->children && ast->children->len > 0)

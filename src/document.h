@@ -31,8 +31,6 @@ const GArray  *document_get_tokens(Document *document);
 const Node    *document_get_ast(Document *document);
 void         document_set_tokens(Document *document, GArray *tokens);
 void         document_set_ast(Document *document, Node *ast);
-LispParser  *document_get_parser(Document *document);
-LispLexer   *document_get_lexer(Document *document);
 const gchar *document_get_path(Document *document); /* borrowed */
 void         document_set_path(Document *document, const gchar *path);
 Document    *document_load(Project *project, const gchar *path);

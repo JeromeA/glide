@@ -7,11 +7,9 @@
 
 static void document_prepare(Document *document) {
   g_return_if_fail(document);
-  LispLexer *lexer = document_get_lexer(document);
   const GString *content = document_get_content(document);
-  GArray *tokens = lisp_lexer_lex(lexer, content);
-  LispParser *parser = document_get_parser(document);
-  Node *ast = lisp_parser_parse(parser, tokens, document);
+  GArray *tokens = lisp_lexer_lex(content);
+  Node *ast = lisp_parser_parse(tokens, document);
   document_set_tokens(document, tokens);
   document_set_ast(document, ast);
 }

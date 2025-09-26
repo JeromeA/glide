@@ -2,10 +2,6 @@
 #include <glib.h>
 #include "lisp_lexer.h"
 
-struct _LispLexer {
-  guint reserved;
-};
-
 static void lisp_token_free(gpointer token);
 static inline gunichar gstring_get_char(const GString *text, gsize offset);
 static inline gsize gstring_next_offset(const GString *text, gsize offset);
@@ -41,17 +37,7 @@ static inline gchar *gstring_slice_dup(const GString *text, gsize start, gsize e
   return g_strndup(text->str + start, end - start);
 }
 
-LispLexer *lisp_lexer_new(void) {
-  return g_new0(LispLexer, 1);
-}
-
-void lisp_lexer_free(LispLexer *lexer) {
-  g_return_if_fail(lexer != NULL);
-  g_free(lexer);
-}
-
-GArray *lisp_lexer_lex(LispLexer *lexer, const GString *text) {
-  g_return_val_if_fail(lexer != NULL, NULL);
+GArray *lisp_lexer_lex(const GString *text) {
   g_return_val_if_fail(text != NULL, NULL);
 
   GArray *tokens = g_array_new(FALSE, TRUE, sizeof(LispToken));
