@@ -4,8 +4,6 @@
 
 G_BEGIN_DECLS
 
-typedef struct _LispLexer LispLexer;
-
 typedef enum {
   LISP_TOKEN_TYPE_NUMBER,
   LISP_TOKEN_TYPE_SYMBOL,
@@ -29,8 +27,6 @@ typedef struct {
   gsize end_offset;
 } LispToken;
 
-LispLexer *lisp_lexer_new(void);
-void       lisp_lexer_free(LispLexer *lexer);
-GArray    *lisp_lexer_lex(LispLexer *lexer, const GString *text);
+GArray    *lisp_lexer_lex(const GString *text);
 
 G_END_DECLS

@@ -237,18 +237,14 @@ void project_document_changed(Project *self, Document *document) {
   g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
   LOG(1, "project_document_changed path=%s", document_get_path(document));
-  if (!document_get_lexer(document) || !document_get_parser(document))
-    return;
   document_clear_errors(document);
   project_index_remove_document(self->index, document);
-  LispLexer *lexer = document_get_lexer(document);
-  LispParser *parser = document_get_parser(document);
   const GString *content = document_get_content(document);
   if (!content)
     return;
-  GArray *tokens = lisp_lexer_lex(lexer, content);
+  GArray *tokens = lisp_lexer_lex(content);
   document_set_tokens(document, tokens);
-  Node *ast = lisp_parser_parse(parser, tokens, document);
+  Node *ast = lisp_parser_parse(tokens, document);
   document_set_ast(document, ast);
   if (ast)
     analyse_ast(self, ast);

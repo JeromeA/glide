@@ -6,8 +6,6 @@
 #include <glib.h>
 
 typedef struct {
-  LispLexer *lexer;
-  LispParser *parser;
   GArray *tokens;
   Node *ast;
 } ParseFixture;
@@ -15,10 +13,8 @@ typedef struct {
 static ParseFixture parse_fixture_new(const gchar *text) {
   ParseFixture fixture;
   GString *content = g_string_new(text);
-  fixture.lexer = lisp_lexer_new();
-  fixture.tokens = lisp_lexer_lex(fixture.lexer, content);
-  fixture.parser = lisp_parser_new();
-  fixture.ast = lisp_parser_parse(fixture.parser, fixture.tokens, NULL);
+  fixture.tokens = lisp_lexer_lex(content);
+  fixture.ast = lisp_parser_parse(fixture.tokens, NULL);
   g_string_free(content, TRUE);
   return fixture;
 }
@@ -28,8 +24,6 @@ static void parse_fixture_free(ParseFixture *fixture) {
     node_free_deep(fixture->ast);
   if (fixture->tokens)
     g_array_free(fixture->tokens, TRUE);
-  lisp_parser_free(fixture->parser);
-  lisp_lexer_free(fixture->lexer);
 }
 
 static void test_analyse(void) {

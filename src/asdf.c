@@ -147,10 +147,8 @@ uint asdf_get_dependency_count(Asdf *self) {
 
 static void parse_file_contents(Asdf *self, const gchar *contents) {
   GString *text = g_string_new(contents ? contents : "");
-  LispLexer *lexer = lisp_lexer_new();
-  GArray *tokens = lisp_lexer_lex(lexer, text);
-  LispParser *parser = lisp_parser_new();
-  Node *ast = lisp_parser_parse(parser, tokens, NULL);
+  GArray *tokens = lisp_lexer_lex(text);
+  Node *ast = lisp_parser_parse(tokens, NULL);
   if (!ast)
     goto cleanup;
 
@@ -213,8 +211,6 @@ cleanup:
     node_free_deep(ast);
   if (tokens)
     g_array_free(tokens, TRUE);
-  lisp_parser_free(parser);
-  lisp_lexer_free(lexer);
   g_string_free(text, TRUE);
 }
 
