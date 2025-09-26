@@ -56,11 +56,11 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
         g_string_free(new_str, TRUE);
         asdf_save(asdf, asdf_get_filename(asdf));
         app_update_project_view(app);
-        EditorContainer *notebook = app_get_notebook(app);
-        if (notebook) {
-          gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(notebook));
-          GtkWidget *scrolled = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), page);
-          GtkWidget *tab = gtk_notebook_get_tab_label(GTK_NOTEBOOK(notebook), scrolled);
+        EditorContainer *editor_container = app_get_editor_container(app);
+        if (editor_container) {
+          gint page = gtk_notebook_get_current_page(GTK_NOTEBOOK(editor_container));
+          GtkWidget *scrolled = gtk_notebook_get_nth_page(GTK_NOTEBOOK(editor_container), page);
+          GtkWidget *tab = gtk_notebook_get_tab_label(GTK_NOTEBOOK(editor_container), scrolled);
           gtk_label_set_text(GTK_LABEL(tab), new_rel);
         }
       }

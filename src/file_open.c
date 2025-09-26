@@ -49,7 +49,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
     return FALSE;
 
   Project *project = app_get_project(app);
-  EditorContainer *notebook = app_get_notebook(app);
+  EditorContainer *editor_container = app_get_editor_container(app);
   project_clear(project);
 
   gboolean is_asdf = g_str_has_suffix(filename, ".asd");
@@ -91,7 +91,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
   app_update_recent_menu(app);
 
   app_restore_last_file(app);
-  Editor *view = editor_container_get_current_editor(notebook);
+  Editor *view = editor_container_get_current_editor(editor_container);
   if (view)
     app_connect_editor(app, view);
   app_update_project_view(app);

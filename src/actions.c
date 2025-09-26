@@ -82,8 +82,8 @@ static void
 extend_selection(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   App *self = data;
-  EditorContainer *notebook = app_get_notebook(self);
-  Editor *view = editor_container_get_current_editor(notebook);
+  EditorContainer *editor_container = app_get_editor_container(self);
+  Editor *view = editor_container_get_current_editor(editor_container);
   if (view)
     editor_extend_selection(view);
 }
@@ -92,8 +92,8 @@ static void
 shrink_selection(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   App *self = data;
-  EditorContainer *notebook = app_get_notebook(self);
-  Editor *view = editor_container_get_current_editor(notebook);
+  EditorContainer *editor_container = app_get_editor_container(self);
+  Editor *view = editor_container_get_current_editor(editor_container);
   if (view)
     editor_shrink_selection(view);
 }
@@ -138,8 +138,8 @@ static void
 eval_current(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   App *self = data;
-  EditorContainer *notebook = app_get_notebook(self);
-  Editor *view = editor_container_get_current_editor(notebook);
+  EditorContainer *editor_container = app_get_editor_container(self);
+  Editor *view = editor_container_get_current_editor(editor_container);
   GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(editor_get_buffer(view)) : NULL;
   GtkTextIter it_start;
   GtkTextIter it_end;
@@ -219,8 +219,8 @@ show_parser(App *self)
 {
   GtkWidget *win = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(win), "Parser View");
-  EditorContainer *notebook = app_get_notebook(self);
-  Editor *current = editor_container_get_current_editor(notebook);
+  EditorContainer *editor_container = app_get_editor_container(self);
+  Editor *current = editor_container_get_current_editor(editor_container);
   ProjectFile *file = editor_get_file(current);
   EditorManager *manager = app_get_editor_manager(self);
   GtkWidget *view = lisp_parser_view_new(manager, file);
@@ -236,13 +236,10 @@ show_editor_tooltip(App *self)
   g_assert(glide_is_ui_thread());
   g_return_if_fail(self != NULL);
 
-  EditorContainer *notebook = app_get_notebook(self);
-  if (!notebook) {
-    LOG(1, "Actions.show_editor_tooltip: no notebook");
-    return;
-  }
+  EditorContainer *editor_container = app_get_editor_container(self);
+  g_return_if_fail(editor_container != NULL);
 
-  Editor *current = editor_container_get_current_editor(notebook);
+  Editor *current = editor_container_get_current_editor(editor_container);
   if (!current) {
     LOG(1, "Actions.show_editor_tooltip: no current editor");
     return;
@@ -255,13 +252,13 @@ show_editor_tooltip(App *self)
 static gboolean
 app_maybe_save_all(App *self)
 {
-  EditorContainer *notebook = app_get_notebook(self);
-  if (!notebook)
+  EditorContainer *editor_container = app_get_editor_container(self);
+  if (!editor_container)
     return TRUE;
-  gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(notebook));
+  gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(editor_container));
   gboolean modified = FALSE;
   for (gint i = 0; i < pages; i++) {
-    GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(notebook), i);
+    GtkWidget *view = gtk_notebook_get_nth_page(GTK_NOTEBOOK(editor_container), i);
     GtkTextBuffer *buffer = view ? GTK_TEXT_BUFFER(editor_get_buffer(GLIDE_EDITOR(view))) : NULL;
     if (buffer && gtk_text_buffer_get_modified(buffer)) {
       modified = TRUE;
