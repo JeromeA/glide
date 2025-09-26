@@ -19,16 +19,14 @@ struct _Document {
   GArray *errors; /* DocumentError */
 };
 
-static Document *document_create(Project *project, GString *content,
-    const gchar *path, DocumentState state);
+static Document *document_create(Project *project, GString *content, const gchar *path, DocumentState state);
 static void document_assign_content(Document *document, GString *content);
 static void document_clear_tokens(Document *document);
 void document_set_tokens(Document *document, GArray *tokens);
 static void document_clear_ast(Document *document);
 void document_set_ast(Document *document, Node *ast);
 
-Document *document_new(Project *project, GString *content,
-    const gchar *path, DocumentState state) {
+Document *document_new(Project *project, GString *content, const gchar *path, DocumentState state) {
   g_return_val_if_fail(project != NULL, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
   return document_create(project, content, path, state);
@@ -39,7 +37,7 @@ Document *document_new_virtual(GString *content) {
 }
 
 void document_free(Document *document) {
-  if (!document) return;
+  g_return_if_fail(document != NULL);
   document_clear_ast(document);
   document_clear_tokens(document);
   if (document->content)
@@ -151,8 +149,7 @@ Document *document_load(Project *project, const gchar *path) {
   sys_close(fd);
 
   GString *text = g_string_new_len(content, total_read);
-  Document *document = document_create(project, text, path,
-      DOCUMENT_LIVE);
+  Document *document = document_create(project, text, path, DOCUMENT_LIVE);
   g_free(content);
 
   return document;
@@ -188,8 +185,7 @@ void document_clear_errors(Document *document) {
   }
 }
 
-void document_add_error(Document *document, gsize start, gsize end,
-    const gchar *message) {
+void document_add_error(Document *document, gsize start, gsize end, const gchar *message) {
   g_return_if_fail(document != NULL);
   if (!document->errors)
     document->errors = g_array_new(FALSE, FALSE, sizeof(DocumentError));
@@ -202,8 +198,7 @@ void document_add_error(Document *document, gsize start, gsize end,
   g_array_append_val(document->errors, err);
 }
 
-static Document *document_create(Project *project, GString *content,
-    const gchar *path, DocumentState state) {
+static Document *document_create(Project *project, GString *content, const gchar *path, DocumentState state) {
   Document *document = g_new0(Document, 1);
   document->project = project;
   document->state = state;
@@ -220,29 +215,27 @@ static void document_assign_content(Document *document, GString *content) {
 }
 
 static void document_clear_tokens(Document *document) {
-  if (!document || !document->tokens)
-    return;
+  g_return_if_fail(document != NULL);
+  if (!document->tokens) return;
   g_array_free(document->tokens, TRUE);
   document->tokens = NULL;
 }
 
 void document_set_tokens(Document *document, GArray *tokens) {
-  if (!document)
-    return;
+  g_return_if_fail(document != NULL);
   document_clear_tokens(document);
   document->tokens = tokens;
 }
 
 static void document_clear_ast(Document *document) {
-  if (!document || !document->ast)
-    return;
+  g_return_if_fail(document != NULL);
+  if (!document->ast) return;
   node_free_deep(document->ast);
   document->ast = NULL;
 }
 
 void document_set_ast(Document *document, Node *ast) {
-  if (!document)
-    return;
+  g_return_if_fail(document != NULL);
   document_clear_ast(document);
   document->ast = ast;
 }
