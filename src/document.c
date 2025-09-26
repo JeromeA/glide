@@ -74,6 +74,8 @@ void document_set_content(Document *document, GString *content) {
     document->content = NULL;
   }
   document_assign_content(document, content);
+  if (document->project)
+    project_document_changed(document->project, document);
 }
 
 const GString *document_get_content(Document *document) {

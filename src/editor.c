@@ -85,7 +85,6 @@ on_buffer_changed (GtkTextBuffer * /*buffer*/, gpointer user_data)
   if (self && self->project && self->document) {
     editor_clear_errors(self);
     editor_sync_content(self);
-    project_document_changed(self->project, self->document);
   }
   if (self)
     editor_update_function_highlight (self);
