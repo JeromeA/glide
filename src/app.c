@@ -27,7 +27,7 @@ struct _App
 
   /* UI pointers we want to reuse */
   GtkWidget      *window;
-  EditorContainer *notebook;
+  EditorContainer *editor_container;
   EditorManager *editor_manager;
   Preferences    *preferences;
   ReplSession   *glide;
@@ -76,10 +76,10 @@ app_activate (GApplication *app)
       G_CALLBACK(on_window_size_allocate), self);
 
   /* Source views notebook */
-  GtkWidget *notebook = editor_container_new();
-  self->notebook = EDITOR_CONTAINER(notebook);
+  GtkWidget *editor_container = editor_container_new();
+  self->editor_container = EDITOR_CONTAINER(editor_container);
   g_clear_object(&self->editor_manager);
-  self->editor_manager = editor_manager_new(self->project, self->notebook);
+  self->editor_manager = editor_manager_new(self->project, self->editor_container);
   self->notebook_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
   g_signal_connect(self->notebook_paned, "notify::position",
       G_CALLBACK(on_notebook_paned_position), self);
@@ -87,10 +87,10 @@ app_activate (GApplication *app)
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self->project_scrolled),
       GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   gtk_paned_pack1(GTK_PANED(self->notebook_paned), self->project_scrolled, FALSE, TRUE);
-  gtk_paned_pack2(GTK_PANED(self->notebook_paned), notebook, TRUE, TRUE);
+  gtk_paned_pack2(GTK_PANED(self->notebook_paned), editor_container, TRUE, TRUE);
   gint width = preferences_get_project_view_width(self->preferences);
   gtk_paned_set_position(GTK_PANED(self->notebook_paned), width);
-  g_signal_connect(self->notebook, "switch-page",
+  g_signal_connect(self->editor_container, "switch-page",
       G_CALLBACK(on_notebook_switch_page), self);
 
   GtkWidget *menu_bar = menu_bar_new(self);
@@ -113,7 +113,7 @@ app_activate (GApplication *app)
   app_update_project_view(self);
   app_update_recent_menu(self);
   gtk_widget_show_all(self->window);
-  Editor *current_view = editor_container_get_current_editor(self->notebook);
+  Editor *current_view = editor_container_get_current_editor(self->editor_container);
   if (current_view)
     gtk_widget_grab_focus(editor_get_view(current_view));
 }
@@ -155,7 +155,7 @@ app_dispose (GObject *object)
     project_unref(self->project);
     self->project = NULL;
   }
-  g_clear_object(&self->notebook);
+  g_clear_object(&self->editor_container);
   g_clear_object(&self->project_scrolled);
   g_clear_object(&self->notebook_paned);
   g_clear_object(&self->recent_menu);
@@ -187,7 +187,7 @@ app_init (App *self)
   self->preferences = NULL;
   self->glide = NULL;
   self->project = NULL;
-  self->notebook = NULL;
+  self->editor_container = NULL;
   self->editor_manager = NULL;
   self->statusbar = NULL;
   self->status_service = NULL;
@@ -220,16 +220,16 @@ app_get_editor(App *self)
 {
   LOG(1, "App.get_editor");
   g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
-  if (!self->notebook)
+  if (!self->editor_container)
     return NULL;
-  return editor_container_get_current_editor(self->notebook);
+  return editor_container_get_current_editor(self->editor_container);
 }
 
 STATIC EditorContainer *
-app_get_notebook(App *self)
+app_get_editor_container(App *self)
 {
   g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
-  return self->notebook;
+  return self->editor_container;
 }
 
 STATIC EditorManager *
@@ -277,15 +277,15 @@ app_update_project_view(App *self)
   g_signal_connect(sel, "changed", G_CALLBACK(on_project_view_selection_changed), self);
   gtk_container_add(GTK_CONTAINER(self->project_scrolled), view);
   gtk_widget_show_all(self->project_scrolled);
-  on_notebook_switch_page(GTK_NOTEBOOK(self->notebook), NULL,
-      gtk_notebook_get_current_page(GTK_NOTEBOOK(self->notebook)), self);
+  on_notebook_switch_page(GTK_NOTEBOOK(self->editor_container), NULL,
+      gtk_notebook_get_current_page(GTK_NOTEBOOK(self->editor_container)), self);
 }
 
 STATIC void
 app_restore_last_file(App *self)
 {
   g_return_if_fail(GLIDE_IS_APP(self));
-  if (!self->notebook)
+  if (!self->editor_container)
     return;
   Preferences *prefs = app_get_preferences(self);
   if (!prefs)
@@ -300,8 +300,8 @@ app_restore_last_file(App *self)
   for (guint i = 0; i < count; i++) {
     ProjectFile *pf = project_get_file(project, i);
     if (g_strcmp0(project_file_get_path(pf), last) == 0) {
-      gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
-      Editor *view = editor_container_get_current_editor(self->notebook);
+      gtk_notebook_set_current_page(GTK_NOTEBOOK(self->editor_container), i);
+      Editor *view = editor_container_get_current_editor(self->editor_container);
       if (!view)
         return;
       GtkWidget *text_view = editor_get_view(view);
@@ -353,7 +353,7 @@ on_project_view_selection_changed(GtkTreeSelection *selection, gpointer data)
   guint count = project_get_file_count(self->project);
   for (guint i = 0; i < count; i++) {
     if (project_get_file(self->project, i) == file) {
-      gtk_notebook_set_current_page(GTK_NOTEBOOK(self->notebook), i);
+      gtk_notebook_set_current_page(GTK_NOTEBOOK(self->editor_container), i);
       break;
     }
   }

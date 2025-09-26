@@ -23,7 +23,7 @@ void file_add(GtkWidget */*widget*/, gpointer data) {
     gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
     ProjectFile *file = project_add_loaded_file(project, filename);
     if (file) {
-      Editor *view = editor_container_get_current_editor(app_get_notebook(app));
+      Editor *view = editor_container_get_current_editor(app_get_editor_container(app));
       if (view)
         app_connect_editor(app, view);
       Asdf *asdf = project_get_asdf(project);

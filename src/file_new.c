@@ -31,7 +31,7 @@ void file_new(GtkWidget */*widget*/, gpointer data) {
       g_file_set_contents(path, "", 0, NULL);
       ProjectFile *file = project_add_loaded_file(project, path);
       if (file) {
-        Editor *view = editor_container_get_current_editor(app_get_notebook(app));
+        Editor *view = editor_container_get_current_editor(app_get_editor_container(app));
         if (view)
           app_connect_editor(app, view);
         Asdf *asdf = project_get_asdf(project);
