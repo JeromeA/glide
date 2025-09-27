@@ -87,7 +87,6 @@ on_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer user_data)
     return;
   }
 
-  editor_clear_errors(self);
   editor_update_document_from_buffer(self);
   editor_set_errors(self, document_get_errors(self->document));
   editor_update_function_highlight(self);
