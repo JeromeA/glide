@@ -40,7 +40,7 @@ static void editor_highlight_node (Editor *self, const Node *node,
     GtkTextTag *tag);
 static gchar *editor_build_error_tooltip_markup (Editor *self, gsize offset);
 static void editor_clear_errors(Editor *self);
-static void editor_sync_content(Editor *self);
+static void editor_update_document_from_buffer(Editor *self);
 
 static void
 editor_init (Editor *self)
@@ -79,15 +79,18 @@ editor_init (Editor *self)
 
 // Callback for when the GtkTextBuffer changes
 static void
-on_buffer_changed (GtkTextBuffer * /*buffer*/, gpointer user_data)
+on_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer user_data)
 {
-  Editor *self = GLIDE_EDITOR (user_data);
-  if (self && self->project && self->document) {
-    editor_clear_errors(self);
-    editor_sync_content(self);
+  Editor *self = GLIDE_EDITOR(user_data);
+  if (!self) {
+    g_message("Editor buffer change callback invoked with NULL editor");
+    return;
   }
-  if (self)
-    editor_update_function_highlight (self);
+
+  editor_clear_errors(self);
+  editor_update_document_from_buffer(self);
+  editor_set_errors(self, document_get_errors(self->document));
+  editor_update_function_highlight(self);
 }
 
 static void
@@ -198,10 +201,11 @@ editor_clear_errors(Editor *self)
 }
 
 static void
-editor_sync_content(Editor *self)
+editor_update_document_from_buffer(Editor *self)
 {
-  if (!self || !self->buffer || !self->document)
-    return;
+  g_return_if_fail(GLIDE_IS_EDITOR(self));
+  g_return_if_fail(self->buffer != NULL);
+
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   GtkTextIter start;
   GtkTextIter end;

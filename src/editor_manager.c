@@ -16,7 +16,6 @@ static void editor_manager_add_document(EditorManager *self, Document *document,
 static void editor_manager_remove_document(EditorManager *self, Document *document);
 static void on_document_loaded(Project *project, Document *document, gpointer user_data);
 static void on_document_removed(Project *project, Document *document, gpointer user_data);
-static void on_document_changed(Project *project, Document *document, gpointer user_data);
 
 static void
 editor_manager_init(EditorManager *self)
@@ -33,7 +32,6 @@ editor_manager_dispose(GObject *object)
   if (self->project) {
     project_set_document_loaded_cb(self->project, NULL, NULL);
     project_set_document_removed_cb(self->project, NULL, NULL);
-    project_set_document_changed_cb(self->project, NULL, NULL);
     project_unref(self->project);
     self->project = NULL;
   }
@@ -66,7 +64,6 @@ editor_manager_new(Project *project, EditorContainer *container)
 
   project_set_document_loaded_cb(project, on_document_loaded, self);
   project_set_document_removed_cb(project, on_document_removed, self);
-  project_set_document_changed_cb(project, on_document_changed, self);
 
   guint count = project_get_document_count(project);
   for (guint i = 0; i < count; i++) {
@@ -120,18 +117,6 @@ on_document_removed(Project * /*project*/, Document *document, gpointer user_dat
 {
   EditorManager *self = EDITOR_MANAGER(user_data);
   editor_manager_remove_document(self, document);
-}
-
-static void
-on_document_changed(Project * /*project*/, Document *document, gpointer user_data)
-{
-  EditorManager *self = EDITOR_MANAGER(user_data);
-  const gchar *path = document_get_path(document);
-  LOG(1, "editor_manager_file_changed path=%s", path ? path : "(null)");
-  Editor *editor = editor_manager_get_editor(self, document);
-  if (!editor)
-    return;
-  editor_set_errors(editor, document_get_errors(document));
 }
 
 Editor *
