@@ -1,5 +1,5 @@
 #include "app.h"
-#include "file_open.h"
+#include "project_open.h"
 #include "interactions_view.h"
 #include "editor.h"
 #include "editor_container.h"
@@ -110,7 +110,7 @@ app_activate (GApplication *app)
   gtk_container_add(GTK_CONTAINER(self->window), vbox);
   const gchar *proj = preferences_get_project_file(self->preferences);
   if (proj)
-    file_open_path(self, proj);
+    project_open_path(self, proj);
   app_update_project_view(self);
   app_update_recent_menu(self);
   gtk_widget_show_all(self->window);

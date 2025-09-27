@@ -334,7 +334,7 @@ forwarding, preventing padded NULs from ever reaching `Process` or
 Loading a project after the initial startup left the notebook on the first
 file, ignoring the saved cursor location. The restore logic lived in
 `App.activate`, so only the first project opened during activation went through
-it. Moving the restoration into `file_open_path` makes both startup and
+it. Moving the restoration into `project_open_path` makes both startup and
 subsequent loads follow the same code path, restoring the last file every
 time.
 

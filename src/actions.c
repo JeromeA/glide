@@ -1,6 +1,6 @@
 #include "actions.h"
 #include "file_save.h"
-#include "file_open.h"
+#include "project_open.h"
 #include "file_rename.h"
 #include "file_new.h"
 #include "file_add.h"
@@ -29,7 +29,7 @@ project_new_cb(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 static void
 project_open_cb(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
-  file_open(NULL, data);
+  project_open(NULL, data);
 }
 
 static void
@@ -38,7 +38,7 @@ recent_project(GSimpleAction * /*action*/, GVariant *param, gpointer data)
   App *self = data;
   const gchar *path = g_variant_get_string(param, NULL);
   if (path)
-    file_open_path(self, path);
+    project_open_path(self, path);
 }
 
 static void

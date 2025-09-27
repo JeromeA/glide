@@ -4,7 +4,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include "file_open.h"
+#include "project_open.h"
 #include "app.h"
 #include "editor.h"
 #include "editor_container.h"
@@ -40,8 +40,8 @@ static gboolean save_if_modified(App *app) {
   return TRUE;
 }
 
-gboolean file_open_path(App *app, const gchar *filename) {
-  LOG(1, "file_open_path %s", filename);
+gboolean project_open_path(App *app, const gchar *filename) {
+  LOG(1, "project_open_path %s", filename);
   g_return_val_if_fail(app != NULL, FALSE);
   if (!save_if_modified(app))
     return FALSE;
@@ -96,7 +96,7 @@ gboolean file_open_path(App *app, const gchar *filename) {
   return TRUE;
 }
 
-void file_open(GtkWidget */*widget*/, gpointer data) {
+void project_open(GtkWidget */*widget*/, gpointer data) {
   App *app = (App *)data;
 
   GtkWidget *dialog = gtk_file_chooser_dialog_new(
@@ -109,7 +109,7 @@ void file_open(GtkWidget */*widget*/, gpointer data) {
 
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT) {
     gchar *filename = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
-    file_open_path(app, filename);
+    project_open_path(app, filename);
     g_free(filename);
   }
   gtk_widget_destroy(dialog);
