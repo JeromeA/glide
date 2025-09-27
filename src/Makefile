@@ -6,42 +6,43 @@ endif
 
 LIBS += gtksourceview-4
 SOURCES += \
-  file_open.c \
-  file_new.c \
-  file_add.c \
-  file_rename.c \
-  file_delete.c \
-  project_new_wizard.c \
-  file_save.c \
-  preferences.c \
-  preferences_dialog.c \
-  process.c \
-  repl_process.c \
-  repl_session.c \
-  evaluate.c \
-  interactions_view.c \
   actions.c \
-  menu_bar.c \
-  app.c \
-  editor_container.c \
-  editor_manager.c \
-  editor_tooltip_window.c \
-  editor.c \
-  lisp_lexer.c \
-  lisp_parser.c \
   analyse.c \
   analyse_defpackage.c \
   analyse_defun.c \
-  function.c \
-  package.c \
-  node.c \
-  lisp_parser_view.c \
-  project_index.c \
-  project.c \
-  project_repl.c \
-  document.c \
+  app.c \
   asdf.c \
+  document.c \
+  editor.c \
+  editor_container.c \
+  editor_manager.c \
+  editor_tooltip_window.c \
+  evaluate.c \
+  file_add.c \
+  file_delete.c \
+  file_new.c \
+  file_open.c \
+  file_rename.c \
+  file_save.c \
+  function.c \
+  interactions_view.c \
+  lisp_lexer.c \
+  lisp_parser.c \
+  lisp_parser_view.c \
+  main.c \
+  menu_bar.c \
+  node.c \
+  package.c \
+  preferences.c \
+  preferences_dialog.c \
+  process.c \
+  project.c \
+  project_index.c \
+  project_new_wizard.c \
+  project_repl.c \
   project_view.c \
+  repl_process.c \
+  repl_session.c \
   status_bar.c \
   status_service.c
 
@@ -50,70 +51,19 @@ VERBOSITY = -DVERBOSITY=1
 
 INCLUDE_DIRS := $(addprefix -I, $(VPATH))
 LIBS += gtk+-3.0
-CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS)
+CFLAGS += -Wall -Wextra `pkg-config --cflags $(LIBS)` -I. $(INCLUDE_DIRS) -g -DDEBUG $(SANITIZER) $(VERBOSITY)
 LDLIBS += `pkg-config --libs $(LIBS)`
-
-TARGETS += app-full app-cov app-reloc app-gdb app
-SOURCES += main.c reloc.c
-COV_OBJECTS = $(SOURCES:.c=.cov.o)
-FULL_OBJECTS = $(SOURCES:.c=.full.o)
-RELOC_OBJECTS = $(SOURCES:.c=.reloc.o)
-CLEANABLES += $(TARGETS) $(COV_OBJECTS) $(FULL_OBJECTS) $(RELOC_OBJECTS) *.list app-source.* app.asm *.gcda *.gcno out/ coverage.info
-
-app-cov $(COV_OBJECTS): CFLAGS += -g -DDEBUG -fprofile-arcs -ftest-coverage -DVERBOSITY=0
-app-full $(FULL_OBJECTS): CFLAGS += -g -DDEBUG $(SANITIZER) $(VERBOSITY)
-app-reloc $(RELOC_OBJECTS): CFLAGS += -g -DDEBUG -DRELOC -DSYSCALLS -DVERBOSITY=0
+TARGETS = glide
+OBJECTS = $(SOURCES:.c=.o)
+CLEANABLES += $(TARGETS) $(OBJECTS)
 
 all: $(TARGETS)
 
-main.full.o main.reloc.o: main.c reloc.h symbols.inc
-reloc.full.o reloc.reloc.o: reloc.c reloc.h symbols.inc
-
-%.cov.o: %.c
+%.o: %.c
 :$(CC) $(CFLAGS) -c $< -o $@
 
-%.full.o: %.c
-:$(CC) $(CFLAGS) -c $< -o $@
-
-%.reloc.o: %.c
-:$(CC) $(CFLAGS) -c $< -o $@
-
-app-cov: $(COV_OBJECTS)
-:$(CC) -fprofile-arcs -ftest-coverage $^ -o $@ $(LDLIBS)
-
-app-full: $(FULL_OBJECTS)
+glide: $(OBJECTS)
 :$(CC) $(SANITIZER) $^ -o $@ $(LDLIBS)
-
-app-reloc: $(RELOC_OBJECTS)
-:$(CC) $^ -o $@ $(LDLIBS)
-
-app-source.s: CFLAGS += -O2 -DRELOC -DINLINE -DSYSCALLS -DINTEL_SYNTAX -DVERBOSITY=0
-app-source.s: $(SOURCES)
-:$(CC) $(CFLAGS) main.c -S -masm=intel -o $@
-
-app-source.asm: app-source.s libraries.asm
-:./intel2nasm.pl $< > $@
-
-app.asm: template.asm app-source.asm
-:cat $^ > $@
-
-app-gdb: app.asm
-:nasm -w-prefix-seg -DGDB $< -o $@ -l $@.list
-:chmod +x $@
-
-app: app.asm
-:nasm -w-prefix-seg -l $@.list $<
-:chmod +x $@
-
-cov: app-cov
-:./app-cov
-:lcov --capture --directory . --output-file coverage.info
-:genhtml coverage.info --output-directory out
-
-run-full: app-full
-:LSAN_OPTIONS="suppressions=${PWD}/lsan.supp" \
-:ASAN_OPTIONS="detect_leaks=1:abort_on_error=1" \
-:./app-full
 
 clean:
 :rm -rf $(CLEANABLES)

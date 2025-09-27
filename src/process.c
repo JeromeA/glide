@@ -1,6 +1,4 @@
 #include "process.h"
-#include "syscalls.h"
-
 #include <unistd.h>
 #include <errno.h>
 #include <string.h>
@@ -27,7 +25,7 @@ static gpointer stdout_thread(gpointer data) {
   Process *process = data;
   char buf[256];
   ssize_t n;
-  while ((n = sys_read(process->out_fd, buf, sizeof(buf))) > 0) {
+  while ((n = read(process->out_fd, buf, sizeof(buf))) > 0) {
     if (process->out_cb) {
       GString *str = g_string_new_len(buf, n);
       process->out_cb(str, process->out_user);
@@ -41,7 +39,7 @@ static gpointer stderr_thread(gpointer data) {
   Process *process = data;
   char buf[256];
   ssize_t n;
-  while ((n = sys_read(process->err_fd, buf, sizeof(buf))) > 0) {
+  while ((n = read(process->err_fd, buf, sizeof(buf))) > 0) {
     if (process->err_cb) {
       GString *str = g_string_new_len(buf, n);
       process->err_cb(str, process->err_user);
@@ -128,7 +126,7 @@ gboolean process_write(Process *process, const GString *data) {
   gssize len = data->len;
   gssize written = 0;
   while (written < len) {
-    ssize_t r = sys_write(process->in_fd,
+    ssize_t r = write(process->in_fd,
         data->str + written, len - written);
     if (r <= 0)
       return FALSE;

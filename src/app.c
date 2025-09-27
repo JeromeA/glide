@@ -1,4 +1,3 @@
-#include "includes.h"
 #include "app.h"
 #include "file_open.h"
 #include "interactions_view.h"
@@ -12,6 +11,8 @@
 #include "menu_bar.h"
 #include "actions.h"
 #include "util.h"
+#include <gtk/gtk.h>
+#include <gtksourceview/gtksource.h>
 
 /* Signal handlers */
 STATIC void     on_notebook_paned_position(GObject *object, GParamSpec *pspec, gpointer data);

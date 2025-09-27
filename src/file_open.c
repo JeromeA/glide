@@ -4,8 +4,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-#include "reloc.h"
-#include "syscalls.h"
 #include "file_open.h"
 #include "app.h"
 #include "editor.h"

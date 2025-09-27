@@ -46,6 +46,30 @@ Project *project_new(ReplSession *repl) {
   return self;
 }
 
+static void project_reparse_document(Project *self, Document *document) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(document != NULL);
+
+  document_clear_errors(document);
+  project_index_remove_document(self->index, document);
+
+  const GString *content = document_get_content(document);
+  if (!content)
+    return;
+
+  GArray *tokens = lisp_lexer_lex(content);
+  document_set_tokens(document, tokens);
+
+  Node *ast = lisp_parser_parse(tokens, document);
+  document_set_ast(document, ast);
+
+  if (!ast)
+    return;
+
+  analyse_ast(self, ast);
+  project_index_walk(self->index, ast);
+}
+
 Document *project_add_document(Project *self, GString *content,
     const gchar *path, DocumentState state) {
   g_return_val_if_fail(self != NULL, NULL);
@@ -101,30 +125,6 @@ void project_remove_document(Project *self, Document *document) {
   }
 
   project_changed(self);
-}
-
-static void project_reparse_document(Project *self, Document *document) {
-  g_return_if_fail(self != NULL);
-  g_return_if_fail(document != NULL);
-
-  document_clear_errors(document);
-  project_index_remove_document(self->index, document);
-
-  const GString *content = document_get_content(document);
-  if (!content)
-    return;
-
-  GArray *tokens = lisp_lexer_lex(content);
-  document_set_tokens(document, tokens);
-
-  Node *ast = lisp_parser_parse(tokens, document);
-  document_set_ast(document, ast);
-
-  if (!ast)
-    return;
-
-  analyse_ast(self, ast);
-  project_index_walk(self->index, ast);
 }
 
 guint project_get_document_count(Project *self) {

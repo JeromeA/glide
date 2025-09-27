@@ -6,7 +6,6 @@
 #include <unistd.h>
 #include <errno.h>
 #include <glib-object.h>
-#include "syscalls.h"
 #include "util.h"
 
 struct _Document {
@@ -110,16 +109,16 @@ Document *document_load(Project *project, const gchar *path) {
 
   LOG(1, "document_load path=%s", path);
 
-  int fd = sys_open(path, O_RDONLY, 0);
+  int fd = open(path, O_RDONLY, 0);
   if (fd == -1) {
     g_printerr("Failed to open file using syscalls: %s (errno: %d)\n", path, errno);
     return NULL;
   }
 
   struct stat sb;
-  if (sys_fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
+  if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
     g_printerr("Not a regular file: %s\n", path);
-    sys_close(fd);
+    close(fd);
     return NULL;
   }
 
@@ -127,17 +126,17 @@ Document *document_load(Project *project, const gchar *path) {
   char *content = g_malloc(length + 1);
   if (!content) {
     g_printerr("Failed to allocate memory for file content.\n");
-    sys_close(fd);
+    close(fd);
     return NULL;
   }
 
   ssize_t total_read = 0;
   while (total_read < length) {
-    ssize_t r = sys_read(fd, content + total_read, length - total_read);
+    ssize_t r = read(fd, content + total_read, length - total_read);
     if (r == -1) {
       g_printerr("Error reading file: %s (errno: %d)\n", path, errno);
       g_free(content);
-      sys_close(fd);
+      close(fd);
       return NULL;
     } else if (r == 0) {
       break;
@@ -146,7 +145,7 @@ Document *document_load(Project *project, const gchar *path) {
   }
 
   content[total_read] = '\0';
-  sys_close(fd);
+  close(fd);
 
   GString *text = g_string_new_len(content, total_read);
   Document *document = document_create(project, text, path, DOCUMENT_LIVE);
