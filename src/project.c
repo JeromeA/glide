@@ -60,8 +60,6 @@ Document *project_add_document(Project *self, GString *content,
   g_ptr_array_add(self->documents, document);
 
   project_document_loaded(self, document);
-  project_changed(self);
-
   return document;
 }
 
@@ -78,9 +76,7 @@ Document *project_add_loaded_document(Project *self, const gchar *path) {
 
   g_ptr_array_add(self->documents, document);
 
-  project_changed(self);
   project_document_loaded(self, document);
-
   return document;
 }
 
