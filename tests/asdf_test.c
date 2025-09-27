@@ -69,7 +69,7 @@ static void test_rename(void)
   asdf_add_component(asdf, g_string_new("old"));
   GString *old = g_string_new("old");
   GString *new = g_string_new("new");
-  asdf_rename_component(asdf, old, new);
+  g_assert_true(asdf_rename_component(asdf, old, new));
   g_string_free(old, TRUE);
   g_assert_cmpstr(asdf_get_component(asdf, 0)->str, ==, "new");
   g_object_unref(asdf);
