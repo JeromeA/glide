@@ -21,7 +21,7 @@ SOURCES += \
   file_add.c \
   file_delete.c \
   file_new.c \
-  file_open.c \
+  project_open.c \
   file_rename.c \
   file_save.c \
   function.c \

@@ -3,7 +3,7 @@
 #include "app.h"
 #include "project.h"
 #include "asdf.h"
-#include "file_open.h"
+#include "project_open.h"
 #include <glib/gstdio.h>
 #include "util.h"
 
@@ -134,7 +134,7 @@ void project_new_wizard(GtkWidget */*widget*/, gpointer data) {
     asdf_add_component(asdf, g_string_new("unnamed"));
     asdf_save(asdf, asdf_get_filename(asdf));
     g_object_unref(asdf);
-    file_open_path(app, asd_path);
+    project_open_path(app, asd_path);
     g_free(unnamed);
     g_free(name_asd);
     g_free(asd_path);
