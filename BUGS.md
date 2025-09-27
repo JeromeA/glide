@@ -15,6 +15,15 @@ The application crashed on startup because `editor_dispose` explicitly unreferen
 widget. The `GtkScrolledWindow` parent already disposes of its children, so unreferencing the view again left GTK trying
 to dispose an already finalized object, triggering the GLib critical `instance with invalid (NULL) class pointer`.
 
+## Project load skipped error analysis
+
+Loading a project invoked the `document_loaded` signal before running the
+`project_document_changed` pipeline. The editor built the AST after creating its
+buffer, so the parse succeeded, but the analyser never ran during the load
+notification and listeners saw an empty diagnostics array. The loader now
+reuses the same reparse-and-analyse helper as document edits before announcing a
+loaded file, so both startup and incremental edits surface the same errors.
+
 ## Argument error tooltip duplicated documentation
 
 Hovering an argument arity error showed the function documentation twice: once as escaped plain text in the error

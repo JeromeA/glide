@@ -63,6 +63,30 @@ Document *project_add_document(Project *self, GString *content,
   return document;
 }
 
+static void project_reparse_document(Project *self, Document *document) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(document != NULL);
+
+  document_clear_errors(document);
+  project_index_remove_document(self->index, document);
+
+  const GString *content = document_get_content(document);
+  if (!content)
+    return;
+
+  GArray *tokens = lisp_lexer_lex(content);
+  document_set_tokens(document, tokens);
+
+  Node *ast = lisp_parser_parse(tokens, document);
+  document_set_ast(document, ast);
+
+  if (!ast)
+    return;
+
+  analyse_ast(self, ast);
+  project_index_walk(self->index, ast);
+}
+
 Document *project_add_loaded_document(Project *self, const gchar *path) {
   g_return_val_if_fail(self != NULL, NULL);
   g_return_val_if_fail(path != NULL, NULL);
@@ -76,6 +100,7 @@ Document *project_add_loaded_document(Project *self, const gchar *path) {
 
   g_ptr_array_add(self->documents, document);
 
+  project_reparse_document(self, document);
   project_document_loaded(self, document);
   return document;
 }
@@ -233,19 +258,7 @@ void project_document_changed(Project *self, Document *document) {
   g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
   LOG(1, "project_document_changed path=%s", document_get_path(document));
-  document_clear_errors(document);
-  project_index_remove_document(self->index, document);
-  const GString *content = document_get_content(document);
-  if (!content)
-    return;
-  GArray *tokens = lisp_lexer_lex(content);
-  document_set_tokens(document, tokens);
-  Node *ast = lisp_parser_parse(tokens, document);
-  document_set_ast(document, ast);
-  if (ast)
-    analyse_ast(self, ast);
-  if (ast)
-    project_index_walk(self->index, ast);
+  project_reparse_document(self, document);
   if (self->document_changed_cb)
     self->document_changed_cb(self, document, self->document_changed_data);
   project_changed(self);
