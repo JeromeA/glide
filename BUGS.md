@@ -150,6 +150,16 @@ way to see the new interactions was to drag the pane divider to enlarge the
 view. The scrolled window now disables natural height propagation so the window
 scrolls when content exceeds the available space.
 
+## File rename corrupted ASDF component names
+
+Renaming a source file updated the editor tab but saved unreadable characters
+to the system definition and project tree. The rename dialog built a new
+`GString` for the component name, handed it to `asdf_rename_component`, and then
+freed it immediately. The ASDF model stored the dangling pointer, so future
+saves serialised whatever data happened to live there. `asdf_rename_component`
+now reports whether it replaced a component, and the caller only frees the
+string when the rename fails, keeping the ASDF component list valid.
+
 ## Interactions view still did not scroll
 
 Even after disabling natural height propagation, the interactions list still

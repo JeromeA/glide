@@ -116,16 +116,19 @@ void asdf_remove_component(Asdf *self, const GString *file) {
   }
 }
 
-void asdf_rename_component(Asdf *self, const GString *old_file, GString *new_file) {
-  g_return_if_fail(GLIDE_IS_ASDF(self));
+gboolean asdf_rename_component(Asdf *self, const GString *old_file, GString *new_file) {
+  g_return_val_if_fail(GLIDE_IS_ASDF(self), FALSE);
+  g_return_val_if_fail(old_file != NULL, FALSE);
+  g_return_val_if_fail(new_file != NULL, FALSE);
   for (guint i = 0; i < self->components->len; i++) {
     GString *comp = g_ptr_array_index(self->components, i);
     if (g_strcmp0(comp->str, old_file->str) == 0) {
       g_string_free(comp, TRUE);
       g_ptr_array_index(self->components, i) = new_file;
-      break;
+      return TRUE;
     }
   }
+  return FALSE;
 }
 
 void asdf_add_dependency(Asdf *self, GString *dep) {

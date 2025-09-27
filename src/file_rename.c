@@ -52,9 +52,12 @@ void file_rename(GtkWidget */*widget*/, gpointer data) {
         if (dot)
           g_string_truncate(new_str, dot - new_str->str);
         Asdf *asdf = project_get_asdf(app_get_project(app));
-        asdf_rename_component(asdf, old_str, new_str);
-        g_string_free(new_str, TRUE);
-        asdf_save(asdf, asdf_get_filename(asdf));
+        if (!asdf_rename_component(asdf, old_str, new_str)) {
+          g_string_free(new_str, TRUE);
+          g_debug("Failed to rename ASDF component %s", old_str->str);
+        } else {
+          asdf_save(asdf, asdf_get_filename(asdf));
+        }
         app_update_project_view(app);
         EditorContainer *editor_container = app_get_editor_container(app);
         if (editor_container) {

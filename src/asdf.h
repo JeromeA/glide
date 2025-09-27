@@ -18,7 +18,7 @@ void asdf_add_component(Asdf *self, GString *file);
 const GString *asdf_get_component(Asdf *self, guint index);
 guint asdf_get_component_count(Asdf *self);
 void asdf_remove_component(Asdf *self, const GString *file);
-void asdf_rename_component(Asdf *self, const GString *old_file, GString *new_file);
+gboolean asdf_rename_component(Asdf *self, const GString *old_file, GString *new_file);
 void asdf_add_dependency(Asdf *self, GString *dep);
 const GString *asdf_get_dependency(Asdf *self, guint index);
 guint asdf_get_dependency_count(Asdf *self);
