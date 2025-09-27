@@ -375,7 +375,7 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   gsize len = gtk_text_iter_get_offset (&end_iter);
   gsize offset = gtk_text_iter_get_offset (&iter);
   gsize end = offset < len ? offset + 1 : offset;
-  LOG (1, "offset=%zu end=%zu len=%zu", offset, end, len);
+  LOG (2, "Editor.on_query_tooltip offset=%zu end=%zu len=%zu", offset, end, len);
 
   gchar *error_markup = editor_build_error_tooltip_markup (self, offset);
   gchar *function_markup = editor_build_function_tooltip_markup (self, offset, end);
@@ -406,22 +406,22 @@ editor_build_function_tooltip_markup (Editor *self, gsize offset, gsize end)
   const Node *ast = document_get_ast (self->document);
   const Node *node = node_find_containing_range (ast, offset, end);
   if (!node) {
-    LOG (1, "Editor.build_function_tooltip_markup: no node");
+    LOG (2, "Editor.build_function_tooltip_markup: no node");
     return NULL;
   }
 
   gchar *node_str = node_to_string (node);
-  LOG (1, "Editor.build_function_tooltip_markup: node %s",
+  LOG (2, "Editor.build_function_tooltip_markup: node %s",
       node_str ? node_str : "<unknown>");
   g_free (node_str);
 
   if (!node_is (node, SDT_FUNCTION_USE)) {
-    LOG (1, "Editor.build_function_tooltip_markup: node not a function use");
+    LOG (2, "Editor.build_function_tooltip_markup: node not a function use");
     return NULL;
   }
 
   const gchar *name = node_get_name (node);
-  LOG (1, "Editor.build_function_tooltip_markup: function %s", name);
+  LOG (2, "Editor.build_function_tooltip_markup: function %s", name);
 
   Function *fn = project_get_function (self->project, name);
   if (!fn) {
@@ -442,7 +442,7 @@ editor_build_error_tooltip_markup (Editor *self, gsize offset)
   const GArray *errors = document_get_errors (self->document);
   if (!errors || errors->len == 0)
     return NULL;
-  LOG (1, "Editor.build_error_tooltip checking %u errors", errors->len);
+  LOG (2, "Editor.build_error_tooltip checking %u errors", errors->len);
   for (guint i = 0; i < errors->len; i++) {
     const DocumentError *err = &g_array_index ((GArray*) errors,
         DocumentError, i);
@@ -454,7 +454,7 @@ editor_build_error_tooltip_markup (Editor *self, gsize offset)
     gchar *message_esc = g_markup_escape_text (message, -1);
     return message_esc;
   }
-  LOG (1, "Editor.build_error_tooltip: no match at offset %zu", offset);
+  LOG (2, "Editor.build_error_tooltip: no match at offset %zu", offset);
   return NULL;
 }
 
