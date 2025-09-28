@@ -4,6 +4,16 @@ This document lists past bugs, their symptoms, and how they were fixed. The goal
 mistakes in the future. A typical entry, added at the end of the file, includes what the goal was, what went wrong, and
 how it was fixed.
 
+## Function highlight and tooltip missed caret at symbol end
+
+The editor highlighted and showed tooltips only when the caret or pointer was between the start and the penultimate
+character of a symbol. Placing the caret after the last character left related definitions unhighlighted and hovering near
+the trailing edge produced no documentation, which made navigation feel unreliable.
+
+Both features asked the AST for the node covering the range `[offset, offset + 1)`. When the caret sat after the symbol the
+range exceeded the node bounds, so the search failed. The lookup now retries using the previous character when the initial
+query fails, allowing both the highlight and tooltip to trigger when the caret rests immediately after a symbol.
+
 ## Editor tooltip always displayed empty sections
 
 The editor tooltip window showed both the diagnostic and documentation areas even when only one had content. The

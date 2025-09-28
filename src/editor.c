@@ -31,6 +31,8 @@ static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
 static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
     gboolean /*keyboard_mode*/, GtkTooltip * /*tooltip*/, gpointer user_data);
 static void editor_update_function_highlight (Editor *self);
+static const Node *editor_find_node_for_offsets (Editor *self, gsize offset,
+    gsize end);
 static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
     GtkTextMark *mark, gpointer user_data);
 static void editor_clear_function_highlight (Editor *self);
@@ -267,6 +269,24 @@ editor_highlight_node (Editor *self, const Node *node, GtkTextTag *tag)
   gtk_text_buffer_apply_tag (buffer, tag, &it_start, &it_end);
 }
 
+static const Node *
+editor_find_node_for_offsets (Editor *self, gsize offset, gsize end)
+{
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
+  if (!self->document)
+    return NULL;
+
+  const Node *ast = document_get_ast (self->document);
+  if (!ast)
+    return NULL;
+
+  const Node *node = node_find_containing_range (ast, offset, end);
+  if (!node && offset > 0)
+    node = node_find_containing_range (ast, offset - 1, offset);
+
+  return node;
+}
+
 static void
 editor_update_function_highlight (Editor *self)
 {
@@ -283,10 +303,7 @@ editor_update_function_highlight (Editor *self)
   gsize len = gtk_text_iter_get_offset (&end_iter);
   gsize offset = gtk_text_iter_get_offset (&iter);
   gsize end = offset < len ? offset + 1 : offset;
-  const Node *ast = document_get_ast (self->document);
-  if (!ast)
-    return;
-  const Node *node = node_find_containing_range (ast, offset, end);
+  const Node *node = editor_find_node_for_offsets (self, offset, end);
   while (node && node->sd_type != SDT_FUNCTION_DEF && node->sd_type != SDT_FUNCTION_USE)
     node = node->parent;
   if (!node)
@@ -406,8 +423,7 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
 static gchar *
 editor_build_function_tooltip_markup (Editor *self, gsize offset, gsize end)
 {
-  const Node *ast = document_get_ast (self->document);
-  const Node *node = node_find_containing_range (ast, offset, end);
+  const Node *node = editor_find_node_for_offsets (self, offset, end);
   if (!node) {
     LOG (2, "Editor.build_function_tooltip_markup: no node");
     return NULL;
