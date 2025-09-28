@@ -1,7 +1,8 @@
 # BUGS
 
 This document lists past bugs, their symptoms, and how they were fixed. The goal is to detect patterns and avoid similar
-mistakes in the future. A typical entry includes what the goal was, what went wrong, and how it was fixed.
+mistakes in the future. A typical entry, added at the end of the file, includes what the goal was, what went wrong, and
+how it was fixed.
 
 ## Editor tooltip always displayed empty sections
 
