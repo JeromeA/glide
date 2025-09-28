@@ -13,8 +13,6 @@
 - Keep full names for variables: it's `MockSwank *mock_swank`, not `MockSwank *ms`.
 - fix all compilation warnings.
 - If you're fixing a bug, add an entry to BUGS.md.
-- Never assume a name is local (the INLINE version compiles all .c files in one translation unit), so even
-  enum values should always have a prefix.
 - Wrap at 120 characters, and migrate existing code to that style when you touch it.
 - All the code should assume to be on the UI thread. So, if a code is a workers on its own thread, it should call any
   callback through g_main_context_invoke(). If a callback is doing UI work (basically any file that includes gtk.h),
@@ -23,7 +21,6 @@
   their result or failure), so that reading the logs gives a good idea of what happened.
 - When a check fail, a return or return NULL is never enough, it should at least be a g_debug, and almost always be a
   g_return_val_if_fail(), 
-- All functions, even static ones, should have a unique name, so that the INLINE compilation works.
 
 ## OO
 
@@ -37,7 +34,7 @@
 ## Common Agent mistakes
 
 - Don't forget to add any new file to the INLINE version in main.c.
-- Don't forget to run "make app-full" in src/ as part of your testing.
+- Don't forget to run "make" in src/ as part of your testing.
 - Don't forget to run "make run" in tests/ as part of your testing.
 - Convert any code wrapped at 80 characters, use 120 instead.
 
