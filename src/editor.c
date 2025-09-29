@@ -31,8 +31,7 @@ static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
 static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
     gboolean /*keyboard_mode*/, GtkTooltip * /*tooltip*/, gpointer user_data);
 static void editor_update_function_highlight (Editor *self);
-static const Node *editor_find_node_for_offsets (Editor *self, gsize offset,
-    gsize end);
+static const Node *editor_find_sdt_node (Editor *self, gsize offset);
 static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
     GtkTextMark *mark, gpointer user_data);
 static void editor_clear_function_highlight (Editor *self);
@@ -270,7 +269,7 @@ editor_highlight_node (Editor *self, const Node *node, GtkTextTag *tag)
 }
 
 static const Node *
-editor_find_node_for_offsets (Editor *self, gsize offset, gsize end)
+editor_find_sdt_node (Editor *self, gsize offset)
 {
   g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
   if (!self->document)
@@ -280,11 +279,7 @@ editor_find_node_for_offsets (Editor *self, gsize offset, gsize end)
   if (!ast)
     return NULL;
 
-  const Node *node = node_find_containing_range (ast, offset, end);
-  if (!node && offset > 0)
-    node = node_find_containing_range (ast, offset - 1, offset);
-
-  return node;
+  return node_find_sdt_containing_offset (ast, offset);
 }
 
 static void
@@ -298,12 +293,8 @@ editor_update_function_highlight (Editor *self)
   GtkTextMark *insert = gtk_text_buffer_get_insert (buffer);
   GtkTextIter iter;
   gtk_text_buffer_get_iter_at_mark (buffer, &iter, insert);
-  GtkTextIter end_iter;
-  gtk_text_buffer_get_end_iter (buffer, &end_iter);
-  gsize len = gtk_text_iter_get_offset (&end_iter);
   gsize offset = gtk_text_iter_get_offset (&iter);
-  gsize end = offset < len ? offset + 1 : offset;
-  const Node *node = editor_find_node_for_offsets (self, offset, end);
+  const Node *node = editor_find_sdt_node (self, offset);
   while (node && node->sd_type != SDT_FUNCTION_DEF && node->sd_type != SDT_FUNCTION_USE)
     node = node->parent;
   if (!node)
@@ -337,8 +328,7 @@ editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
 
 static gboolean find_parent_range (GtkTextBuffer *buffer, Document *document,
     gsize start, gsize end, gsize *new_start, gsize *new_end);
-static gchar *editor_build_function_tooltip_markup (Editor *self, gsize offset,
-    gsize end);
+static gchar *editor_build_function_tooltip_markup (Editor *self, gsize offset);
 
 gboolean
 editor_get_toplevel_range (Editor *self, gsize offset,
@@ -384,21 +374,16 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   g_return_val_if_fail (self != NULL, FALSE);
   g_return_val_if_fail (self->document != NULL, FALSE);
   g_return_val_if_fail (self->project != NULL, FALSE);
-  GtkTextBuffer *buffer = gtk_text_view_get_buffer (GTK_TEXT_VIEW (widget));
   GtkTextIter iter;
   gint bx;
   gint by;
   gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (widget), GTK_TEXT_WINDOW_WIDGET, x, y, &bx, &by);
   gtk_text_view_get_iter_at_location (GTK_TEXT_VIEW (widget), &iter, bx, by);
-  GtkTextIter end_iter;
-  gtk_text_buffer_get_end_iter (buffer, &end_iter);
-  gsize len = gtk_text_iter_get_offset (&end_iter);
   gsize offset = gtk_text_iter_get_offset (&iter);
-  gsize end = offset < len ? offset + 1 : offset;
-  LOG (2, "Editor.on_query_tooltip offset=%zu end=%zu len=%zu", offset, end, len);
+  LOG (2, "Editor.on_query_tooltip offset=%zu", offset);
 
   gchar *error_markup = editor_build_error_tooltip_markup (self, offset);
-  gchar *function_markup = editor_build_function_tooltip_markup (self, offset, end);
+  gchar *function_markup = editor_build_function_tooltip_markup (self, offset);
   gboolean shown = FALSE;
 
   if (!self->tooltip_window) {
@@ -421,9 +406,9 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
 }
 
 static gchar *
-editor_build_function_tooltip_markup (Editor *self, gsize offset, gsize end)
+editor_build_function_tooltip_markup (Editor *self, gsize offset)
 {
-  const Node *node = editor_find_node_for_offsets (self, offset, end);
+  const Node *node = editor_find_sdt_node (self, offset);
   if (!node) {
     LOG (2, "Editor.build_function_tooltip_markup: no node");
     return NULL;
