@@ -1,6 +1,18 @@
 #include "node.h"
 #include <string.h>
 
+static gboolean node_sdt_rule_contains_offset(const Node *node, gsize offset) {
+  gsize start = node_get_start_offset(node);
+  gsize end = node_get_end_offset(node);
+  if (offset < start)
+    return FALSE;
+  if (offset <= end)
+    return TRUE;
+  if (end == G_MAXSIZE)
+    return FALSE;
+  return offset == end + 1;
+}
+
 void node_set_sd_type(Node *node, StringDesignatorType sd_type, const gchar *package_context) {
   if (!node) return;
   node->sd_type = sd_type;
@@ -93,6 +105,25 @@ const Node *node_find_containing_range(const Node *node, gsize start, gsize end)
     }
   }
   return node;
+}
+
+const Node *node_find_sdt_containing_offset(const Node *node, gsize offset) {
+  g_return_val_if_fail(node, NULL);
+  if (!node_sdt_rule_contains_offset(node, offset))
+    return NULL;
+  if (node->children) {
+    for (guint i = 0; i < node->children->len; i++) {
+      const Node *child = g_array_index(node->children, Node*, i);
+      if (!node_sdt_rule_contains_offset(child, offset))
+        continue;
+      const Node *found = node_find_sdt_containing_offset(child, offset);
+      if (found)
+        return found;
+    }
+  }
+  if (node->sd_type != SDT_NONE)
+    return node;
+  return NULL;
 }
 
 const gchar *node_sd_type_to_string(StringDesignatorType sd_type) {
