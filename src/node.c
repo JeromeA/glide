@@ -4,13 +4,7 @@
 static gboolean node_sdt_rule_contains_offset(const Node *node, gsize offset) {
   gsize start = node_get_start_offset(node);
   gsize end = node_get_end_offset(node);
-  if (offset < start)
-    return FALSE;
-  if (offset <= end)
-    return TRUE;
-  if (end == G_MAXSIZE)
-    return FALSE;
-  return offset == end + 1;
+  return offset >= start && offset <= end;
 }
 
 void node_set_sd_type(Node *node, StringDesignatorType sd_type, const gchar *package_context) {
