@@ -37,4 +37,4 @@
 - Don't forget to run "make" in src/ as part of your testing.
 - Don't forget to run "make run" in tests/ as part of your testing.
 - Convert any code wrapped at 80 characters, use 120 instead.
-
+- if(!something) return; should almost always be a g_return_val_if_fail() or g_return_if_fail(), always check.
