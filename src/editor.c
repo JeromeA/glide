@@ -30,6 +30,8 @@ G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
 static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
     gboolean /*keyboard_mode*/, GtkTooltip * /*tooltip*/, gpointer user_data);
+static gboolean editor_on_button_press_event (GtkWidget *widget,
+    GdkEventButton *event, gpointer user_data);
 static void editor_update_function_highlight (Editor *self);
 static const Node *editor_find_sdt_node (Editor *self, gsize offset);
 static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
@@ -42,6 +44,32 @@ static void editor_highlight_node (Editor *self, const Node *node,
 static gchar *editor_build_error_tooltip_markup (Editor *self, gsize offset);
 static void editor_clear_errors(Editor *self);
 static void editor_update_document_from_buffer(Editor *self);
+
+static gboolean
+editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
+    gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
+
+  if (!event || event->type != GDK_BUTTON_PRESS || event->button != 1)
+    return FALSE;
+
+  if ((event->state & GDK_CONTROL_MASK) == 0)
+    return FALSE;
+
+  GtkWidget *toplevel = gtk_widget_get_toplevel (widget);
+  if (!gtk_widget_is_toplevel (toplevel))
+    return FALSE;
+
+  GtkApplication *app = gtk_window_get_application (GTK_WINDOW (toplevel));
+  if (!app)
+    return FALSE;
+
+  g_action_group_activate_action (G_ACTION_GROUP (app), "goto-definition",
+      NULL);
+  return TRUE;
+}
 
 static void
 editor_init (Editor *self)
@@ -58,6 +86,9 @@ editor_init (Editor *self)
   gtk_container_add (GTK_CONTAINER (self), GTK_WIDGET (self->view));
   gtk_widget_set_has_tooltip (GTK_WIDGET (self->view), TRUE);
   g_signal_connect (self->view, "query-tooltip", G_CALLBACK (editor_on_query_tooltip), self);
+  gtk_widget_add_events (GTK_WIDGET (self->view), GDK_BUTTON_PRESS_MASK);
+  g_signal_connect (self->view, "button-press-event",
+      G_CALLBACK (editor_on_button_press_event), self);
 
   self->project = NULL;
   self->document = NULL;
