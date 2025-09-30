@@ -489,3 +489,11 @@ Loading another project cleared the index but never asked the REPL to describe
 standard symbols were missing afterwards. Package bootstrap now happens inside
 `project_clear()`, ensuring both startup and later project loads request
 `COMMON-LISP` and `COMMON-LISP-USER` from the REPL.
+
+## Ctrl-click goto definition used caret location
+
+Ctrl-clicking a symbol ran goto definition using the caret position instead of the
+clicked location, so jumping from elsewhere in the buffer always followed the
+caret. The button handler now translates the click coordinates into a buffer
+offset and places the cursor there before invoking goto definition, ensuring the
+navigation matches the click target.

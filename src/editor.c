@@ -58,6 +58,10 @@ editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
   if ((event->state & GDK_CONTROL_MASK) == 0)
     return FALSE;
 
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(widget));
+  if (!buffer)
+    return FALSE;
+
   GtkWidget *toplevel = gtk_widget_get_toplevel (widget);
   if (!gtk_widget_is_toplevel (toplevel))
     return FALSE;
@@ -65,6 +69,21 @@ editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
   GtkApplication *app = gtk_window_get_application (GTK_WINDOW (toplevel));
   if (!app)
     return FALSE;
+
+  gtk_widget_grab_focus (widget);
+
+  GtkTextWindowType window_type = event->window
+      ? gtk_text_view_get_window_type (GTK_TEXT_VIEW (widget), event->window)
+      : GTK_TEXT_WINDOW_WIDGET;
+  gint buffer_x = 0;
+  gint buffer_y = 0;
+  gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (widget), window_type,
+      (gint)event->x, (gint)event->y, &buffer_x, &buffer_y);
+
+  GtkTextIter iter;
+  gtk_text_view_get_iter_at_position (GTK_TEXT_VIEW (widget), &iter, NULL,
+      buffer_x, buffer_y);
+  gtk_text_buffer_place_cursor (buffer, &iter);
 
   g_action_group_activate_action (G_ACTION_GROUP (app), "goto-definition",
       NULL);
