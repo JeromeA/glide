@@ -36,6 +36,10 @@ menu_bar_new(App *self)
   g_menu_append(edit_menu, "Shrink selection", "app.shrink-selection");
   g_menu_append_submenu(menu_bar, "Edit", G_MENU_MODEL(edit_menu));
 
+  GMenu *navigate_menu = g_menu_new();
+  g_menu_append(navigate_menu, "Definition", "app.goto-definition");
+  g_menu_append_submenu(menu_bar, "Navigate", G_MENU_MODEL(navigate_menu));
+
   GMenu *refactor_menu = g_menu_new();
   g_menu_append(refactor_menu, "Rename file", "app.file-rename");
   g_menu_append(refactor_menu, "Delete file", "app.file-delete");
@@ -46,10 +50,6 @@ menu_bar_new(App *self)
   g_menu_append(run_menu, "Eval selection", "app.eval-selection");
   g_menu_append_submenu(menu_bar, "Run", G_MENU_MODEL(run_menu));
 
-  GMenu *navigate_menu = g_menu_new();
-  g_menu_append(navigate_menu, "Definition", "app.goto-definition");
-  g_menu_append_submenu(menu_bar, "Navigate", G_MENU_MODEL(navigate_menu));
-
   GtkWidget *widget = gtk_menu_bar_new_from_model(G_MENU_MODEL(menu_bar));
   g_object_unref(menu_bar);
   g_object_unref(file_menu);
@@ -58,8 +58,8 @@ menu_bar_new(App *self)
   g_object_unref(settings_menu);
   g_object_unref(exit_menu);
   g_object_unref(edit_menu);
-  g_object_unref(refactor_menu);
   g_object_unref(run_menu);
+  g_object_unref(refactor_menu);
   g_object_unref(navigate_menu);
 
   return widget;
