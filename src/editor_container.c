@@ -74,6 +74,22 @@ editor_container_clear(EditorContainer *self)
     gtk_notebook_remove_page(GTK_NOTEBOOK(self), 0);
 }
 
+void
+editor_container_focus_editor(EditorContainer *self, Editor *editor)
+{
+  g_return_if_fail(EDITOR_IS_CONTAINER(self));
+  g_return_if_fail(GLIDE_IS_EDITOR(editor));
+
+  gint pages = gtk_notebook_get_n_pages(GTK_NOTEBOOK(self));
+  for (gint i = 0; i < pages; i++) {
+    GtkWidget *page = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), i);
+    if (page == GTK_WIDGET(editor)) {
+      gtk_notebook_set_current_page(GTK_NOTEBOOK(self), i);
+      return;
+    }
+  }
+}
+
 Editor *
 editor_container_get_current_editor(EditorContainer *self)
 {
