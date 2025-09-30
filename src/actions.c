@@ -12,11 +12,13 @@
 #include "document.h"
 #include "editor_container.h"
 #include "editor.h"
+#include "node.h"
 #include "util.h"
 
 static gboolean app_maybe_save_all(App *self);
 static void show_parser(App *self);
 static void show_editor_tooltip(App *self);
+static void goto_definition(GSimpleAction *action, GVariant *param, gpointer data);
 
 /* === Action callbacks ==================================================== */
 
@@ -123,6 +125,99 @@ show_tooltip_action(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer d
 }
 
 static void
+goto_definition(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
+{
+  App *self = data;
+  LOG(1, "Actions.goto_definition");
+  g_return_if_fail(GLIDE_IS_APP(self));
+
+  Editor *editor = app_get_editor(self);
+  if (!editor) {
+    LOG(1, "Actions.goto_definition: no active editor");
+    return;
+  }
+
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(editor_get_buffer(editor));
+  g_return_if_fail(buffer != NULL);
+
+  GtkTextIter iter;
+  gtk_text_buffer_get_iter_at_mark(buffer, &iter, gtk_text_buffer_get_insert(buffer));
+  gsize offset = gtk_text_iter_get_offset(&iter);
+
+  Document *document = editor_get_document(editor);
+  g_return_if_fail(document != NULL);
+
+  const Node *ast = document_get_ast(document);
+  g_return_if_fail(ast != NULL);
+
+  const Node *node = node_find_sdt_containing_offset(ast, offset);
+  while (node && node->sd_type != SDT_FUNCTION_USE)
+    node = node->parent;
+  if (!node) {
+    LOG(1, "Actions.goto_definition: no function use at caret");
+    return;
+  }
+
+  const gchar *name = node_get_name(node);
+  if (!name) {
+    LOG(1, "Actions.goto_definition: unnamed node");
+    return;
+  }
+
+  Project *project = app_get_project(self);
+  g_return_if_fail(project != NULL);
+
+  GHashTable *def_table = project_get_index(project, SDT_FUNCTION_DEF);
+  GPtrArray *defs = def_table ? g_hash_table_lookup(def_table, name) : NULL;
+  if (!defs || defs->len == 0) {
+    LOG(1, "Actions.goto_definition: no definitions for %s", name);
+    return;
+  }
+
+  Node *target = NULL;
+  for (guint i = 0; i < defs->len && !target; i++)
+    target = g_ptr_array_index(defs, i);
+  if (!target) {
+    LOG(1, "Actions.goto_definition: null definition node");
+    return;
+  }
+
+  Document *target_document = target->document;
+  if (!target_document) {
+    LOG(1, "Actions.goto_definition: definition without document");
+    return;
+  }
+
+  EditorManager *manager = app_get_editor_manager(self);
+  Editor *target_editor = manager ? editor_manager_get_editor(manager, target_document) : NULL;
+  if (!target_editor) {
+    LOG(1, "Actions.goto_definition: no editor for definition");
+    return;
+  }
+
+  EditorContainer *container = app_get_editor_container(self);
+  g_return_if_fail(container != NULL);
+
+  editor_container_focus_editor(container, target_editor);
+
+  GtkTextBuffer *target_buffer = GTK_TEXT_BUFFER(editor_get_buffer(target_editor));
+  if (!target_buffer) {
+    LOG(1, "Actions.goto_definition: missing target buffer");
+    return;
+  }
+
+  const Node *symbol = node_get_symbol_name_node_const(target);
+  const Node *jump_node = symbol ? symbol : target;
+  gsize start_offset = node_get_start_offset(jump_node);
+  GtkTextIter def_iter;
+  gtk_text_buffer_get_iter_at_offset(target_buffer, &def_iter, (gint)start_offset);
+  gtk_text_buffer_place_cursor(target_buffer, &def_iter);
+  GtkWidget *view = editor_get_view(target_editor);
+  gtk_text_view_scroll_to_iter(GTK_TEXT_VIEW(view), &def_iter, 0.25, FALSE, 0, 0);
+  gtk_widget_grab_focus(view);
+}
+
+static void
 eval_toplevel(GSimpleAction * /*action*/, GVariant * /*param*/, gpointer data)
 {
   on_evaluate_toplevel(NULL, data);
@@ -168,6 +263,7 @@ static const GActionEntry app_entries[] = {
   { .name = "file-delete", .activate = delete_file },
   { .name = "show-parser", .activate = show_parser_action },
   { .name = "show-tooltip", .activate = show_tooltip_action },
+  { .name = "goto-definition", .activate = goto_definition },
   { .name = "eval-toplevel", .activate = eval_toplevel },
   { .name = "eval-selection", .activate = eval_selection },
   { .name = "eval", .activate = eval_current },
@@ -199,6 +295,9 @@ actions_init(App *self)
   const gchar *rename_accels[] = {"<Shift>F6", NULL};
   gtk_application_set_accels_for_action(GTK_APPLICATION(self),
       "app.file-rename", rename_accels);
+  const gchar *goto_definition_accels[] = {"<Primary>b", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.goto-definition", goto_definition_accels);
   const gchar *quit_accels[] = {"<Primary>q", NULL};
   gtk_application_set_accels_for_action(GTK_APPLICATION(self),
       "app.quit", quit_accels);
