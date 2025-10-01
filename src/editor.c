@@ -26,6 +26,8 @@ struct _Editor
   gboolean ctrl_hover_active;
   gsize ctrl_hover_start;
   gsize ctrl_hover_end;
+  GdkCursor *ctrl_hover_cursor;
+  GdkWindow *ctrl_hover_window;
 };
 
 G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
@@ -55,6 +57,8 @@ static void editor_update_document_from_buffer(Editor *self);
 static void editor_clear_ctrl_hover (Editor *self);
 static void editor_update_ctrl_hover (Editor *self, GtkWidget *widget,
     GdkWindow *window, gdouble x, gdouble y, gboolean ctrl_down);
+static void editor_set_ctrl_hover_cursor (Editor *self, GtkWidget *widget,
+    GdkWindow *window);
 
 static gboolean
 editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
@@ -170,6 +174,8 @@ editor_init (Editor *self)
   self->ctrl_hover_active = FALSE;
   self->ctrl_hover_start = 0;
   self->ctrl_hover_end = 0;
+  self->ctrl_hover_cursor = NULL;
+  self->ctrl_hover_window = NULL;
   g_signal_connect (buffer, "mark-set", G_CALLBACK (editor_on_mark_set), self);
 }
 
@@ -212,6 +218,8 @@ editor_dispose (GObject *object)
     self->selection_stack = NULL;
   }
   self->ctrl_hover_active = FALSE;
+  g_clear_object (&self->ctrl_hover_cursor);
+  g_clear_object (&self->ctrl_hover_window);
   g_clear_object (&self->tooltip_window);
 
   G_OBJECT_CLASS (editor_parent_class)->dispose (object);
@@ -331,6 +339,9 @@ editor_clear_ctrl_hover (Editor *self)
   gtk_text_buffer_get_iter_at_offset (buffer, &start, (gint) self->ctrl_hover_start);
   gtk_text_buffer_get_iter_at_offset (buffer, &end, (gint) self->ctrl_hover_end);
   gtk_text_buffer_remove_tag (buffer, self->ctrl_hover_tag, &start, &end);
+  if (self->ctrl_hover_window)
+    gdk_window_set_cursor (self->ctrl_hover_window, NULL);
+  g_clear_object (&self->ctrl_hover_window);
   self->ctrl_hover_active = FALSE;
   self->ctrl_hover_start = 0;
   self->ctrl_hover_end = 0;
@@ -396,9 +407,45 @@ editor_update_ctrl_hover (Editor *self, GtkWidget *widget, GdkWindow *window,
 
   editor_clear_ctrl_hover (self);
   gtk_text_buffer_apply_tag (buffer, self->ctrl_hover_tag, &it_start, &it_end);
+  editor_set_ctrl_hover_cursor (self, widget, window);
   self->ctrl_hover_active = TRUE;
   self->ctrl_hover_start = start;
   self->ctrl_hover_end = end;
+}
+
+static void
+editor_set_ctrl_hover_cursor (Editor *self, GtkWidget *widget, GdkWindow *window)
+{
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+
+  if (!widget)
+    return;
+
+  GdkWindow *target = NULL;
+  if (window)
+    target = window;
+  if (!target)
+    target = gtk_widget_get_window (widget);
+  if (!target)
+    return;
+
+  if (!self->ctrl_hover_cursor) {
+    GdkDisplay *display = gdk_window_get_display (target);
+    self->ctrl_hover_cursor = gdk_cursor_new_for_display (display, GDK_HAND2);
+  }
+
+  if (!self->ctrl_hover_cursor)
+    return;
+
+  if (self->ctrl_hover_window != target) {
+    if (self->ctrl_hover_window)
+      gdk_window_set_cursor (self->ctrl_hover_window, NULL);
+    g_clear_object (&self->ctrl_hover_window);
+    g_object_ref (target);
+    self->ctrl_hover_window = target;
+  }
+
+  gdk_window_set_cursor (target, self->ctrl_hover_cursor);
 }
 
 static void
