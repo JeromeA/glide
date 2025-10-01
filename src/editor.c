@@ -165,7 +165,7 @@ editor_init (Editor *self)
   self->error_tag = gtk_text_buffer_create_tag(buffer,
       "error-highlight", "underline", PANGO_UNDERLINE_ERROR, NULL);
   self->ctrl_hover_tag = gtk_text_buffer_create_tag (buffer,
-      "function-ctrl-hover", "underline", PANGO_UNDERLINE_SINGLE,
+      "function-ctrl-hover", "underline", PANGO_UNDERLINE_LOW,
       "foreground", "#06c", NULL);
   self->ctrl_hover_active = FALSE;
   self->ctrl_hover_start = 0;
