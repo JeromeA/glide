@@ -286,6 +286,9 @@ actions_init(App *self)
   const gchar *tooltip_accels[] = {"<Alt>t", NULL};
   gtk_application_set_accels_for_action(GTK_APPLICATION(self),
       "app.show-tooltip", tooltip_accels);
+  const gchar *save_all_accels[] = {"<Primary>s", NULL};
+  gtk_application_set_accels_for_action(GTK_APPLICATION(self),
+      "app.save-all", save_all_accels);
   const gchar *shrink_accels[] = {"<Primary><Shift>w", NULL};
   gtk_application_set_accels_for_action(GTK_APPLICATION(self),
       "app.shrink-selection", shrink_accels);
