@@ -40,10 +40,6 @@ static gboolean editor_on_motion_notify_event (GtkWidget *widget,
     GdkEventMotion *event, gpointer user_data);
 static gboolean editor_on_leave_notify_event (GtkWidget *widget,
     GdkEventCrossing *event, gpointer user_data);
-static gboolean editor_on_key_press_event (GtkWidget *widget, GdkEventKey *event,
-    gpointer user_data);
-static gboolean editor_on_key_release_event (GtkWidget *widget,
-    GdkEventKey *event, gpointer user_data);
 static void editor_update_function_highlight (Editor *self);
 static const Node *editor_find_sdt_node (Editor *self, gsize offset);
 static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
@@ -59,7 +55,6 @@ static void editor_update_document_from_buffer(Editor *self);
 static void editor_clear_ctrl_hover (Editor *self);
 static void editor_update_ctrl_hover (Editor *self, GtkWidget *widget,
     GdkWindow *window, gdouble x, gdouble y, gboolean ctrl_down);
-static void editor_update_ctrl_hover_from_pointer (Editor *self);
 
 static gboolean
 editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
@@ -130,26 +125,6 @@ editor_on_leave_notify_event (GtkWidget * /*widget*/, GdkEventCrossing * /*event
   return FALSE;
 }
 
-static gboolean
-editor_on_key_press_event (GtkWidget * /*widget*/, GdkEventKey * /*event*/,
-    gpointer user_data)
-{
-  Editor *self = GLIDE_EDITOR (user_data);
-  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
-  editor_update_ctrl_hover_from_pointer (self);
-  return FALSE;
-}
-
-static gboolean
-editor_on_key_release_event (GtkWidget * /*widget*/, GdkEventKey * /*event*/,
-    gpointer user_data)
-{
-  Editor *self = GLIDE_EDITOR (user_data);
-  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
-  editor_update_ctrl_hover_from_pointer (self);
-  return FALSE;
-}
-
 static void
 editor_init (Editor *self)
 {
@@ -173,11 +148,6 @@ editor_init (Editor *self)
       G_CALLBACK (editor_on_motion_notify_event), self);
   g_signal_connect (self->view, "leave-notify-event",
       G_CALLBACK (editor_on_leave_notify_event), self);
-  g_signal_connect (self->view, "key-press-event",
-      G_CALLBACK (editor_on_key_press_event), self);
-  g_signal_connect (self->view, "key-release-event",
-      G_CALLBACK (editor_on_key_release_event), self);
-
   self->project = NULL;
   self->document = NULL;
   self->selection_stack = g_array_new (FALSE, FALSE, sizeof (SelectionRange));
@@ -429,54 +399,6 @@ editor_update_ctrl_hover (Editor *self, GtkWidget *widget, GdkWindow *window,
   self->ctrl_hover_active = TRUE;
   self->ctrl_hover_start = start;
   self->ctrl_hover_end = end;
-}
-
-static void
-editor_update_ctrl_hover_from_pointer (Editor *self)
-{
-  g_return_if_fail (GLIDE_IS_EDITOR (self));
-
-  GtkWidget *widget = self->view ? GTK_WIDGET (self->view) : NULL;
-  if (!widget) {
-    editor_clear_ctrl_hover (self);
-    return;
-  }
-
-  if (!gtk_widget_get_realized (widget)) {
-    editor_clear_ctrl_hover (self);
-    return;
-  }
-
-  GdkWindow *window = gtk_widget_get_window (widget);
-  if (!window) {
-    editor_clear_ctrl_hover (self);
-    return;
-  }
-
-  GdkDisplay *display = gtk_widget_get_display (widget);
-  if (!display) {
-    editor_clear_ctrl_hover (self);
-    return;
-  }
-
-  GdkSeat *seat = gdk_display_get_default_seat (display);
-  if (!seat) {
-    editor_clear_ctrl_hover (self);
-    return;
-  }
-
-  GdkDevice *pointer = gdk_seat_get_pointer (seat);
-  if (!pointer) {
-    editor_clear_ctrl_hover (self);
-    return;
-  }
-
-  gint x = 0;
-  gint y = 0;
-  GdkModifierType state = 0;
-  gdk_window_get_device_position (window, pointer, &x, &y, &state);
-
-  editor_update_ctrl_hover (self, widget, window, x, y, (state & GDK_CONTROL_MASK) != 0);
 }
 
 static void
