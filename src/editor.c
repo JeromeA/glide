@@ -21,7 +21,11 @@ struct _Editor
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
   GtkTextTag *error_tag;
+  GtkTextTag *ctrl_hover_tag;
   EditorTooltipWindow *tooltip_window;
+  gboolean ctrl_hover_active;
+  gsize ctrl_hover_start;
+  gsize ctrl_hover_end;
 };
 
 G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
@@ -32,6 +36,14 @@ static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
     gboolean /*keyboard_mode*/, GtkTooltip * /*tooltip*/, gpointer user_data);
 static gboolean editor_on_button_press_event (GtkWidget *widget,
     GdkEventButton *event, gpointer user_data);
+static gboolean editor_on_motion_notify_event (GtkWidget *widget,
+    GdkEventMotion *event, gpointer user_data);
+static gboolean editor_on_leave_notify_event (GtkWidget *widget,
+    GdkEventCrossing *event, gpointer user_data);
+static gboolean editor_on_key_press_event (GtkWidget *widget, GdkEventKey *event,
+    gpointer user_data);
+static gboolean editor_on_key_release_event (GtkWidget *widget,
+    GdkEventKey *event, gpointer user_data);
 static void editor_update_function_highlight (Editor *self);
 static const Node *editor_find_sdt_node (Editor *self, gsize offset);
 static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/,
@@ -44,6 +56,10 @@ static void editor_highlight_node (Editor *self, const Node *node,
 static gchar *editor_build_error_tooltip_markup (Editor *self, gsize offset);
 static void editor_clear_errors(Editor *self);
 static void editor_update_document_from_buffer(Editor *self);
+static void editor_clear_ctrl_hover (Editor *self);
+static void editor_update_ctrl_hover (Editor *self, GtkWidget *widget,
+    GdkWindow *window, gdouble x, gdouble y, gboolean ctrl_down);
+static void editor_update_ctrl_hover_from_pointer (Editor *self);
 
 static gboolean
 editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
@@ -90,6 +106,50 @@ editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
   return TRUE;
 }
 
+static gboolean
+editor_on_motion_notify_event (GtkWidget *widget, GdkEventMotion *event,
+    gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
+  g_return_val_if_fail (event != NULL, FALSE);
+
+  gboolean ctrl_down = (event->state & GDK_CONTROL_MASK) != 0;
+  editor_update_ctrl_hover (self, widget, event->window, event->x, event->y,
+      ctrl_down);
+  return FALSE;
+}
+
+static gboolean
+editor_on_leave_notify_event (GtkWidget * /*widget*/, GdkEventCrossing * /*event*/,
+    gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
+  editor_clear_ctrl_hover (self);
+  return FALSE;
+}
+
+static gboolean
+editor_on_key_press_event (GtkWidget * /*widget*/, GdkEventKey * /*event*/,
+    gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
+  editor_update_ctrl_hover_from_pointer (self);
+  return FALSE;
+}
+
+static gboolean
+editor_on_key_release_event (GtkWidget * /*widget*/, GdkEventKey * /*event*/,
+    gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
+  editor_update_ctrl_hover_from_pointer (self);
+  return FALSE;
+}
+
 static void
 editor_init (Editor *self)
 {
@@ -105,9 +165,18 @@ editor_init (Editor *self)
   gtk_container_add (GTK_CONTAINER (self), GTK_WIDGET (self->view));
   gtk_widget_set_has_tooltip (GTK_WIDGET (self->view), TRUE);
   g_signal_connect (self->view, "query-tooltip", G_CALLBACK (editor_on_query_tooltip), self);
-  gtk_widget_add_events (GTK_WIDGET (self->view), GDK_BUTTON_PRESS_MASK);
+  gtk_widget_add_events (GTK_WIDGET (self->view),
+      GDK_BUTTON_PRESS_MASK | GDK_POINTER_MOTION_MASK | GDK_LEAVE_NOTIFY_MASK);
   g_signal_connect (self->view, "button-press-event",
       G_CALLBACK (editor_on_button_press_event), self);
+  g_signal_connect (self->view, "motion-notify-event",
+      G_CALLBACK (editor_on_motion_notify_event), self);
+  g_signal_connect (self->view, "leave-notify-event",
+      G_CALLBACK (editor_on_leave_notify_event), self);
+  g_signal_connect (self->view, "key-press-event",
+      G_CALLBACK (editor_on_key_press_event), self);
+  g_signal_connect (self->view, "key-release-event",
+      G_CALLBACK (editor_on_key_release_event), self);
 
   self->project = NULL;
   self->document = NULL;
@@ -125,6 +194,12 @@ editor_init (Editor *self)
       "function-use-highlight", "background", "#eef", NULL);
   self->error_tag = gtk_text_buffer_create_tag(buffer,
       "error-highlight", "underline", PANGO_UNDERLINE_ERROR, NULL);
+  self->ctrl_hover_tag = gtk_text_buffer_create_tag (buffer,
+      "function-ctrl-hover", "underline", PANGO_UNDERLINE_SINGLE,
+      "foreground", "#06c", NULL);
+  self->ctrl_hover_active = FALSE;
+  self->ctrl_hover_start = 0;
+  self->ctrl_hover_end = 0;
   g_signal_connect (buffer, "mark-set", G_CALLBACK (editor_on_mark_set), self);
 }
 
@@ -159,12 +234,14 @@ editor_dispose (GObject *object)
   self->function_def_tag = NULL;
   self->function_use_tag = NULL;
   self->error_tag = NULL;
+  self->ctrl_hover_tag = NULL;
   g_clear_object (&self->buffer);
   self->view = NULL;
   if (self->selection_stack) {
     g_array_free (self->selection_stack, TRUE);
     self->selection_stack = NULL;
   }
+  self->ctrl_hover_active = FALSE;
   g_clear_object (&self->tooltip_window);
 
   G_OBJECT_CLASS (editor_parent_class)->dispose (object);
@@ -256,6 +333,8 @@ editor_update_document_from_buffer(Editor *self)
   g_return_if_fail(GLIDE_IS_EDITOR(self));
   g_return_if_fail(self->buffer != NULL);
 
+  editor_clear_ctrl_hover (self);
+
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   GtkTextIter start;
   GtkTextIter end;
@@ -265,6 +344,139 @@ editor_update_document_from_buffer(Editor *self)
   GString *content = g_string_new(text ? text : "");
   g_free(text);
   document_set_content(self->document, content);
+}
+
+static void
+editor_clear_ctrl_hover (Editor *self)
+{
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+  g_return_if_fail (self->buffer != NULL);
+
+  if (!self->ctrl_hover_active || !self->ctrl_hover_tag)
+    return;
+
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  GtkTextIter start;
+  GtkTextIter end;
+  gtk_text_buffer_get_iter_at_offset (buffer, &start, (gint) self->ctrl_hover_start);
+  gtk_text_buffer_get_iter_at_offset (buffer, &end, (gint) self->ctrl_hover_end);
+  gtk_text_buffer_remove_tag (buffer, self->ctrl_hover_tag, &start, &end);
+  self->ctrl_hover_active = FALSE;
+  self->ctrl_hover_start = 0;
+  self->ctrl_hover_end = 0;
+}
+
+static void
+editor_update_ctrl_hover (Editor *self, GtkWidget *widget, GdkWindow *window,
+    gdouble x, gdouble y, gboolean ctrl_down)
+{
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+  g_return_if_fail (self->buffer != NULL);
+
+  if (!ctrl_down) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  if (!self->ctrl_hover_tag || !widget)
+    return;
+
+  GtkTextView *view = GTK_TEXT_VIEW (widget);
+  GtkTextWindowType window_type =
+      window ? gtk_text_view_get_window_type (view, window) : GTK_TEXT_WINDOW_WIDGET;
+
+  if (window_type != GTK_TEXT_WINDOW_TEXT && window_type != GTK_TEXT_WINDOW_WIDGET) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  gint buffer_x = 0;
+  gint buffer_y = 0;
+  gtk_text_view_window_to_buffer_coords (view, window_type, (gint) x, (gint) y, &buffer_x, &buffer_y);
+
+  GtkTextIter iter;
+  gtk_text_view_get_iter_at_position (view, &iter, NULL, buffer_x, buffer_y);
+  gsize offset = gtk_text_iter_get_offset (&iter);
+  const Node *node = editor_find_sdt_node (self, offset);
+
+  if (!node || node->sd_type != SDT_FUNCTION_USE || node->document != self->document) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  const Node *highlight = node_get_symbol_name_node_const (node);
+  if (!highlight)
+    highlight = node;
+
+  gsize start = node_get_start_offset (highlight);
+  gsize end = node_get_end_offset (highlight);
+  if (end <= start) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  if (self->ctrl_hover_active && self->ctrl_hover_start == start && self->ctrl_hover_end == end)
+    return;
+
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
+  GtkTextIter it_start;
+  GtkTextIter it_end;
+  gtk_text_buffer_get_iter_at_offset (buffer, &it_start, (gint) start);
+  gtk_text_buffer_get_iter_at_offset (buffer, &it_end, (gint) end);
+
+  editor_clear_ctrl_hover (self);
+  gtk_text_buffer_apply_tag (buffer, self->ctrl_hover_tag, &it_start, &it_end);
+  self->ctrl_hover_active = TRUE;
+  self->ctrl_hover_start = start;
+  self->ctrl_hover_end = end;
+}
+
+static void
+editor_update_ctrl_hover_from_pointer (Editor *self)
+{
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+
+  GtkWidget *widget = self->view ? GTK_WIDGET (self->view) : NULL;
+  if (!widget) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  if (!gtk_widget_get_realized (widget)) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  GdkWindow *window = gtk_widget_get_window (widget);
+  if (!window) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  GdkDisplay *display = gtk_widget_get_display (widget);
+  if (!display) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  GdkSeat *seat = gdk_display_get_default_seat (display);
+  if (!seat) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  GdkDevice *pointer = gdk_seat_get_pointer (seat);
+  if (!pointer) {
+    editor_clear_ctrl_hover (self);
+    return;
+  }
+
+  gint x = 0;
+  gint y = 0;
+  GdkModifierType state = 0;
+  gdk_window_get_device_position (window, pointer, &x, &y, &state);
+
+  editor_update_ctrl_hover (self, widget, window, x, y, (state & GDK_CONTROL_MASK) != 0);
 }
 
 static void
