@@ -112,8 +112,7 @@ editor_on_motion_notify_event (GtkWidget *widget, GdkEventMotion *event,
 {
   Editor *self = GLIDE_EDITOR (user_data);
   g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
-  if (!event)
-    return FALSE;
+  g_return_val_if_fail (event != NULL, FALSE);
 
   gboolean ctrl_down = (event->state & GDK_CONTROL_MASK) != 0;
   editor_update_ctrl_hover (self, widget, event->window, event->x, event->y,
@@ -350,16 +349,17 @@ editor_update_document_from_buffer(Editor *self)
 static void
 editor_clear_ctrl_hover (Editor *self)
 {
-  if (!self || !self->ctrl_hover_active || !self->buffer || !self->ctrl_hover_tag)
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+  g_return_if_fail (self->buffer != NULL);
+
+  if (!self->ctrl_hover_active || !self->ctrl_hover_tag)
     return;
 
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
   GtkTextIter start;
   GtkTextIter end;
-  gtk_text_buffer_get_iter_at_offset (buffer, &start,
-      (gint) self->ctrl_hover_start);
-  gtk_text_buffer_get_iter_at_offset (buffer, &end,
-      (gint) self->ctrl_hover_end);
+  gtk_text_buffer_get_iter_at_offset (buffer, &start, (gint) self->ctrl_hover_start);
+  gtk_text_buffer_get_iter_at_offset (buffer, &end, (gint) self->ctrl_hover_end);
   gtk_text_buffer_remove_tag (buffer, self->ctrl_hover_tag, &start, &end);
   self->ctrl_hover_active = FALSE;
   self->ctrl_hover_start = 0;
@@ -371,19 +371,19 @@ editor_update_ctrl_hover (Editor *self, GtkWidget *widget, GdkWindow *window,
     gdouble x, gdouble y, gboolean ctrl_down)
 {
   g_return_if_fail (GLIDE_IS_EDITOR (self));
+  g_return_if_fail (self->buffer != NULL);
 
   if (!ctrl_down) {
     editor_clear_ctrl_hover (self);
     return;
   }
 
-  if (!self->buffer || !self->ctrl_hover_tag || !widget)
+  if (!self->ctrl_hover_tag || !widget)
     return;
 
   GtkTextView *view = GTK_TEXT_VIEW (widget);
-  GtkTextWindowType window_type = window
-      ? gtk_text_view_get_window_type (view, window)
-      : GTK_TEXT_WINDOW_WIDGET;
+  GtkTextWindowType window_type =
+      window ? gtk_text_view_get_window_type (view, window) : GTK_TEXT_WINDOW_WIDGET;
 
   if (window_type != GTK_TEXT_WINDOW_TEXT && window_type != GTK_TEXT_WINDOW_WIDGET) {
     editor_clear_ctrl_hover (self);
@@ -392,18 +392,14 @@ editor_update_ctrl_hover (Editor *self, GtkWidget *widget, GdkWindow *window,
 
   gint buffer_x = 0;
   gint buffer_y = 0;
-  gtk_text_view_window_to_buffer_coords (view, window_type, (gint) x, (gint) y,
-      &buffer_x, &buffer_y);
+  gtk_text_view_window_to_buffer_coords (view, window_type, (gint) x, (gint) y, &buffer_x, &buffer_y);
 
   GtkTextIter iter;
   gtk_text_view_get_iter_at_position (view, &iter, NULL, buffer_x, buffer_y);
   gsize offset = gtk_text_iter_get_offset (&iter);
   const Node *node = editor_find_sdt_node (self, offset);
 
-  while (node && node->sd_type != SDT_FUNCTION_USE)
-    node = node->parent;
-
-  if (!node || node->document != self->document) {
+  if (!node || node->sd_type != SDT_FUNCTION_USE || node->document != self->document) {
     editor_clear_ctrl_hover (self);
     return;
   }
@@ -419,8 +415,7 @@ editor_update_ctrl_hover (Editor *self, GtkWidget *widget, GdkWindow *window,
     return;
   }
 
-  if (self->ctrl_hover_active && self->ctrl_hover_start == start
-      && self->ctrl_hover_end == end)
+  if (self->ctrl_hover_active && self->ctrl_hover_start == start && self->ctrl_hover_end == end)
     return;
 
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
@@ -481,8 +476,7 @@ editor_update_ctrl_hover_from_pointer (Editor *self)
   GdkModifierType state = 0;
   gdk_window_get_device_position (window, pointer, &x, &y, &state);
 
-  editor_update_ctrl_hover (self, widget, window, x, y,
-      (state & GDK_CONTROL_MASK) != 0);
+  editor_update_ctrl_hover (self, widget, window, x, y, (state & GDK_CONTROL_MASK) != 0);
 }
 
 static void
