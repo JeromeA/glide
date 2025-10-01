@@ -102,6 +102,7 @@ editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
 
   g_action_group_activate_action (G_ACTION_GROUP (app), "goto-definition",
       NULL);
+  editor_clear_ctrl_hover (self);
   return TRUE;
 }
 
