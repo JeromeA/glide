@@ -4,6 +4,8 @@
 #include "document.h"
 #include "util.h"
 
+static const gchar *EDITOR_TAB_LABEL_MODIFIED_CLASS = "editor-tab-modified";
+
 typedef struct {
   gsize start;
   gsize end;
@@ -28,12 +30,14 @@ struct _Editor
   gsize ctrl_hover_end;
   GdkCursor *ctrl_hover_cursor;
   GdkWindow *ctrl_hover_window;
+  GtkWidget *tab_label;
 };
 
 G_DEFINE_TYPE (Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
 
 // Forward declaration for the callback
 static void on_buffer_changed (GtkTextBuffer *buffer, gpointer user_data);
+static void editor_on_buffer_modified_changed (GtkTextBuffer *buffer, gpointer user_data);
 static gboolean editor_on_query_tooltip (GtkWidget *widget, gint x, gint y,
     gboolean /*keyboard_mode*/, GtkTooltip * /*tooltip*/, gpointer user_data);
 static gboolean editor_on_button_press_event (GtkWidget *widget,
@@ -59,6 +63,8 @@ static void editor_update_ctrl_hover (Editor *self, GtkWidget *widget,
     GdkWindow *window, gdouble x, gdouble y, gboolean ctrl_down);
 static void editor_set_ctrl_hover_cursor (Editor *self, GtkWidget *widget,
     GdkWindow *window);
+static void editor_update_tab_label (Editor *self);
+static void editor_apply_label_color (GtkWidget *label, gboolean modified);
 
 static gboolean
 editor_on_button_press_event (GtkWidget *widget, GdkEventButton *event,
@@ -177,6 +183,7 @@ editor_init (Editor *self)
   self->ctrl_hover_end = 0;
   self->ctrl_hover_cursor = NULL;
   self->ctrl_hover_window = NULL;
+  self->tab_label = NULL;
   g_signal_connect (buffer, "mark-set", G_CALLBACK (editor_on_mark_set), self);
 }
 
@@ -196,12 +203,31 @@ on_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer user_data)
 }
 
 static void
+editor_on_buffer_modified_changed (GtkTextBuffer * /*buffer*/, gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR (user_data);
+  if (!self)
+    return;
+
+  if (!self->tab_label)
+    return;
+
+  editor_update_tab_label (self);
+}
+
+static void
 editor_dispose (GObject *object)
 {
   Editor *self = GLIDE_EDITOR (object);
 
   if (self->buffer)
     g_signal_handlers_disconnect_by_data (self->buffer, self);
+
+  if (self->tab_label) {
+    editor_apply_label_color (self->tab_label, FALSE);
+    g_object_remove_weak_pointer (G_OBJECT (self->tab_label), (gpointer *) &self->tab_label);
+    self->tab_label = NULL;
+  }
 
   if (self->project) {
     project_unref (self->project);
@@ -253,6 +279,8 @@ editor_new_for_document (Project *project, Document *document)
   project_document_changed (self->project, self->document);
   gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);
+  g_signal_connect (self->buffer, "modified-changed",
+      G_CALLBACK (editor_on_buffer_modified_changed), self);
   editor_update_function_highlight (self);
   return GTK_WIDGET (self);
 }
@@ -277,6 +305,54 @@ editor_get_view (Editor *self)
 {
   g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
   return GTK_WIDGET (self->view);
+}
+
+void
+editor_set_tab_label (Editor *self, GtkWidget *label)
+{
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+
+  if (self->tab_label) {
+    editor_apply_label_color (self->tab_label, FALSE);
+    g_object_remove_weak_pointer (G_OBJECT (self->tab_label), (gpointer *) &self->tab_label);
+  }
+
+  self->tab_label = label;
+
+  if (!self->tab_label)
+    return;
+
+  g_object_add_weak_pointer (G_OBJECT (self->tab_label), (gpointer *) &self->tab_label);
+  editor_update_tab_label (self);
+}
+
+static void
+editor_update_tab_label (Editor *self)
+{
+  g_return_if_fail (GLIDE_IS_EDITOR (self));
+
+  if (!self->tab_label)
+    return;
+
+  gboolean modified = FALSE;
+  if (self->buffer)
+    modified = gtk_text_buffer_get_modified (GTK_TEXT_BUFFER (self->buffer));
+
+  editor_apply_label_color (self->tab_label, modified);
+}
+
+static void
+editor_apply_label_color (GtkWidget *label, gboolean modified)
+{
+  g_return_if_fail (GTK_IS_WIDGET (label));
+
+  GtkStyleContext *context = gtk_widget_get_style_context (label);
+  g_return_if_fail (context != NULL);
+
+  if (modified)
+    gtk_style_context_add_class (context, EDITOR_TAB_LABEL_MODIFIED_CLASS);
+  else
+    gtk_style_context_remove_class (context, EDITOR_TAB_LABEL_MODIFIED_CLASS);
 }
 
 static void

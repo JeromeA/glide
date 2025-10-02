@@ -42,6 +42,7 @@ editor_container_add_editor(EditorContainer *self, Document *document, Editor *e
   GtkWidget *view = GTK_WIDGET(editor);
   const gchar *path = document_get_relative_path(document);
   GtkWidget *label = gtk_label_new(path ? path : "untitled");
+  editor_set_tab_label(editor, label);
   gint page = gtk_notebook_append_page(GTK_NOTEBOOK(self), view, label);
   GtkWidget *page_widget = gtk_notebook_get_nth_page(GTK_NOTEBOOK(self), page);
   if (page_widget)
