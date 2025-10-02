@@ -135,7 +135,8 @@ app_startup (GApplication *app)
   gtk_css_provider_load_from_data(provider,
       // "tooltip * { color: #000; background-color: #eee; text-shadow: none; }",
       "tooltip label { color: #000; background-color: #eee; text-shadow: none; border: none } "
-      "tooltip { background-color: #eee; border: 1px solid #aaa; border-radius: 0; box-shadow: 0 0 20px -20px #aaa; }",
+      "tooltip { background-color: #eee; border: 1px solid #aaa; border-radius: 0; box-shadow: 0 0 20px -20px #aaa; } "
+      ".editor-tab-modified { color: #06c; }",
       -1, NULL);
   gtk_style_context_add_provider_for_screen(
       gdk_screen_get_default(),
