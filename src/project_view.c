@@ -28,19 +28,28 @@ struct _ProjectView {
 G_DEFINE_TYPE(ProjectView, project_view, GTK_TYPE_TREE_VIEW)
 
 static void project_view_populate_store(ProjectView *self);
-static void project_view_append_root(ProjectView *self, GtkTreeIter *root);
-static void project_view_append_source_folder(ProjectView *self, GtkTreeIter *root);
-static void project_view_append_component(ProjectView *self, GtkTreeIter *parent,
-    const GString *component);
+static void project_view_update_root(ProjectView *self);
+static gboolean project_view_find_child(ProjectView *self, GtkTreeIter *parent,
+    gint kind, const gchar *text, GtkTreeIter *child);
+static void project_view_update_source_folder(ProjectView *self,
+    GtkTreeIter *root);
+static void project_view_update_package_folder(ProjectView *self,
+    GtkTreeIter *root);
+static void project_view_update_package_members(ProjectView *self,
+    GtkTreeIter *iter, const gchar *package);
 static Document *project_view_find_component_file(ProjectView *self,
     const gchar *component);
-static void project_view_append_package_folder(ProjectView *self, GtkTreeIter *root);
-static void project_view_append_package(ProjectView *self, GtkTreeIter *parent,
-    const gchar *name);
-static void project_view_append_functions(ProjectView *self, GtkTreeIter *parent,
-    const gchar *package);
-static void project_view_append_variables(ProjectView *self, GtkTreeIter *parent,
-    const gchar *package);
+typedef struct {
+  const gchar *name;
+  gint kind;
+  GdkPixbuf *icon;
+  gpointer object;
+} ProjectViewEntry;
+typedef void (*ProjectViewEntryCallback)(ProjectView *self, GtkTreeIter *iter,
+    const ProjectViewEntry *entry, gpointer user_data);
+static void project_view_sync_entries(ProjectView *self, GtkTreeIter *parent,
+    const ProjectViewEntry *entries, guint count,
+    ProjectViewEntryCallback callback, gpointer user_data);
 static gboolean filename_matches(const gchar *component, const gchar *file);
 static gchar *get_selected_component(ProjectView *self);
 static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data);
@@ -168,21 +177,6 @@ load_icon(const gchar *filename)
   return pixbuf;
 }
 
-static void
-project_view_append_root(ProjectView *self, GtkTreeIter *root)
-{
-  const GString *filename = asdf_get_filename(self->asdf);
-  gchar *basename = filename ? g_path_get_basename(filename->str) : g_strdup("");
-  gtk_tree_store_append(self->store, root, NULL);
-  gtk_tree_store_set(self->store, root,
-      PROJECT_VIEW_COL_ICON, self->icon_folder,
-      PROJECT_VIEW_COL_TEXT, basename,
-      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_ROOT,
-      PROJECT_VIEW_COL_OBJECT, self->project,
-      -1);
-  g_free(basename);
-}
-
 static Document *
 project_view_find_component_file(ProjectView *self, const gchar *component)
 {
@@ -197,135 +191,271 @@ project_view_find_component_file(ProjectView *self, const gchar *component)
   return NULL;
 }
 
-static void
-project_view_append_component(ProjectView *self, GtkTreeIter *parent,
-    const GString *component)
+static gboolean
+project_view_find_child(ProjectView *self, GtkTreeIter *parent, gint kind,
+    const gchar *text, GtkTreeIter *child)
 {
-  Document *document = project_view_find_component_file(self, component->str);
-  GtkTreeIter child;
-  gtk_tree_store_append(self->store, &child, parent);
-  gtk_tree_store_set(self->store, &child,
-      PROJECT_VIEW_COL_ICON, self->icon_lisp,
-      PROJECT_VIEW_COL_TEXT, component->str,
-      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC,
-      PROJECT_VIEW_COL_OBJECT, document,
-      -1);
+  GtkTreeModel *model = GTK_TREE_MODEL(self->store);
+  GtkTreeIter iter;
+  if (!gtk_tree_model_iter_children(model, &iter, parent))
+    return FALSE;
+  do {
+    gint existing_kind = 0;
+    gchar *existing_text = NULL;
+    gtk_tree_model_get(model, &iter,
+        PROJECT_VIEW_COL_KIND, &existing_kind,
+        PROJECT_VIEW_COL_TEXT, &existing_text,
+        -1);
+    gboolean match = existing_kind == kind && g_strcmp0(existing_text, text) == 0;
+    g_free(existing_text);
+    if (match) {
+      *child = iter;
+      return TRUE;
+    }
+  } while (gtk_tree_model_iter_next(model, &iter));
+  return FALSE;
 }
 
 static void
-project_view_append_source_folder(ProjectView *self, GtkTreeIter *root)
+project_view_sync_entries(ProjectView *self, GtkTreeIter *parent,
+    const ProjectViewEntry *entries, guint count,
+    ProjectViewEntryCallback callback, gpointer user_data)
 {
+  GtkTreeModel *model = GTK_TREE_MODEL(self->store);
   GtkTreeIter iter;
-  gtk_tree_store_append(self->store, &iter, root);
-  gtk_tree_store_set(self->store, &iter,
-      PROJECT_VIEW_COL_ICON, self->icon_folder,
-      PROJECT_VIEW_COL_TEXT, "src",
-      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC_FOLDER,
-      PROJECT_VIEW_COL_OBJECT, self->project,
-      -1);
-  for (guint i = 0; i < asdf_get_component_count(self->asdf); i++) {
-    const GString *comp = asdf_get_component(self->asdf, i);
-    project_view_append_component(self, &iter, comp);
+  gboolean valid = gtk_tree_model_iter_children(model, &iter, parent);
+  guint index = 0;
+  while (valid || index < count) {
+    if (!valid) {
+      const ProjectViewEntry *entry = &entries[index];
+      GtkTreeIter new_iter;
+      gtk_tree_store_append(self->store, &new_iter, parent);
+      gtk_tree_store_set(self->store, &new_iter,
+          PROJECT_VIEW_COL_ICON, entry->icon,
+          PROJECT_VIEW_COL_TEXT, entry->name,
+          PROJECT_VIEW_COL_KIND, entry->kind,
+          PROJECT_VIEW_COL_OBJECT, entry->object,
+          -1);
+      if (callback)
+        callback(self, &new_iter, entry, user_data);
+      index++;
+      continue;
+    }
+    gint kind = 0;
+    gchar *text = NULL;
+    gtk_tree_model_get(model, &iter,
+        PROJECT_VIEW_COL_KIND, &kind,
+        PROJECT_VIEW_COL_TEXT, &text,
+        -1);
+    if (index >= count) {
+      GtkTreeIter next = iter;
+      valid = gtk_tree_store_remove(self->store, &next);
+      g_free(text);
+      iter = next;
+      continue;
+    }
+    const ProjectViewEntry *entry = &entries[index];
+    gint cmp = g_strcmp0(text, entry->name);
+    if (cmp == 0 && kind == entry->kind) {
+      gtk_tree_store_set(self->store, &iter,
+          PROJECT_VIEW_COL_ICON, entry->icon,
+          PROJECT_VIEW_COL_TEXT, entry->name,
+          PROJECT_VIEW_COL_KIND, entry->kind,
+          PROJECT_VIEW_COL_OBJECT, entry->object,
+          -1);
+      if (callback)
+        callback(self, &iter, entry, user_data);
+      GtkTreeIter next = iter;
+      valid = gtk_tree_model_iter_next(model, &next);
+      g_free(text);
+      index++;
+      iter = next;
+      continue;
+    }
+    if (cmp < 0 || (cmp == 0 && kind != entry->kind)) {
+      GtkTreeIter next = iter;
+      valid = gtk_tree_store_remove(self->store, &next);
+      g_free(text);
+      iter = next;
+      continue;
+    }
+    GtkTreeIter new_iter;
+    gtk_tree_store_insert_before(self->store, &new_iter, parent, &iter);
+    gtk_tree_store_set(self->store, &new_iter,
+        PROJECT_VIEW_COL_ICON, entry->icon,
+        PROJECT_VIEW_COL_TEXT, entry->name,
+        PROJECT_VIEW_COL_KIND, entry->kind,
+        PROJECT_VIEW_COL_OBJECT, entry->object,
+        -1);
+    if (callback)
+      callback(self, &new_iter, entry, user_data);
+    g_free(text);
+    index++;
   }
 }
 
 static void
-project_view_append_functions(ProjectView *self, GtkTreeIter *parent,
+project_view_update_package_members(ProjectView *self, GtkTreeIter *iter,
     const gchar *package)
 {
   guint fn = 0;
-  gchar **fnames = project_get_function_names(self->project, package, &fn);
-  if (!fnames)
-    return;
-  g_qsort_with_data(fnames, fn, sizeof(gchar *), compare_names, NULL);
-  GtkTreeIter grandchild;
-  for (guint j = 0; j < fn; j++) {
-    const gchar *fname = fnames[j];
-    Function *func = project_get_function(self->project, fname);
-    gtk_tree_store_append(self->store, &grandchild, parent);
-    gtk_tree_store_set(self->store, &grandchild,
-        PROJECT_VIEW_COL_ICON, self->icon_function,
-        PROJECT_VIEW_COL_TEXT, fname,
-        PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_FUNCTION,
-        PROJECT_VIEW_COL_OBJECT, func,
-        -1);
-  }
-  g_free(fnames);
-}
-
-static void
-project_view_append_variables(ProjectView *self, GtkTreeIter *parent,
-    const gchar *package)
-{
+  gchar **fnames = NULL;
+  if (self->project)
+    fnames = project_get_function_names(self->project, package, &fn);
+  if (fnames)
+    g_qsort_with_data(fnames, fn, sizeof(gchar *), compare_names, NULL);
   guint vn = 0;
-  gchar **vnames = project_get_variable_names(self->project, package, &vn);
-  if (!vnames)
-    return;
-  g_qsort_with_data(vnames, vn, sizeof(gchar *), compare_names, NULL);
-  GtkTreeIter grandchild;
-  for (guint j = 0; j < vn; j++) {
-    const gchar *vname = vnames[j];
-    gtk_tree_store_append(self->store, &grandchild, parent);
-    gtk_tree_store_set(self->store, &grandchild,
-        PROJECT_VIEW_COL_ICON, self->icon_variable,
-        PROJECT_VIEW_COL_TEXT, vname,
-        PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_VARIABLE,
-        PROJECT_VIEW_COL_OBJECT, NULL,
-        -1);
+  gchar **vnames = NULL;
+  if (self->project)
+    vnames = project_get_variable_names(self->project, package, &vn);
+  if (vnames)
+    g_qsort_with_data(vnames, vn, sizeof(gchar *), compare_names, NULL);
+  guint count = fn + vn;
+  ProjectViewEntry *entries = count ? g_new0(ProjectViewEntry, count) : NULL;
+  for (guint i = 0; i < fn; i++) {
+    entries[i].name = fnames[i];
+    entries[i].kind = PROJECT_VIEW_KIND_FUNCTION;
+    entries[i].icon = self->icon_function;
+    entries[i].object = self->project ? project_get_function(self->project,
+        fnames[i]) : NULL;
   }
+  for (guint j = 0; j < vn; j++) {
+    guint idx = fn + j;
+    entries[idx].name = vnames[j];
+    entries[idx].kind = PROJECT_VIEW_KIND_VARIABLE;
+    entries[idx].icon = self->icon_variable;
+    entries[idx].object = NULL;
+  }
+  project_view_sync_entries(self, iter, entries, count, NULL, NULL);
+  g_free(entries);
+  g_free(fnames);
   g_free(vnames);
 }
 
 static void
-project_view_append_package(ProjectView *self, GtkTreeIter *parent,
-    const gchar *name)
+project_view_update_package_children(ProjectView *self, GtkTreeIter *iter,
+    const ProjectViewEntry *entry, gpointer /*user_data*/)
 {
-  if (!self->project)
-    return;
-  GtkTreeIter child;
-  gtk_tree_store_append(self->store, &child, parent);
-  gtk_tree_store_set(self->store, &child,
-      PROJECT_VIEW_COL_ICON, self->icon_package,
-      PROJECT_VIEW_COL_TEXT, name,
-      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_PACKAGE,
-      PROJECT_VIEW_COL_OBJECT, project_get_package(self->project, name),
-      -1);
-  project_view_append_functions(self, &child, name);
-  project_view_append_variables(self, &child, name);
+  project_view_update_package_members(self, iter, entry->name);
 }
 
 static void
-project_view_append_package_folder(ProjectView *self, GtkTreeIter *root)
+project_view_update_package_folder(ProjectView *self, GtkTreeIter *root)
 {
-  GtkTreeIter iter;
-  gtk_tree_store_append(self->store, &iter, root);
-  gtk_tree_store_set(self->store, &iter,
+  GtkTreeIter packages;
+  gboolean exists = project_view_find_child(self, root,
+      PROJECT_VIEW_KIND_PACKAGES, "packages", &packages);
+  g_return_if_fail(exists);
+  gtk_tree_store_set(self->store, &packages,
       PROJECT_VIEW_COL_ICON, self->icon_folder,
       PROJECT_VIEW_COL_TEXT, "packages",
       PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_PACKAGES,
       PROJECT_VIEW_COL_OBJECT, NULL,
       -1);
-  if (!self->project)
-    return;
   guint n = 0;
-  gchar **names = project_get_package_names(self->project, &n);
-  if (!names)
-    return;
-  g_qsort_with_data(names, n, sizeof(gchar *), compare_names, NULL);
-  for (guint i = 0; i < n; i++)
-    project_view_append_package(self, &iter, names[i]);
+  gchar **names = NULL;
+  if (self->project)
+    names = project_get_package_names(self->project, &n);
+  if (names)
+    g_qsort_with_data(names, n, sizeof(gchar *), compare_names, NULL);
+  ProjectViewEntry *entries = n ? g_new0(ProjectViewEntry, n) : NULL;
+  for (guint i = 0; i < n; i++) {
+    entries[i].name = names[i];
+    entries[i].kind = PROJECT_VIEW_KIND_PACKAGE;
+    entries[i].icon = self->icon_package;
+    entries[i].object = self->project ? project_get_package(self->project,
+        names[i]) : NULL;
+  }
+  project_view_sync_entries(self, &packages, entries, n,
+      project_view_update_package_children, NULL);
+  g_free(entries);
   g_free(names);
+}
+
+static void
+project_view_update_source_folder(ProjectView *self, GtkTreeIter *root)
+{
+  GtkTreeIter src;
+  gboolean exists = project_view_find_child(self, root,
+      PROJECT_VIEW_KIND_SRC_FOLDER, "src", &src);
+  g_return_if_fail(exists);
+  gtk_tree_store_set(self->store, &src,
+      PROJECT_VIEW_COL_ICON, self->icon_folder,
+      PROJECT_VIEW_COL_TEXT, "src",
+      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC_FOLDER,
+      PROJECT_VIEW_COL_OBJECT, self->project,
+      -1);
+  guint count = asdf_get_component_count(self->asdf);
+  ProjectViewEntry *entries = count ? g_new0(ProjectViewEntry, count) : NULL;
+  for (guint i = 0; i < count; i++) {
+    const GString *comp = asdf_get_component(self->asdf, i);
+    entries[i].name = comp->str;
+    entries[i].kind = PROJECT_VIEW_KIND_SRC;
+    entries[i].icon = self->icon_lisp;
+    entries[i].object = project_view_find_component_file(self, comp->str);
+  }
+  project_view_sync_entries(self, &src, entries, count, NULL, NULL);
+  g_free(entries);
+}
+
+static void
+project_view_update_root(ProjectView *self)
+{
+  GtkTreeModel *model = GTK_TREE_MODEL(self->store);
+  GtkTreeIter root;
+  gboolean has_root = gtk_tree_model_get_iter_first(model, &root);
+  gboolean created = FALSE;
+  if (!has_root) {
+    gtk_tree_store_append(self->store, &root, NULL);
+    created = TRUE;
+  }
+  const GString *filename = asdf_get_filename(self->asdf);
+  gchar *basename = filename ? g_path_get_basename(filename->str) : g_strdup("");
+  gtk_tree_store_set(self->store, &root,
+      PROJECT_VIEW_COL_ICON, self->icon_folder,
+      PROJECT_VIEW_COL_TEXT, basename,
+      PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_ROOT,
+      PROJECT_VIEW_COL_OBJECT, self->project,
+      -1);
+  if (created) {
+    GtkTreePath *path = gtk_tree_model_get_path(model, &root);
+    gtk_tree_view_expand_row(GTK_TREE_VIEW(self), path, FALSE);
+    gtk_tree_path_free(path);
+    GtkTreeIter src;
+    gtk_tree_store_append(self->store, &src, &root);
+    gtk_tree_store_set(self->store, &src,
+        PROJECT_VIEW_COL_ICON, self->icon_folder,
+        PROJECT_VIEW_COL_TEXT, "src",
+        PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_SRC_FOLDER,
+        PROJECT_VIEW_COL_OBJECT, self->project,
+        -1);
+    path = gtk_tree_model_get_path(model, &src);
+    gtk_tree_view_expand_row(GTK_TREE_VIEW(self), path, FALSE);
+    gtk_tree_path_free(path);
+    GtkTreeIter packages;
+    gtk_tree_store_append(self->store, &packages, &root);
+    gtk_tree_store_set(self->store, &packages,
+        PROJECT_VIEW_COL_ICON, self->icon_folder,
+        PROJECT_VIEW_COL_TEXT, "packages",
+        PROJECT_VIEW_COL_KIND, PROJECT_VIEW_KIND_PACKAGES,
+        PROJECT_VIEW_COL_OBJECT, NULL,
+        -1);
+    path = gtk_tree_model_get_path(model, &packages);
+    gtk_tree_view_expand_row(GTK_TREE_VIEW(self), path, FALSE);
+    gtk_tree_path_free(path);
+  }
+  g_free(basename);
+  project_view_update_source_folder(self, &root);
+  project_view_update_package_folder(self, &root);
+  GtkTreeIter extra = root;
+  while (gtk_tree_model_iter_next(model, &extra))
+    gtk_tree_store_remove(self->store, &extra);
 }
 
 static void
 project_view_populate_store(ProjectView *self)
 {
-  gtk_tree_store_clear(self->store);
-  GtkTreeIter root;
-  project_view_append_root(self, &root);
-  project_view_append_source_folder(self, &root);
-  project_view_append_package_folder(self, &root);
-  gtk_tree_view_expand_all(GTK_TREE_VIEW(self));
+  project_view_update_root(self);
 }
 
 GtkWidget *
