@@ -78,10 +78,14 @@ gsize node_get_end_offset(const Node *node) {
   g_return_val_if_fail(node, 0);
   if (node->end_token)
     return node->end_token->end_offset;
-  if (!node->children || node->children->len == 0)
-    return 0;
-  Node *child = g_array_index(node->children, Node*, node->children->len - 1);
-  return node_get_end_offset(child);
+  if (node->children && node->children->len > 0) {
+    Node *child = g_array_index(node->children, Node*, node->children->len - 1);
+    return node_get_end_offset(child);
+  }
+  if (node->start_token)
+    return node->start_token->end_offset;
+  // A root node can be empty when the document is empty.
+  return 0;
 }
 
 const Node *node_find_containing_range(const Node *node, gsize start, gsize end) {
