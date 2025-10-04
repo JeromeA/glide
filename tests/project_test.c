@@ -304,6 +304,23 @@ static void test_function_call_argument_mismatch(void)
   project_unref(project);
 }
 
+static void test_undefined_function(void)
+{
+  Project *project = project_new(NULL);
+  Document *document = project_add_document(project, g_string_new("(bar)"), NULL,
+      DOCUMENT_LIVE);
+  project_document_changed(project, document);
+
+  const GArray *errors = document_get_errors(document);
+  g_assert_nonnull(errors);
+  g_assert_cmpuint(errors->len, ==, 1);
+  const DocumentError *err = &g_array_index((GArray*)errors, DocumentError, 0);
+  g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION);
+  g_assert_cmpstr(err->message, ==, "Undefined function BAR");
+
+  project_unref(project);
+}
+
 static void test_relative_path(void)
 {
   gchar *tmpdir = g_dir_make_tmp("project-test-XXXXXX", NULL);
@@ -379,6 +396,7 @@ int main(int argc, char *argv[])
   g_test_add_func("/project/incremental_index", test_incremental_index);
   g_test_add_func("/project/function_call_argument_mismatch",
       test_function_call_argument_mismatch);
+  g_test_add_func("/project/undefined_function", test_undefined_function);
   g_test_add_func("/project/relative_path", test_relative_path);
   g_test_add_func("/project/remove_file", test_remove_file);
   g_test_add_func("/project/project_changed_cb", test_project_changed_cb);

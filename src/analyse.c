@@ -7,7 +7,8 @@
 #include "function.h"
 #include <string.h>
 
-static void analyse_mark_error(Node *node, const gchar *message) {
+static void analyse_mark_error(Node *node, const gchar *message,
+    DocumentErrorType type) {
   if (!node || !node->document)
     return;
   gsize start = node_get_start_offset(node);
@@ -17,7 +18,7 @@ static void analyse_mark_error(Node *node, const gchar *message) {
   DocumentError error = {
     .start = start,
     .end = end,
-    .type = DOCUMENT_ERROR_TYPE_GENERIC,
+    .type = type,
     .message = (gchar*) message
   };
   document_add_error(node->document, error);
@@ -108,8 +109,12 @@ static gboolean analyse_validate_call(Project *project, Node *expr) {
   if (!fn_name)
     return TRUE;
   Function *function = project_get_function(project, fn_name);
-  if (!function)
-    return TRUE;
+  if (!function) {
+    gchar *message = g_strdup_printf("Undefined function %s", fn_name);
+    analyse_mark_error(expr, message, DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION);
+    g_free(message);
+    return FALSE;
+  }
   const Node *lambda = function_get_lambda_list(function);
   guint min_args = 0;
   guint max_args = 0;
@@ -122,7 +127,7 @@ static gboolean analyse_validate_call(Project *project, Node *expr) {
     gchar *message = g_strdup_printf(
         "Expected %u arguments for %s but found %u", expected, fn_name,
         actual);
-    analyse_mark_error(expr, message);
+    analyse_mark_error(expr, message, DOCUMENT_ERROR_TYPE_GENERIC);
     g_free(message);
     return FALSE;
   }
@@ -161,12 +166,12 @@ void analyse_node(Project *project, Node *node, AnalyseContext *context) {
         if (name) {
           if (first_name && !first_name->sd_type)
             node_set_sd_type(first_name, SDT_FUNCTION_USE, context->package);
-          gboolean call_valid = context->backquote || analyse_validate_call(project, node);
-          if (!context->backquote && call_valid) {
+          if (!context->backquote) {
             if (strcmp(name, "DEFUN") == 0) {
               analyse_defun(project, node, context);
               return;
-            } else if (strcmp(name, "IN-PACKAGE") == 0 && node->children->len > 1) {
+            }
+            if (strcmp(name, "IN-PACKAGE") == 0 && node->children->len > 1) {
               Node *pkg_node = g_array_index(node->children, Node*, 1);
               analyse_node(project, pkg_node, context);
               const gchar *pkg_name = node_get_name(pkg_node);
@@ -177,6 +182,8 @@ void analyse_node(Project *project, Node *node, AnalyseContext *context) {
             } else if (strcmp(name, "DEFPACKAGE") == 0) {
               analyse_defpackage(project, node, context);
               return;
+            } else {
+              analyse_validate_call(project, node);
             }
           }
         }
