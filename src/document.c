@@ -184,17 +184,18 @@ void document_clear_errors(Document *document) {
   }
 }
 
-void document_add_error(Document *document, gsize start, gsize end, const gchar *message) {
+void document_add_error(Document *document, DocumentError error) {
   g_return_if_fail(document != NULL);
   if (!document->errors)
     document->errors = g_array_new(FALSE, FALSE, sizeof(DocumentError));
-  if (end <= start)
-    return;
+  g_return_if_fail(error.end > error.start);
   const gchar *path = document->path ? document->path : "(null)";
-  LOG(1, "document_add_error path=%s range=[%zu,%zu) message=%s", path, start,
-      end, message ? message : "(null)");
-  DocumentError err = { start, end, message ? g_strdup(message) : NULL };
-  g_array_append_val(document->errors, err);
+  LOG(1, "document_add_error path=%s range=[%zu,%zu) type=%d message=%s",
+      path, error.start, error.end, error.type,
+      error.message ? error.message : "(null)");
+  DocumentError stored = error;
+  stored.message = error.message ? g_strdup(error.message) : NULL;
+  g_array_append_val(document->errors, stored);
 }
 
 static Document *document_create(Project *project, GString *content, const gchar *path, DocumentState state) {

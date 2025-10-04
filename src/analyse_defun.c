@@ -10,7 +10,13 @@ static void analyse_defun_mark_error(Node *node, const gchar *message) {
   gsize end = node_get_end_offset(node);
   if (end <= start)
     return;
-  document_add_error(node->document, start, end, message);
+  DocumentError error = {
+    .start = start,
+    .end = end,
+    .type = DOCUMENT_ERROR_TYPE_GENERIC,
+    .message = (gchar*) message
+  };
+  document_add_error(node->document, error);
 }
 
 void analyse_defun(Project *project, Node *expr, AnalyseContext *context) {
