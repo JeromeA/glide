@@ -15,7 +15,8 @@ typedef struct _Document Document;
 
 typedef enum {
   DOCUMENT_ERROR_TYPE_GENERIC,
-  DOCUMENT_ERROR_TYPE_UNRESOLVED_SYMBOL
+  DOCUMENT_ERROR_TYPE_UNRESOLVED_SYMBOL,
+  DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION
 } DocumentErrorType;
 
 typedef struct {
