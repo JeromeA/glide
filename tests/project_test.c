@@ -200,6 +200,7 @@ static void test_defun_requires_symbol_name(void)
   const DocumentError *err = &g_array_index((GArray*)errors, DocumentError, 0);
   g_assert_nonnull(err->message);
   g_assert_cmpstr(err->message, ==, "DEFUN requires a symbol name.");
+  g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_GENERIC);
 
   project_unref(project);
 }
@@ -216,6 +217,7 @@ static void test_defun_requires_parameter_list(void)
   const DocumentError *err = &g_array_index((GArray*)errors, DocumentError, 0);
   g_assert_nonnull(err->message);
   g_assert_cmpstr(err->message, ==, "DEFUN requires a parameter list.");
+  g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_GENERIC);
 
   project_unref(project);
 }
@@ -271,6 +273,7 @@ static void test_function_call_argument_mismatch(void)
   g_assert_nonnull(project_get_function(project, "BAR"));
   g_assert_cmpstr(err->message, ==,
       "Expected 2 arguments for BAR but found 1");
+  g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_GENERIC);
 
   document_set_text(document, "(bar 1 2)");
   project_document_changed(project, document);
@@ -289,6 +292,7 @@ static void test_function_call_argument_mismatch(void)
   g_assert_nonnull(err->message);
   g_assert_cmpstr(err->message, ==,
       "Expected 2 arguments for BAR but found 3");
+  g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_GENERIC);
 
   document_set_text(document, "(bar 1 2)");
   project_document_changed(project, document);

@@ -13,9 +13,15 @@ typedef enum {
 
 typedef struct _Document Document;
 
+typedef enum {
+  DOCUMENT_ERROR_TYPE_GENERIC,
+  DOCUMENT_ERROR_TYPE_UNRESOLVED_SYMBOL
+} DocumentErrorType;
+
 typedef struct {
   gsize start;
   gsize end;
+  DocumentErrorType type;
   gchar *message;
 } DocumentError;
 
@@ -36,6 +42,5 @@ void         document_set_path(Document *document, const gchar *path);
 Document    *document_load(Project *project, const gchar *path);
 const gchar *document_get_relative_path(Document *document);
 void         document_clear_errors(Document *document);
-void         document_add_error(Document *document, gsize start, gsize end,
-    const gchar *message);
+void         document_add_error(Document *document, DocumentError error);
 const GArray *document_get_errors(Document *document);
