@@ -24,16 +24,14 @@
 
 ## OO
 
-- All DI should happen in main.c, there should be no call to an `xxx_new()` in any other file.
 - Use GObject when needed to interface with an API that requires it, but prefer light OO patterns otherwise.
 
 ## Testing
 
-- Tests should be unit tests, in tests/, using mock objects for all dependencies.
+- Tests should be unit tests, in tests/, using mock objects for dependencies whenever possible.
 
 ## Common Agent mistakes
 
-- Don't forget to add any new file to the INLINE version in main.c.
 - Don't forget to run "make" in src/ as part of your testing.
 - Don't forget to run "make run" in tests/ as part of your testing.
 - Convert any code wrapped at 80 characters, use 120 instead.
