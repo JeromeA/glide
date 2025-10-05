@@ -315,6 +315,8 @@ static void test_undefined_function(void)
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 1);
   const DocumentError *err = &g_array_index((GArray*)errors, DocumentError, 0);
+  g_assert_cmpuint(err->start, ==, 1);
+  g_assert_cmpuint(err->end, ==, 4);
   g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION);
   g_assert_cmpstr(err->message, ==, "Undefined function BAR");
 

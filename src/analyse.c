@@ -110,8 +110,10 @@ static gboolean analyse_validate_call(Project *project, Node *expr) {
     return TRUE;
   Function *function = project_get_function(project, fn_name);
   if (!function) {
+    Node *name_node = node_get_symbol_name_node(head);
+    Node *target = name_node ? name_node : head;
     gchar *message = g_strdup_printf("Undefined function %s", fn_name);
-    analyse_mark_error(expr, message, DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION);
+    analyse_mark_error(target, message, DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION);
     g_free(message);
     return FALSE;
   }
