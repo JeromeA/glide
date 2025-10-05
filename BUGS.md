@@ -497,3 +497,11 @@ clicked location, so jumping from elsewhere in the buffer always followed the
 caret. The button handler now translates the click coordinates into a buffer
 offset and places the cursor there before invoking goto definition, ensuring the
 navigation matches the click target.
+
+## Undefined function diagnostics spanned entire form
+
+Calling an unknown function underlined the whole s-expression and reused the
+generic underline styling, so readers could not tell which part of the call was
+undefined and the visual treatment matched other diagnostics. The analyser now
+attaches the error range to the callee symbol and the editor renders undefined
+functions in red text, making the problem location and severity clear.

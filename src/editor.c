@@ -23,6 +23,7 @@ struct _Editor
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
   GtkTextTag *error_tag;
+  GtkTextTag *undefined_function_tag;
   GtkTextTag *ctrl_hover_tag;
   EditorTooltipWindow *tooltip_window;
   gboolean ctrl_hover_active;
@@ -175,6 +176,8 @@ editor_init (Editor *self)
       "function-use-highlight", "background", "#eef", NULL);
   self->error_tag = gtk_text_buffer_create_tag(buffer,
       "error-highlight", "underline", PANGO_UNDERLINE_ERROR, NULL);
+  self->undefined_function_tag = gtk_text_buffer_create_tag(buffer,
+      "undefined-function-highlight", "foreground", "#c00", NULL);
   self->ctrl_hover_tag = gtk_text_buffer_create_tag (buffer,
       "function-ctrl-hover", "underline", PANGO_UNDERLINE_LOW,
       "foreground", "#06c", NULL);
@@ -237,6 +240,7 @@ editor_dispose (GObject *object)
   self->function_def_tag = NULL;
   self->function_use_tag = NULL;
   self->error_tag = NULL;
+  self->undefined_function_tag = NULL;
   self->ctrl_hover_tag = NULL;
   g_clear_object (&self->buffer);
   self->view = NULL;
@@ -373,13 +377,17 @@ editor_clear_function_highlight (Editor *self)
 static void
 editor_clear_errors(Editor *self)
 {
-  if (!self || !self->buffer || !self->error_tag)
+  if (!self || !self->buffer)
     return;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   GtkTextIter start;
   GtkTextIter end;
   gtk_text_buffer_get_bounds(buffer, &start, &end);
-  gtk_text_buffer_remove_tag(buffer, self->error_tag, &start, &end);
+  if (self->error_tag)
+    gtk_text_buffer_remove_tag(buffer, self->error_tag, &start, &end);
+  if (self->undefined_function_tag)
+    gtk_text_buffer_remove_tag(buffer, self->undefined_function_tag, &start,
+        &end);
 }
 
 static void
@@ -541,16 +549,27 @@ editor_set_errors(Editor *self, const GArray *errors)
 {
   g_return_if_fail(GLIDE_IS_EDITOR(self));
   editor_clear_errors(self);
-  if (!errors || !self->buffer || !self->error_tag)
+  if (!errors || !self->buffer)
     return;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   for (guint i = 0; i < errors->len; i++) {
     const DocumentError *err = &g_array_index(errors, DocumentError, i);
+    GtkTextTag *tag = NULL;
+    switch (err->type) {
+      case DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION:
+        tag = self->undefined_function_tag;
+        break;
+      default:
+        tag = self->error_tag;
+        break;
+    }
+    if (!tag)
+      continue;
     GtkTextIter start;
     GtkTextIter end;
     gtk_text_buffer_get_iter_at_offset(buffer, &start, (gint)err->start);
     gtk_text_buffer_get_iter_at_offset(buffer, &end, (gint)err->end);
-    gtk_text_buffer_apply_tag(buffer, self->error_tag, &start, &end);
+    gtk_text_buffer_apply_tag(buffer, tag, &start, &end);
   }
 }
 
