@@ -5,135 +5,21 @@
 #include "project.h"
 #include "document.h"
 #include "function.h"
+#include "analyse_call.h"
 #include <string.h>
 
-static void analyse_mark_error(Node *node, const gchar *message,
-    DocumentErrorType type) {
-  if (!node || !node->document)
+static void analyse_diagnose_call(Project *project, Node *expr) {
+  DocumentError error = { 0 };
+  Node *target = NULL;
+  if (analyse_call_check(project, expr, &error, &target))
     return;
-  gsize start = node_get_start_offset(node);
-  gsize end = node_get_end_offset(node);
-  if (end <= start)
+  Node *err_node = target ? target : expr;
+  if (!err_node || !err_node->document || error.end <= error.start) {
+    g_free(error.message);
     return;
-  DocumentError error = {
-    .start = start,
-    .end = end,
-    .type = type,
-    .message = (gchar*) message
-  };
-  document_add_error(node->document, error);
-}
-
-static const gchar *analyse_get_symbol_name(const Node *node) {
-  if (!node)
-    return NULL;
-  if (node->type == LISP_AST_NODE_TYPE_SYMBOL) {
-    const Node *name = node_get_symbol_name_node_const(node);
-    return name ? node_get_name(name) : NULL;
   }
-  if (node->type == LISP_AST_NODE_TYPE_SYMBOL_NAME)
-    return node_get_name(node);
-  return NULL;
-}
-
-static gboolean analyse_lambda_arity(const Node *lambda, guint *min_args,
-    guint *max_args, gboolean *has_max) {
-  g_return_val_if_fail(min_args != NULL, FALSE);
-  g_return_val_if_fail(max_args != NULL, FALSE);
-  g_return_val_if_fail(has_max != NULL, FALSE);
-  g_return_val_if_fail(lambda != NULL, FALSE);
-  g_return_val_if_fail(lambda->type == LISP_AST_NODE_TYPE_LIST, FALSE);
-  if (!lambda->children || lambda->children->len == 0) {
-    *min_args = 0;
-    *max_args = 0;
-    *has_max = TRUE;
-    return TRUE;
-  }
-  guint min_count = 0;
-  guint max_count = 0;
-  gboolean max_known = TRUE;
-  gboolean optional = FALSE;
-  gboolean skip_next = FALSE;
-  for (guint i = 0; i < lambda->children->len; i++) {
-    const Node *param = g_array_index(lambda->children, Node*, i);
-    if (skip_next) {
-      skip_next = FALSE;
-      continue;
-    }
-    const gchar *name = analyse_get_symbol_name(param);
-    if (name && name[0] == '&') {
-      if (strcmp(name, "&OPTIONAL") == 0) {
-        optional = TRUE;
-        continue;
-      }
-      if (strcmp(name, "&REST") == 0 || strcmp(name, "&BODY") == 0) {
-        max_known = FALSE;
-        skip_next = TRUE;
-        optional = FALSE;
-        continue;
-      }
-      if (strcmp(name, "&KEY") == 0 || strcmp(name, "&ALLOW-OTHER-KEYS") == 0) {
-        max_known = FALSE;
-        optional = TRUE;
-        continue;
-      }
-      if (strcmp(name, "&AUX") == 0) {
-        break;
-      }
-      if (strcmp(name, "&ENVIRONMENT") == 0 || strcmp(name, "&WHOLE") == 0) {
-        skip_next = TRUE;
-        continue;
-      }
-      continue;
-    }
-    if (optional) {
-      if (max_known)
-        max_count++;
-      continue;
-    }
-    min_count++;
-    if (max_known)
-      max_count++;
-  }
-  *min_args = min_count;
-  *max_args = max_count;
-  *has_max = max_known;
-  return TRUE;
-}
-
-static gboolean analyse_validate_call(Project *project, Node *expr) {
-  if (!expr || !expr->children || expr->children->len == 0)
-    return TRUE;
-  Node *head = g_array_index(expr->children, Node*, 0);
-  const gchar *fn_name = analyse_get_symbol_name(head);
-  if (!fn_name)
-    return TRUE;
-  Function *function = project_get_function(project, fn_name);
-  if (!function) {
-    Node *name_node = node_get_symbol_name_node(head);
-    Node *target = name_node ? name_node : head;
-    gchar *message = g_strdup_printf("Undefined function %s", fn_name);
-    analyse_mark_error(target, message, DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION);
-    g_free(message);
-    return FALSE;
-  }
-  const Node *lambda = function_get_lambda_list(function);
-  guint min_args = 0;
-  guint max_args = 0;
-  gboolean has_max = TRUE;
-  if (!analyse_lambda_arity(lambda, &min_args, &max_args, &has_max))
-    return TRUE;
-  guint actual = expr->children->len > 0 ? expr->children->len - 1 : 0;
-  if (actual < min_args || (has_max && actual > max_args)) {
-    guint expected = actual < min_args ? min_args : max_args;
-    gchar *message = g_strdup_printf(
-        "Expected %u arguments for %s but found %u", expected, fn_name,
-        actual);
-    analyse_mark_error(expr, message, DOCUMENT_ERROR_TYPE_GENERIC);
-    g_free(message);
-    return FALSE;
-  }
-  return TRUE;
+  document_add_error(err_node->document, error);
+  g_free(error.message);
 }
 
 void analyse_node(Project *project, Node *node, AnalyseContext *context) {
@@ -185,7 +71,7 @@ void analyse_node(Project *project, Node *node, AnalyseContext *context) {
               analyse_defpackage(project, node, context);
               return;
             } else {
-              analyse_validate_call(project, node);
+              analyse_diagnose_call(project, node);
             }
           }
         }

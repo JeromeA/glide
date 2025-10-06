@@ -43,5 +43,7 @@ void         document_set_path(Document *document, const gchar *path);
 Document    *document_load(Project *project, const gchar *path);
 const gchar *document_get_relative_path(Document *document);
 void         document_clear_errors(Document *document);
+void         document_clear_errors_of_type(Document *document,
+    DocumentErrorType type);
 void         document_add_error(Document *document, DocumentError error);
 const GArray *document_get_errors(Document *document);

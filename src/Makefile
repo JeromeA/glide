@@ -8,6 +8,7 @@ LIBS += gtksourceview-4
 SOURCES += \
   actions.c \
   analyse.c \
+  analyse_call.c \
   analyse_defpackage.c \
   analyse_defun.c \
   app.c \

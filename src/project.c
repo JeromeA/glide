@@ -1,10 +1,12 @@
 #include "project_priv.h"
 #include "analyse.h"
+#include "analyse_call.h"
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
 #include "util.h"
 #include "project_repl.h"
 #include <glib-object.h>
+#include <string.h>
 
 static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
@@ -23,6 +25,60 @@ static Project *project_init(void) {
   self->document_changed_cb = NULL;
   self->document_changed_data = NULL;
   return self;
+}
+
+static void project_validate_function_uses(Project *self) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(glide_is_ui_thread());
+  GHashTable *uses = project_index_get(self->index, SDT_FUNCTION_USE);
+  if (!uses)
+    return;
+  GHashTable *cleared = g_hash_table_new(g_direct_hash, g_direct_equal);
+  GHashTableIter iter;
+  g_hash_table_iter_init(&iter, uses);
+  gpointer key, value;
+  while (g_hash_table_iter_next(&iter, &key, &value)) {
+    GPtrArray *nodes = value;
+    if (!nodes)
+      continue;
+    for (guint i = 0; i < nodes->len; i++) {
+      Node *name_node = g_ptr_array_index(nodes, i);
+      if (!name_node)
+        continue;
+      Document *document = name_node->document;
+      if (!document)
+        continue;
+      if (!g_hash_table_lookup(cleared, document)) {
+        document_clear_errors_of_type(document,
+            DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION);
+        g_hash_table_insert(cleared, document, document);
+      }
+      const gchar *fn_name = node_get_name(name_node);
+      if (fn_name && (strcmp(fn_name, "DEFUN") == 0 ||
+          strcmp(fn_name, "IN-PACKAGE") == 0 ||
+          strcmp(fn_name, "DEFPACKAGE") == 0))
+        continue;
+      Node *symbol = name_node->parent;
+      Node *expr = symbol ? symbol->parent : NULL;
+      if (!expr || expr->type != LISP_AST_NODE_TYPE_LIST)
+        continue;
+      DocumentError error = { 0 };
+      Node *target = NULL;
+      if (analyse_call_check(self, expr, &error, &target))
+        continue;
+      Node *err_node = target ? target : expr;
+      Document *err_document = err_node && err_node->document ?
+          err_node->document : document;
+      if (!err_document || error.end <= error.start ||
+          error.type != DOCUMENT_ERROR_TYPE_UNDEFINED_FUNCTION) {
+        g_free(error.message);
+        continue;
+      }
+      document_add_error(err_document, error);
+      g_free(error.message);
+    }
+  }
+  g_hash_table_destroy(cleared);
 }
 
 static void project_free(Project *self) {
@@ -46,6 +102,8 @@ Project *project_new(ReplSession *repl) {
   return self;
 }
 
+static void project_validate_function_uses(Project *self);
+
 static void project_reparse_document(Project *self, Document *document) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(document != NULL);
@@ -68,6 +126,7 @@ static void project_reparse_document(Project *self, Document *document) {
 
   analyse_ast(self, ast);
   project_index_walk(self->index, ast);
+  project_validate_function_uses(self);
 }
 
 Document *project_add_document(Project *self, GString *content,
@@ -149,6 +208,7 @@ void project_add_package(Project *self, Package *package) {
   g_return_if_fail(package != NULL);
   g_return_if_fail(glide_is_ui_thread());
   project_index_add_package(self->index, package);
+  project_validate_function_uses(self);
   project_changed(self);
 }
 
@@ -157,6 +217,7 @@ void project_add_function(Project *self, Function *function) {
   g_return_if_fail(function != NULL);
   g_return_if_fail(glide_is_ui_thread());
   project_index_add_function(self->index, function);
+  project_validate_function_uses(self);
   project_changed(self);
 }
 

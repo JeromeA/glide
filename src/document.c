@@ -184,6 +184,22 @@ void document_clear_errors(Document *document) {
   }
 }
 
+void document_clear_errors_of_type(Document *document, DocumentErrorType type) {
+  g_return_if_fail(document != NULL);
+  if (!document->errors)
+    return;
+  for (guint i = 0; i < document->errors->len; ) {
+    DocumentError *err = &g_array_index(document->errors, DocumentError, i);
+    if (err->type == type) {
+      g_free(err->message);
+      err->message = NULL;
+      g_array_remove_index(document->errors, i);
+      continue;
+    }
+    i++;
+  }
+}
+
 void document_add_error(Document *document, DocumentError error) {
   g_return_if_fail(document != NULL);
   if (!document->errors)
