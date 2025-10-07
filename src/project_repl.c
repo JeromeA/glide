@@ -272,11 +272,7 @@ static void project_handle_function_section(Project *project,
   Node *lambda_node = NULL;
   if (lambda_list) {
     document = document_new_virtual(g_string_new(lambda_list));
-    const GString *content = document_get_content(document);
-    GArray *tokens = lisp_lexer_lex(content);
-    Node *ast = lisp_parser_parse(tokens, document);
-    document_set_tokens(document, tokens);
-    document_set_ast(document, ast);
+    const Node *ast = document_get_ast(document);
     if (ast && ast->children && ast->children->len > 0)
       lambda_node = g_array_index(ast->children, Node*, 0);
   }

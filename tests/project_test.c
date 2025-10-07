@@ -5,26 +5,14 @@
 #include <glib/gstdio.h>
 #include <string.h>
 
-static void document_prepare(Document *document) {
-  g_return_if_fail(document);
-  const GString *content = document_get_content(document);
-  GArray *tokens = lisp_lexer_lex(content);
-  Node *ast = lisp_parser_parse(tokens, document);
-  document_set_tokens(document, tokens);
-  document_set_ast(document, ast);
-}
-
 static void document_set_text(Document *document, const gchar *text) {
   g_return_if_fail(document);
   g_return_if_fail(text);
   document_set_content(document, g_string_new(text));
-  document_prepare(document);
 }
 
 static Document *create_virtual_file(const gchar *text) {
-  Document *document = document_new_virtual(g_string_new(text));
-  document_prepare(document);
-  return document;
+  return document_new_virtual(g_string_new(text));
 }
 
 static Function *create_function_with_lambda(const gchar *name,
@@ -52,15 +40,12 @@ static void test_parse_on_change(void)
 {
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(a)"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, document);
   const GArray *tokens = document_get_tokens(document);
   g_assert_cmpint(tokens->len, ==, 3); /* (, a, ) */
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_START);
-  project_document_changed(project, document); /* should still parse without error */
   const Node *ast = document_get_ast(document);
   g_assert_cmpint(ast->children->len, ==, 1);
-  project_document_changed(project, document);
   project_unref(project);
 }
 
@@ -105,7 +90,6 @@ static void test_function_analysis(void)
 {
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(defun foo () (bar))"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, document);
   const Node *ast = document_get_ast(document);
   const Node *form = g_array_index(ast->children, Node*, 0);
   Node *defsym_symbol = g_array_index(form->children, Node*, 0);
@@ -129,7 +113,6 @@ static void test_index(void)
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(defun foo () (bar))"), NULL,
       DOCUMENT_LIVE);
-  project_document_changed(project, document);
   const Node *ast = document_get_ast(document);
   const Node *form = g_array_index(ast->children, Node*, 0);
   Node *defsym_symbol = g_array_index(form->children, Node*, 0);
@@ -163,7 +146,7 @@ static void test_functions_table(void)
 {
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(defun foo () \"doc\")"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, document);
+  g_assert_nonnull(document);
   Function *fn = project_get_function(project, "FOO");
   g_assert_nonnull(fn);
   const gchar *doc = function_get_doc_string(fn);
@@ -179,7 +162,7 @@ static void test_function_tooltip(void)
 {
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(defun foo (x &rest rest) \"doc\")"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, document);
+  g_assert_nonnull(document);
   Function *fn = project_get_function(project, "FOO");
   gchar *tooltip = function_tooltip(fn);
   g_assert_nonnull(tooltip);
@@ -195,7 +178,7 @@ static void test_defun_requires_symbol_name(void)
 {
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(defun \"foo\" () nil)"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, document);
+  g_assert_nonnull(document);
 
   const GArray *errors = document_get_errors(document);
   g_assert_nonnull(errors);
@@ -212,7 +195,7 @@ static void test_defun_requires_parameter_list(void)
 {
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(defun foo \"bad-params\" nil)"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, document);
+  g_assert_nonnull(document);
 
   const GArray *errors = document_get_errors(document);
   g_assert_nonnull(errors);
@@ -229,17 +212,16 @@ static void test_incremental_index(void)
 {
   Project *project = project_new(NULL);
   Document *f1 = project_add_document(project, g_string_new("(defun foo () nil)"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, f1);
+  g_assert_nonnull(f1);
 
   Document *f2 = project_add_document(project, g_string_new("(defun bar () nil)"), NULL, DOCUMENT_LIVE);
-  project_document_changed(project, f2);
+  g_assert_nonnull(f2);
 
   GHashTable *defs = project_get_index(project, SDT_FUNCTION_DEF);
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
   g_assert_nonnull(g_hash_table_lookup(defs, "BAR"));
 
   document_set_text(f2, "(defun baz () nil)");
-  project_document_changed(project, f2);
 
   g_assert_nonnull(g_hash_table_lookup(defs, "FOO"));
   g_assert_null(g_hash_table_lookup(defs, "BAR"));
@@ -261,7 +243,6 @@ static void test_function_call_argument_mismatch(void)
 
   Document *document = project_add_document(project, g_string_new("(bar 1)"), NULL,
       DOCUMENT_LIVE);
-  project_document_changed(project, document);
 
   const GArray *errors = document_get_errors(document);
   g_assert_nonnull(errors);
@@ -279,14 +260,12 @@ static void test_function_call_argument_mismatch(void)
   g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_GENERIC);
 
   document_set_text(document, "(bar 1 2)");
-  project_document_changed(project, document);
 
   errors = document_get_errors(document);
   g_assert_nonnull(errors);
   g_assert_cmpuint(errors->len, ==, 0);
 
   document_set_text(document, "(bar 1 2 3)");
-  project_document_changed(project, document);
 
   errors = document_get_errors(document);
   g_assert_nonnull(errors);
@@ -298,7 +277,6 @@ static void test_function_call_argument_mismatch(void)
   g_assert_cmpint(err->type, ==, DOCUMENT_ERROR_TYPE_GENERIC);
 
   document_set_text(document, "(bar 1 2)");
-  project_document_changed(project, document);
 
   errors = document_get_errors(document);
   g_assert_nonnull(errors);
@@ -312,7 +290,6 @@ static void test_undefined_function(void)
   Project *project = project_new(NULL);
   Document *document = project_add_document(project, g_string_new("(bar)"), NULL,
       DOCUMENT_LIVE);
-  project_document_changed(project, document);
 
   const GArray *errors = document_get_errors(document);
   g_assert_nonnull(errors);

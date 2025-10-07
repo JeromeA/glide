@@ -280,7 +280,6 @@ editor_new_for_document (Project *project, Document *document)
     gtk_source_buffer_end_not_undoable_action(self->buffer);
   }
 
-  project_document_changed (self->project, self->document);
   gtk_text_buffer_set_modified (GTK_TEXT_BUFFER (self->buffer), FALSE);
   g_signal_connect (self->buffer, "changed", G_CALLBACK (on_buffer_changed), self);
   g_signal_connect (self->buffer, "modified-changed",
