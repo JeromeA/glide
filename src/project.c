@@ -6,6 +6,14 @@
 #include "project_repl.h"
 #include <glib-object.h>
 
+typedef struct {
+  ProjectEventCb callback;
+  gpointer user_data;
+  guint id;
+} ProjectEventHandler;
+
+static void project_emit_event(Project *self, ProjectChangeEventType type, Document *document);
+
 static Project *project_init(void) {
   Project *self = g_new0(Project, 1);
   self->refcnt = 1;
@@ -14,12 +22,8 @@ static Project *project_init(void) {
   self->asdf = asdf_new();
   self->repl = NULL;
   self->path = NULL;
-  self->changed_cb = NULL;
-  self->changed_data = NULL;
-  self->document_loaded_cb = NULL;
-  self->document_loaded_data = NULL;
-  self->document_removed_cb = NULL;
-  self->document_removed_data = NULL;
+  self->event_handlers = g_ptr_array_new_with_free_func(g_free);
+  self->next_event_handler_id = 1;
   return self;
 }
 
@@ -30,6 +34,8 @@ static void project_free(Project *self) {
   g_clear_object(&self->asdf);
   g_clear_pointer(&self->repl, repl_session_unref);
   g_free(self->path);
+  if (self->event_handlers)
+    g_ptr_array_unref(self->event_handlers);
   g_free(self);
 }
 
@@ -273,49 +279,67 @@ void project_unref(Project *self) {
     project_free(self);
 }
 
-void project_set_document_loaded_cb(Project *self, DocumentLoadedCb cb, gpointer user_data) {
-  g_return_if_fail(self != NULL);
-  g_return_if_fail(glide_is_ui_thread());
-  self->document_loaded_cb = cb;
-  self->document_loaded_data = user_data;
-}
-
 void project_document_loaded(Project *self, Document *document) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  if (self->document_loaded_cb)
-    self->document_loaded_cb(self, document, self->document_loaded_data);
+  project_emit_event(self, PROJECT_CHANGE_EVENT_DOCUMENT_LOADED, document);
   project_changed(self);
-}
-
-void project_set_document_removed_cb(Project *self, DocumentRemovedCb cb, gpointer user_data) {
-  g_return_if_fail(self != NULL);
-  g_return_if_fail(glide_is_ui_thread());
-  self->document_removed_cb = cb;
-  self->document_removed_data = user_data;
 }
 
 void project_document_removed(Project *self, Document *document) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  if (self->document_removed_cb)
-    self->document_removed_cb(self, document, self->document_removed_data);
-}
-
-void project_set_changed_cb(Project *self, ProjectChangedCb cb, gpointer user_data) {
-  g_return_if_fail(self != NULL);
-  g_return_if_fail(glide_is_ui_thread());
-  self->changed_cb = cb;
-  self->changed_data = user_data;
+  project_emit_event(self, PROJECT_CHANGE_EVENT_DOCUMENT_REMOVED, document);
 }
 
 void project_changed(Project *self) {
   g_return_if_fail(self != NULL);
   g_return_if_fail(glide_is_ui_thread());
   LOG(1, "project_changed");
-  if (self->changed_cb)
-    self->changed_cb(self, self->changed_data);
+  project_emit_event(self, PROJECT_CHANGE_EVENT_CHANGED, NULL);
+}
+
+guint project_add_event_cb(Project *self, ProjectEventCb cb, gpointer user_data) {
+  g_return_val_if_fail(self != NULL, 0);
+  g_return_val_if_fail(cb != NULL, 0);
+  g_return_val_if_fail(glide_is_ui_thread(), 0);
+
+  ProjectEventHandler *handler = g_new0(ProjectEventHandler, 1);
+  handler->callback = cb;
+  handler->user_data = user_data;
+  handler->id = self->next_event_handler_id++;
+  g_ptr_array_add(self->event_handlers, handler);
+  return handler->id;
+}
+
+void project_remove_event_cb(Project *self, guint handler_id) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(glide_is_ui_thread());
+  if (!handler_id)
+    return;
+
+  for (guint i = 0; i < self->event_handlers->len; i++) {
+    ProjectEventHandler *handler = g_ptr_array_index(self->event_handlers, i);
+    if (handler && handler->id == handler_id) {
+      g_ptr_array_remove_index(self->event_handlers, i);
+      return;
+    }
+  }
+}
+
+static void project_emit_event(Project *self, ProjectChangeEventType type, Document *document) {
+  g_return_if_fail(self != NULL);
+  g_return_if_fail(glide_is_ui_thread());
+  if (!self->event_handlers || !self->event_handlers->len)
+    return;
+  ProjectChangeEvent event = { type, document };
+  for (guint i = 0; i < self->event_handlers->len; i++) {
+    ProjectEventHandler *handler = g_ptr_array_index(self->event_handlers, i);
+    if (!handler || !handler->callback)
+      continue;
+    handler->callback(self, &event, handler->user_data);
+  }
 }
 

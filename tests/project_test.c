@@ -64,9 +64,11 @@ static void test_parse_on_change(void)
   project_unref(project);
 }
 
-static void on_file_loaded(Project * /*project*/, Document * /*document*/,
+static void on_file_loaded(Project * /*project*/, const ProjectChangeEvent *event,
     gpointer user_data)
 {
+  if (!event || event->type != PROJECT_CHANGE_EVENT_DOCUMENT_LOADED)
+    return;
   int *count = user_data;
   (*count)++;
 }
@@ -81,7 +83,7 @@ static void test_file_load(void)
   Project *project = project_new(NULL);
 
   int count = 0;
-  project_set_document_loaded_cb(project, on_file_loaded, &count);
+  guint handler_id = project_add_event_cb(project, on_file_loaded, &count);
 
   Document *document = project_add_loaded_document(project, filepath);
   g_assert_nonnull(document);
@@ -91,6 +93,7 @@ static void test_file_load(void)
   g_assert_nonnull(content);
   g_assert_cmpstr(content->str, ==, contents);
 
+  project_remove_event_cb(project, handler_id);
   project_unref(project);
   g_remove(filepath);
   g_rmdir(tmpdir);
@@ -339,8 +342,10 @@ static void test_relative_path(void)
   g_free(tmpdir);
 }
 
-static void on_removed(Project * /*project*/, Document * /*document*/, gpointer user_data)
+static void on_removed(Project * /*project*/, const ProjectChangeEvent *event, gpointer user_data)
 {
+  if (!event || event->type != PROJECT_CHANGE_EVENT_DOCUMENT_REMOVED)
+    return;
   gboolean *flag = user_data;
   *flag = TRUE;
 }
@@ -352,15 +357,19 @@ static void test_remove_file(void)
       DOCUMENT_LIVE);
   guint before = project_get_document_count(project);
   gboolean removed = FALSE;
-  project_set_document_removed_cb(project, on_removed, &removed);
+  guint handler_id = project_add_event_cb(project, on_removed, &removed);
   project_remove_document(project, document);
   g_assert_true(removed);
   g_assert_cmpuint(project_get_document_count(project), ==, before - 1);
+  project_remove_event_cb(project, handler_id);
   project_unref(project);
 }
 
-static void on_project_changed(Project * /*project*/, gpointer user_data)
+static void on_project_changed(Project * /*project*/, const ProjectChangeEvent *event,
+    gpointer user_data)
 {
+  if (!event || event->type != PROJECT_CHANGE_EVENT_CHANGED)
+    return;
   int *count = user_data;
   (*count)++;
 }
@@ -369,12 +378,13 @@ static void test_project_changed_cb(void)
 {
   Project *project = project_new(NULL);
   int count = 0;
-  project_set_changed_cb(project, on_project_changed, &count);
+  guint handler_id = project_add_event_cb(project, on_project_changed, &count);
   Package *pkg = package_new("FOO");
   project_add_package(project, pkg);
   package_unref(pkg);
   g_assert_cmpint(count, ==, 1);
   g_assert_nonnull(project_get_package(project, "FOO"));
+  project_remove_event_cb(project, handler_id);
   project_unref(project);
 }
 
