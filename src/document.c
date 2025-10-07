@@ -1,6 +1,8 @@
 #include "document.h"
 #include "project.h"
 #include "node.h"
+#include "lisp_lexer.h"
+#include "lisp_parser.h"
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -21,9 +23,9 @@ struct _Document {
 static Document *document_create(Project *project, GString *content, const gchar *path, DocumentState state);
 static void document_assign_content(Document *document, GString *content);
 static void document_clear_tokens(Document *document);
-void document_set_tokens(Document *document, GArray *tokens);
 static void document_clear_ast(Document *document);
-void document_set_ast(Document *document, Node *ast);
+static void document_set_tokens(Document *document, GArray *tokens);
+static void document_set_ast(Document *document, Node *ast);
 
 Document *document_new(Project *project, GString *content, const gchar *path, DocumentState state) {
   g_return_val_if_fail(project != NULL, NULL);
@@ -32,7 +34,9 @@ Document *document_new(Project *project, GString *content, const gchar *path, Do
 }
 
 Document *document_new_virtual(GString *content) {
-  return document_create(NULL, content, NULL, DOCUMENT_LIVE);
+  Document *document = document_create(NULL, content, NULL, DOCUMENT_LIVE);
+  document_reparse(document);
+  return document;
 }
 
 void document_free(Document *document) {
@@ -63,16 +67,12 @@ void document_set_state(Document *document, DocumentState state) {
 void document_set_content(Document *document, GString *content) {
   g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
-  document_clear_errors(document);
-  document_clear_ast(document);
-  document_clear_tokens(document);
   if (document->content) {
     g_string_free(document->content, TRUE);
     document->content = NULL;
   }
   document_assign_content(document, content);
-  if (document->project)
-    project_document_changed(document->project, document);
+  document_reparse(document);
 }
 
 const GString *document_get_content(Document *document) {
@@ -88,6 +88,28 @@ const GArray *document_get_tokens(Document *document) {
 const Node *document_get_ast(Document *document) {
   g_return_val_if_fail(document != NULL, NULL);
   return document->ast;
+}
+
+void document_reparse(Document *document) {
+  g_return_if_fail(document != NULL);
+  if (document->project)
+    g_return_if_fail(glide_is_ui_thread());
+
+  document_clear_errors(document);
+  document_clear_ast(document);
+  document_clear_tokens(document);
+
+  const GString *content = document->content;
+  if (content) {
+    GArray *tokens = lisp_lexer_lex(content);
+    document_set_tokens(document, tokens);
+
+    Node *ast = lisp_parser_parse(tokens, document);
+    document_set_ast(document, ast);
+  }
+
+  if (document->project)
+    project_document_changed(document->project, document);
 }
 
 const gchar *document_get_path(Document *document) {
@@ -221,7 +243,7 @@ static void document_clear_tokens(Document *document) {
   document->tokens = NULL;
 }
 
-void document_set_tokens(Document *document, GArray *tokens) {
+static void document_set_tokens(Document *document, GArray *tokens) {
   g_return_if_fail(document != NULL);
   document_clear_tokens(document);
   document->tokens = tokens;
@@ -234,7 +256,7 @@ static void document_clear_ast(Document *document) {
   document->ast = NULL;
 }
 
-void document_set_ast(Document *document, Node *ast) {
+static void document_set_ast(Document *document, Node *ast) {
   g_return_if_fail(document != NULL);
   document_clear_ast(document);
   document->ast = ast;

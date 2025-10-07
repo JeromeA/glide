@@ -1,7 +1,5 @@
 #include "project_priv.h"
 #include "analyse.h"
-#include "lisp_lexer.h"
-#include "lisp_parser.h"
 #include "util.h"
 #include "project_repl.h"
 #include <glib-object.h>
@@ -50,30 +48,6 @@ Project *project_new(ReplSession *repl) {
   return self;
 }
 
-static void project_reparse_document(Project *self, Document *document) {
-  g_return_if_fail(self != NULL);
-  g_return_if_fail(document != NULL);
-
-  document_clear_errors(document);
-  project_index_remove_document(self->index, document);
-
-  const GString *content = document_get_content(document);
-  if (!content)
-    return;
-
-  GArray *tokens = lisp_lexer_lex(content);
-  document_set_tokens(document, tokens);
-
-  Node *ast = lisp_parser_parse(tokens, document);
-  document_set_ast(document, ast);
-
-  if (!ast)
-    return;
-
-  analyse_ast(self, ast);
-  project_index_walk(self->index, ast);
-}
-
 Document *project_add_document(Project *self, GString *content,
     const gchar *path, DocumentState state) {
   g_return_val_if_fail(self != NULL, NULL);
@@ -86,6 +60,8 @@ Document *project_add_document(Project *self, GString *content,
   Document *document = document_new(self, content, path, state);
 
   g_ptr_array_add(self->documents, document);
+
+  document_reparse(document);
 
   project_document_loaded(self, document);
   return document;
@@ -104,7 +80,7 @@ Document *project_add_loaded_document(Project *self, const gchar *path) {
 
   g_ptr_array_add(self->documents, document);
 
-  project_reparse_document(self, document);
+  document_reparse(document);
   project_document_loaded(self, document);
   return document;
 }
@@ -262,7 +238,14 @@ void project_document_changed(Project *self, Document *document) {
   g_return_if_fail(document != NULL);
   g_return_if_fail(glide_is_ui_thread());
   LOG(1, "project_document_changed path=%s", document_get_path(document));
-  project_reparse_document(self, document);
+
+  project_index_remove_document(self->index, document);
+
+  const Node *ast = document_get_ast(document);
+  if (ast) {
+    analyse_ast(self, (Node*)ast);
+    project_index_walk(self->index, ast);
+  }
   project_changed(self);
 }
 
