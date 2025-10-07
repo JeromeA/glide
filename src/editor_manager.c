@@ -8,14 +8,14 @@ struct _EditorManager {
   Project *project;
   EditorContainer *container;
   GHashTable *editors; /* Document* -> Editor* */
+  guint project_event_handler_id;
 };
 
 G_DEFINE_TYPE(EditorManager, editor_manager, G_TYPE_OBJECT)
 
 static void editor_manager_add_document(EditorManager *self, Document *document, gboolean focus);
 static void editor_manager_remove_document(EditorManager *self, Document *document);
-static void on_document_loaded(Project *project, Document *document, gpointer user_data);
-static void on_document_removed(Project *project, Document *document, gpointer user_data);
+static void on_project_event(Project *project, const ProjectChangeEvent *event, gpointer user_data);
 
 static void
 editor_manager_init(EditorManager *self)
@@ -23,6 +23,7 @@ editor_manager_init(EditorManager *self)
   self->project = NULL;
   self->container = NULL;
   self->editors = NULL;
+  self->project_event_handler_id = 0;
 }
 
 static void
@@ -30,8 +31,8 @@ editor_manager_dispose(GObject *object)
 {
   EditorManager *self = EDITOR_MANAGER(object);
   if (self->project) {
-    project_set_document_loaded_cb(self->project, NULL, NULL);
-    project_set_document_removed_cb(self->project, NULL, NULL);
+    project_remove_event_cb(self->project, self->project_event_handler_id);
+    self->project_event_handler_id = 0;
     project_unref(self->project);
     self->project = NULL;
   }
@@ -62,8 +63,8 @@ editor_manager_new(Project *project, EditorContainer *container)
   self->editors = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify)g_object_unref);
 
-  project_set_document_loaded_cb(project, on_document_loaded, self);
-  project_set_document_removed_cb(project, on_document_removed, self);
+  self->project_event_handler_id = project_add_event_cb(self->project,
+      on_project_event, self);
 
   guint count = project_get_document_count(project);
   for (guint i = 0; i < count; i++) {
@@ -106,17 +107,23 @@ editor_manager_remove_document(EditorManager *self, Document *document)
 }
 
 static void
-on_document_loaded(Project * /*project*/, Document *document, gpointer user_data)
+on_project_event(Project * /*project*/, const ProjectChangeEvent *event, gpointer user_data)
 {
   EditorManager *self = EDITOR_MANAGER(user_data);
-  editor_manager_add_document(self, document, TRUE);
-}
-
-static void
-on_document_removed(Project * /*project*/, Document *document, gpointer user_data)
-{
-  EditorManager *self = EDITOR_MANAGER(user_data);
-  editor_manager_remove_document(self, document);
+  if (!event)
+    return;
+  switch (event->type) {
+    case PROJECT_CHANGE_EVENT_DOCUMENT_LOADED:
+      if (event->document)
+        editor_manager_add_document(self, event->document, TRUE);
+      break;
+    case PROJECT_CHANGE_EVENT_DOCUMENT_REMOVED:
+      if (event->document)
+        editor_manager_remove_document(self, event->document);
+      break;
+    default:
+      break;
+  }
 }
 
 Editor *

@@ -23,6 +23,7 @@ struct _ProjectView {
   GdkPixbuf *icon_variable;
   GdkPixbuf *icon_lisp;
   guint project_changed_source;
+  guint project_event_handler_id;
 };
 
 G_DEFINE_TYPE(ProjectView, project_view, GTK_TYPE_TREE_VIEW)
@@ -55,7 +56,7 @@ static gchar *get_selected_component(ProjectView *self);
 static gboolean on_button_press(GtkWidget *widget, GdkEventButton *event, gpointer data);
 static gboolean dispatch_project_changed(gpointer data);
 static gboolean schedule_project_changed(gpointer data);
-static void on_project_changed(Project *project, gpointer user_data);
+static void on_project_event(Project *project, const ProjectChangeEvent *event, gpointer user_data);
 static gint compare_names(gconstpointer a, gconstpointer b, gpointer user_data);
 static GdkPixbuf *load_icon(const gchar *filename);
 static gboolean project_view_on_query_tooltip(GtkWidget *widget, gint x, gint y,
@@ -100,6 +101,7 @@ project_view_init(ProjectView *self)
   self->icon_variable = load_icon("icon-variable.svg");
   self->icon_lisp = load_icon("icon-lisp.svg");
   self->project_changed_source = 0;
+  self->project_event_handler_id = 0;
 
   gtk_style_context_add_class(
       gtk_widget_get_style_context(GTK_WIDGET(self)),
@@ -122,8 +124,10 @@ project_view_dispose(GObject *object)
 {
   ProjectView *self = PROJECT_VIEW(object);
   g_clear_object(&self->asdf);
-  if (self->project)
-    project_set_changed_cb(self->project, NULL, NULL);
+  if (self->project) {
+    project_remove_event_cb(self->project, self->project_event_handler_id);
+    self->project_event_handler_id = 0;
+  }
   g_clear_pointer(&self->project, project_unref);
   g_clear_object(&self->app);
   g_clear_object(&self->store);
@@ -467,7 +471,8 @@ project_view_new(Asdf *asdf, App *app)
   self->app = app ? g_object_ref(app) : NULL;
   self->project = app ? project_ref(app_get_project(app)) : NULL;
   if (self->project)
-    project_set_changed_cb(self->project, on_project_changed, self);
+    self->project_event_handler_id = project_add_event_cb(self->project,
+        on_project_event, self);
   project_view_populate_store(self);
   return GTK_WIDGET(self);
 }
@@ -587,8 +592,10 @@ schedule_project_changed(gpointer data)
 }
 
 static void
-on_project_changed(Project * /*project*/, gpointer user_data)
+on_project_event(Project * /*project*/, const ProjectChangeEvent *event, gpointer user_data)
 {
+  if (!event || event->type != PROJECT_CHANGE_EVENT_CHANGED)
+    return;
   ProjectView *self = PROJECT_VIEW(user_data);
   g_main_context_invoke(NULL, schedule_project_changed, g_object_ref(self));
 }

@@ -8,12 +8,8 @@
 struct _Project {
   GPtrArray *documents; /* Document* */
   ProjectIndex *index;
-  DocumentLoadedCb document_loaded_cb;
-  gpointer document_loaded_data;
-  DocumentRemovedCb document_removed_cb;
-  gpointer document_removed_data;
-  ProjectChangedCb changed_cb;
-  gpointer changed_data;
+  GPtrArray *event_handlers; /* ProjectEventHandler* */
+  guint next_event_handler_id;
   Asdf *asdf; /* owned, nullable */
   ReplSession *repl;
   gchar *path;
