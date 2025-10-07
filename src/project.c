@@ -20,8 +20,6 @@ static Project *project_init(void) {
   self->document_loaded_data = NULL;
   self->document_removed_cb = NULL;
   self->document_removed_data = NULL;
-  self->document_changed_cb = NULL;
-  self->document_changed_data = NULL;
   return self;
 }
 
@@ -259,8 +257,6 @@ void project_document_changed(Project *self, Document *document) {
   g_return_if_fail(glide_is_ui_thread());
   LOG(1, "project_document_changed path=%s", document_get_path(document));
   project_reparse_document(self, document);
-  if (self->document_changed_cb)
-    self->document_changed_cb(self, document, self->document_changed_data);
   project_changed(self);
 }
 
@@ -282,13 +278,6 @@ void project_set_document_loaded_cb(Project *self, DocumentLoadedCb cb, gpointer
   g_return_if_fail(glide_is_ui_thread());
   self->document_loaded_cb = cb;
   self->document_loaded_data = user_data;
-}
-
-void project_set_document_changed_cb(Project *self, DocumentChangedCb cb, gpointer user_data) {
-  g_return_if_fail(self != NULL);
-  g_return_if_fail(glide_is_ui_thread());
-  self->document_changed_cb = cb;
-  self->document_changed_data = user_data;
 }
 
 void project_document_loaded(Project *self, Document *document) {

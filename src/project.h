@@ -13,14 +13,12 @@ typedef struct _ReplSession ReplSession;
 typedef void (*DocumentLoadedCb)(Project *self, Document *document, gpointer user_data);
 typedef void (*DocumentRemovedCb)(Project *self, Document *document, gpointer user_data);
 typedef void (*ProjectChangedCb)(Project *self, gpointer user_data);
-typedef void (*DocumentChangedCb)(Project *self, Document *document, gpointer user_data);
 
 Project       *project_new(ReplSession *repl);
 Project       *project_ref(Project *self);
 void           project_unref(Project *self);
 void           project_set_document_loaded_cb(Project *self, DocumentLoadedCb cb, gpointer user_data);
 void           project_set_document_removed_cb(Project *self, DocumentRemovedCb cb, gpointer user_data);
-void           project_set_document_changed_cb(Project *self, DocumentChangedCb cb, gpointer user_data);
 void           project_set_changed_cb(Project *self, ProjectChangedCb cb, gpointer user_data);
 Document   *project_get_document(Project *self, guint index);
 guint          project_get_document_count(Project *self);
