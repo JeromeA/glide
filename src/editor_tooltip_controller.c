@@ -20,11 +20,15 @@ static gchar *editor_tooltip_controller_build_function_markup (Document *documen
 static gchar *editor_tooltip_controller_build_error_markup (Document *document, gsize offset);
 
 EditorTooltipController *
-editor_tooltip_controller_new (GtkWidget *view)
+editor_tooltip_controller_new (GtkWidget *view, Project *project)
 {
+  g_return_val_if_fail (project != NULL, NULL);
+
   EditorTooltipController *self = g_new0 (EditorTooltipController, 1);
   if (!self)
     return NULL;
+
+  self->project = project_ref (project);
 
   if (view)
     editor_tooltip_controller_ensure_window (self, view);
@@ -44,20 +48,6 @@ editor_tooltip_controller_free (EditorTooltipController *self)
   }
   g_clear_object (&self->window);
   g_free (self);
-}
-
-void
-editor_tooltip_controller_set_project (EditorTooltipController *self, Project *project)
-{
-  g_return_if_fail (self != NULL);
-
-  if (project)
-    project_ref (project);
-
-  if (self->project)
-    project_unref (self->project);
-
-  self->project = project;
 }
 
 static gboolean
