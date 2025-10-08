@@ -1,8 +1,20 @@
-#include "project_priv.h"
+#include "project.h"
 #include "analyse.h"
 #include "util.h"
 #include "project_repl.h"
+#include "project_index.h"
 #include <glib-object.h>
+
+struct _Project {
+  GPtrArray *documents; /* Document* */
+  ProjectIndex *index;
+  GPtrArray *event_handlers; /* ProjectEventHandler* */
+  guint next_event_handler_id;
+  Asdf *asdf; /* owned, nullable */
+  ProjectRepl *repl;
+  gchar *path;
+  gint refcnt;
+};
 
 typedef struct {
   ProjectEventCb callback;
@@ -30,7 +42,7 @@ static void project_free(Project *self) {
   if (self->documents)
     g_ptr_array_free(self->documents, TRUE);
   g_clear_object(&self->asdf);
-  g_clear_pointer(&self->repl, repl_session_unref);
+  project_repl_free(self->repl);
   g_free(self->path);
   if (self->event_handlers)
     g_ptr_array_unref(self->event_handlers);
@@ -41,7 +53,7 @@ Project *project_new(ReplSession *repl) {
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
   LOG(1, "project_new");
   Project *self = project_init();
-  self->repl = repl ? repl_session_ref(repl) : NULL;
+  self->repl = repl ? project_repl_new(self, repl) : NULL;
   project_clear(self);
   GString *content = g_string_new("");
   project_add_document(self, content, "unnamed.lisp", DOCUMENT_LIVE);
@@ -227,8 +239,8 @@ void project_clear(Project *self) {
   project_set_asdf(self, asdf);
   g_object_unref(asdf);
   if (self->repl) {
-    project_request_package(self, "COMMON-LISP");
-    project_request_package(self, "COMMON-LISP-USER");
+    project_repl_request_package(self->repl, "COMMON-LISP");
+    project_repl_request_package(self->repl, "COMMON-LISP-USER");
   }
   project_changed(self);
 }
@@ -282,6 +294,11 @@ void project_changed(Project *self) {
   g_return_if_fail(glide_is_ui_thread());
   LOG(1, "project_changed");
   project_emit_event(self, PROJECT_CHANGE_EVENT_CHANGED, NULL);
+}
+
+ProjectRepl *project_get_repl(Project *self) {
+  g_return_val_if_fail(self != NULL, NULL);
+  return self->repl;
 }
 
 guint project_add_event_cb(Project *self, ProjectEventCb cb, gpointer user_data) {

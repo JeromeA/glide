@@ -1,5 +1,5 @@
 #include "project_repl.h"
-#include "project_priv.h"
+#include "project.h"
 #include "analyse_defpackage.h"
 #include "analyse.h"
 #include "document.h"
@@ -9,6 +9,16 @@
 #include "util.h"
 #include <string.h>
 
+struct _ProjectRepl {
+  Project *project;
+  ReplSession *session;
+};
+
+typedef struct {
+  ProjectRepl *repl;
+  Project *project;
+} PackageRequestData;
+
 static void project_on_package_definition(Interaction *interaction, gpointer user_data);
 static void project_on_describe(Interaction *interaction, gpointer user_data);
 static void project_handle_special_variable(Project *project,
@@ -16,6 +26,8 @@ static void project_handle_special_variable(Project *project,
 static void project_handle_function_section(Project *project,
     const gchar *package, const gchar *symbol, GPtrArray *section,
     FunctionKind kind);
+static void project_repl_request_describe(ProjectRepl *self,
+    const gchar *pkg_name, const gchar *symbol);
 
 typedef struct {
   Project *project;
@@ -98,9 +110,24 @@ static void collect_export_symbols(Node *expr, GPtrArray *out) {
   }
 }
 
-void project_request_package(Project *self, const gchar *name) {
+ProjectRepl *project_repl_new(Project *project, ReplSession *session) {
+  g_return_val_if_fail(project != NULL, NULL);
+  ProjectRepl *self = g_new0(ProjectRepl, 1);
+  self->project = project;
+  self->session = session ? repl_session_ref(session) : NULL;
+  return self;
+}
+
+void project_repl_free(ProjectRepl *self) {
+  if (!self)
+    return;
+  g_clear_pointer(&self->session, repl_session_unref);
+  g_free(self);
+}
+
+void project_repl_request_package(ProjectRepl *self, const gchar *name) {
   g_return_if_fail(self);
-  g_return_if_fail(self->repl);
+  g_return_if_fail(self->session);
   g_return_if_fail(name);
   gchar *expr = g_strdup_printf("(glide:package-definition \"%s\")", name);
   Interaction *interaction = g_new0(Interaction, 1);
@@ -108,16 +135,19 @@ void project_request_package(Project *self, const gchar *name) {
   g_mutex_lock(&interaction->lock);
   interaction->type = INTERACTION_INTERNAL;
   interaction->done_cb = project_on_package_definition;
-  interaction->done_cb_data = project_ref(self);
+  PackageRequestData *data = g_new0(PackageRequestData, 1);
+  data->repl = self;
+  data->project = project_ref(self->project);
+  interaction->done_cb_data = data;
   g_mutex_unlock(&interaction->lock);
-  repl_session_eval(self->repl, interaction);
+  repl_session_eval(self->session, interaction);
   g_free(expr);
 }
 
-void project_request_describe(Project *self, const gchar *pkg_name,
-    const gchar *symbol) {
+static void project_repl_request_describe(ProjectRepl *self,
+    const gchar *pkg_name, const gchar *symbol) {
   g_return_if_fail(self);
-  g_return_if_fail(self->repl);
+  g_return_if_fail(self->session);
   g_return_if_fail(pkg_name);
   g_return_if_fail(symbol);
   LOG(1, "project_request_describe pkg=%s symbol=%s", pkg_name, symbol);
@@ -127,19 +157,20 @@ void project_request_describe(Project *self, const gchar *pkg_name,
   g_mutex_lock(&interaction->lock);
   interaction->type = INTERACTION_INTERNAL;
   DescribeData *data = g_new0(DescribeData, 1);
-  data->project = project_ref(self);
+  data->project = project_ref(self->project);
   data->package_name = g_strdup(pkg_name);
   data->symbol = g_strdup(symbol);
   interaction->done_cb = project_on_describe;
   interaction->done_cb_data = data;
   g_mutex_unlock(&interaction->lock);
-  repl_session_eval(self->repl, interaction);
+  repl_session_eval(self->session, interaction);
   g_free(expr);
 }
 
 static void project_on_package_definition(Interaction *interaction, gpointer user_data) {
   LOG(1, "project_on_package_definition entry");
-  Project *project = user_data;
+  PackageRequestData *data = user_data;
+  Project *project = data->project;
   gchar *res = NULL;
   g_mutex_lock(&interaction->lock);
   if (interaction->result)
@@ -165,7 +196,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   g_main_context_invoke(NULL, analyse_defpackage_cb, pd);
   for (guint i = 0; i < exports->len; i++) {
     const gchar *sym = g_ptr_array_index(exports, i);
-    project_request_describe(project, pkg_name, sym);
+    project_repl_request_describe(data->repl, pkg_name, sym);
   }
   g_free(pkg_name);
   g_main_context_invoke(NULL, project_unref_cb, project);
@@ -174,6 +205,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   g_free(interaction);
   g_free(res);
   g_string_free(text, TRUE);
+  g_free(data);
 }
 
 static void project_handle_special_variable(Project *project,
