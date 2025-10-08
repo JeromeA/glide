@@ -10,10 +10,10 @@
 #include <gtksourceview/gtksource.h>
 
 int
-main (int argc, char *argv[])
+main(int argc, char *argv[])
 {
   LOG(1, "Main.main");
-  Preferences *prefs = preferences_new (g_get_user_config_dir ());
+  Preferences *prefs = preferences_new(g_get_user_config_dir());
   const gchar *sdk_path = preferences_get_sdk(prefs);
   const gchar *proc_argv[] = {
     sdk_path, "--noinform",
@@ -25,9 +25,9 @@ main (int argc, char *argv[])
   ReplProcess *repl_proc = repl_process_new(proc);
   StatusService *status_service = status_service_new();
   ReplSession *repl = repl_session_new(repl_proc, status_service);
-  App *app     = app_new (prefs, repl, status_service);
+  App *app     = app_new(prefs, repl, status_service);
 
-  int status = g_application_run (G_APPLICATION (app), argc, argv);
+  int status = g_application_run(G_APPLICATION(app), argc, argv);
   g_object_unref(app);
   repl_session_unref(repl);
   repl_process_unref(repl_proc);
