@@ -1,5 +1,5 @@
 #include "editor.h"
-#include "editor_tooltip_window.h"
+#include "editor_tooltip_controller.h"
 #include "project.h"
 #include "document.h"
 #include "util.h"
@@ -25,7 +25,7 @@ struct _Editor
   GtkTextTag *error_tag;
   GtkTextTag *undefined_function_tag;
   GtkTextTag *ctrl_hover_tag;
-  EditorTooltipWindow *tooltip_window;
+  EditorTooltipController *tooltip_controller;
   gboolean ctrl_hover_active;
   gsize ctrl_hover_start;
   gsize ctrl_hover_end;
@@ -51,7 +51,6 @@ static void editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*
 static void editor_clear_function_highlight (Editor *self);
 static void editor_highlight_nodes (Editor *self, GPtrArray *nodes, GtkTextTag *tag);
 static void editor_highlight_node (Editor *self, const Node *node, GtkTextTag *tag);
-static gchar *editor_build_error_tooltip_markup (Editor *self, gsize offset);
 static void editor_clear_errors(Editor *self);
 static void editor_update_document_from_buffer(Editor *self);
 static void editor_clear_ctrl_hover (Editor *self);
@@ -147,11 +146,7 @@ editor_init (Editor *self)
   self->project = NULL;
   self->document = NULL;
   self->selection_stack = g_array_new (FALSE, FALSE, sizeof (SelectionRange));
-  self->tooltip_window = editor_tooltip_window_new ();
-  if (self->tooltip_window) {
-    g_object_ref_sink (G_OBJECT (self->tooltip_window));
-    gtk_widget_set_tooltip_window (GTK_WIDGET (self->view), GTK_WINDOW (self->tooltip_window));
-  }
+  self->tooltip_controller = editor_tooltip_controller_new (GTK_WIDGET (self->view));
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER (self->buffer);
   self->function_def_tag = gtk_text_buffer_create_tag (buffer, "function-def-highlight", "background", "#fef", NULL);
   self->function_use_tag = gtk_text_buffer_create_tag (buffer, "function-use-highlight", "background", "#eef", NULL);
@@ -230,7 +225,10 @@ editor_dispose (GObject *object)
   self->ctrl_hover_active = FALSE;
   g_clear_object (&self->ctrl_hover_cursor);
   g_clear_object (&self->ctrl_hover_window);
-  g_clear_object (&self->tooltip_window);
+  if (self->tooltip_controller) {
+    editor_tooltip_controller_free (self->tooltip_controller);
+    self->tooltip_controller = NULL;
+  }
 
   G_OBJECT_CLASS (editor_parent_class)->dispose (object);
 }
@@ -251,6 +249,8 @@ editor_new_for_document (Project *project, Document *document)
   Editor *self = g_object_new (EDITOR_TYPE, NULL);
   self->project = project_ref(project);
   self->document = document;
+  if (self->tooltip_controller)
+    editor_tooltip_controller_set_project (self->tooltip_controller, project);
 
   const GString *existing = document_get_content(self->document);
   if (existing && existing->str) {
@@ -286,6 +286,13 @@ editor_get_view (Editor *self)
 {
   g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
   return GTK_WIDGET (self->view);
+}
+
+EditorTooltipController *
+editor_get_tooltip_controller (Editor *self)
+{
+  g_return_val_if_fail (GLIDE_IS_EDITOR (self), NULL);
+  return self->tooltip_controller;
 }
 
 void
@@ -629,7 +636,6 @@ editor_on_mark_set (GtkTextBuffer *buffer, GtkTextIter * /*location*/, GtkTextMa
 
 static gboolean find_parent_range (GtkTextBuffer *buffer, Document *document, gsize start, gsize end,
     gsize *new_start, gsize *new_end);
-static gchar *editor_build_function_tooltip_markup (Editor *self, gsize offset);
 
 gboolean
 editor_get_toplevel_range (Editor *self, gsize offset, gsize *start, gsize *end)
@@ -672,91 +678,11 @@ editor_on_query_tooltip (GtkWidget *widget, gint x, gint y, gboolean /*keyboard_
   g_assert (glide_is_ui_thread ());
   Editor *self = GLIDE_EDITOR (user_data);
   g_return_val_if_fail (self != NULL, FALSE);
-  g_return_val_if_fail (self->document != NULL, FALSE);
-  g_return_val_if_fail (self->project != NULL, FALSE);
-  GtkTextIter iter;
-  gint bx;
-  gint by;
-  gtk_text_view_window_to_buffer_coords (GTK_TEXT_VIEW (widget), GTK_TEXT_WINDOW_WIDGET, x, y, &bx, &by);
-  gtk_text_view_get_iter_at_location (GTK_TEXT_VIEW (widget), &iter, bx, by);
-  gsize offset = gtk_text_iter_get_offset (&iter);
-  LOG (2, "Editor.on_query_tooltip offset=%zu", offset);
 
-  gchar *error_markup = editor_build_error_tooltip_markup (self, offset);
-  gchar *function_markup = editor_build_function_tooltip_markup (self, offset);
-  gboolean shown = FALSE;
+  if (!self->tooltip_controller)
+    return FALSE;
 
-  if (!self->tooltip_window) {
-    self->tooltip_window = editor_tooltip_window_new ();
-    if (self->tooltip_window) {
-      g_object_ref_sink (G_OBJECT (self->tooltip_window));
-      gtk_widget_set_tooltip_window (GTK_WIDGET (self->view), GTK_WINDOW (self->tooltip_window));
-    }
-  }
-
-  if (self->tooltip_window) {
-    if (editor_tooltip_window_set_content (self->tooltip_window, error_markup, function_markup))
-      shown = TRUE;
-  }
-
-  g_free (function_markup);
-  g_free (error_markup);
-  return shown;
-}
-
-static gchar *
-editor_build_function_tooltip_markup (Editor *self, gsize offset)
-{
-  const Node *node = editor_find_sdt_node (self, offset);
-  if (!node) {
-    LOG (2, "Editor.build_function_tooltip_markup: no node");
-    return NULL;
-  }
-
-  gchar *node_str = node_to_string (node);
-  LOG (2, "Editor.build_function_tooltip_markup: node %s", node_str ? node_str : "<unknown>");
-  g_free (node_str);
-
-  if (!node_is (node, SDT_FUNCTION_USE)) {
-    LOG (2, "Editor.build_function_tooltip_markup: node not a function use");
-    return NULL;
-  }
-
-  const gchar *name = node_get_name (node);
-  LOG (2, "Editor.build_function_tooltip_markup: function %s", name);
-
-  Function *fn = project_get_function (self->project, name);
-  if (!fn) {
-    LOG (1, "Editor.build_function_tooltip_markup: function not found");
-    return NULL;
-  }
-
-  gchar *markup = function_tooltip (fn);
-  if (!markup)
-    LOG (1, "Editor.build_function_tooltip_markup: no tooltip");
-
-  return markup;
-}
-
-static gchar *
-editor_build_error_tooltip_markup (Editor *self, gsize offset)
-{
-  const GArray *errors = document_get_errors (self->document);
-  if (!errors || errors->len == 0)
-    return NULL;
-  LOG (2, "Editor.build_error_tooltip checking %u errors", errors->len);
-  for (guint i = 0; i < errors->len; i++) {
-    const DocumentError *err = &g_array_index ((GArray*) errors, DocumentError, i);
-    if (offset < err->start || offset >= err->end)
-      continue;
-    LOG (1, "Editor.build_error_tooltip: match range=[%zu,%zu) message=%s",
-        err->start, err->end, err->message ? err->message : "(null)");
-    const gchar *message = (err->message && *err->message) ? err->message : "Error";
-    gchar *message_esc = g_markup_escape_text (message, -1);
-    return message_esc;
-  }
-  LOG (2, "Editor.build_error_tooltip: no match at offset %zu", offset);
-  return NULL;
+  return editor_tooltip_controller_query (self->tooltip_controller, self, widget, x, y);
 }
 
 static gboolean
@@ -875,27 +801,5 @@ editor_shrink_selection (Editor *self)
   g_array_remove_index (self->selection_stack, self->selection_stack->len - 1);
   SelectionRange prev = g_array_index (self->selection_stack, SelectionRange, self->selection_stack->len - 1);
   select_range (buffer, prev.start, prev.end);
-}
-
-gboolean
-editor_show_tooltip_window (Editor *self)
-{
-  g_assert (glide_is_ui_thread ());
-  g_return_val_if_fail (GLIDE_IS_EDITOR (self), FALSE);
-
-  if (!self->tooltip_window) {
-    LOG (1, "Editor.show_tooltip_window: no tooltip window");
-    return FALSE;
-  }
-
-  if (!editor_tooltip_window_has_content (self->tooltip_window)) {
-    LOG (1, "Editor.show_tooltip_window: no cached tooltip content");
-    return FALSE;
-  }
-
-  gtk_widget_show (GTK_WIDGET (self->tooltip_window));
-  gtk_window_present (GTK_WINDOW (self->tooltip_window));
-
-  return TRUE;
 }
 

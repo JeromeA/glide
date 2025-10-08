@@ -12,6 +12,7 @@
 #include "document.h"
 #include "editor_container.h"
 #include "editor.h"
+#include "editor_tooltip_controller.h"
 #include "node.h"
 #include "util.h"
 
@@ -347,7 +348,8 @@ show_editor_tooltip(App *self)
     return;
   }
 
-  if (!editor_show_tooltip_window(current))
+  EditorTooltipController *controller = editor_get_tooltip_controller (current);
+  if (!controller || !editor_tooltip_controller_show (controller))
     LOG(1, "Actions.show_editor_tooltip: no tooltip content");
 }
 
