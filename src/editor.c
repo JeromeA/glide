@@ -146,7 +146,7 @@ editor_init(Editor *self)
   self->project = NULL;
   self->document = NULL;
   self->selection_stack = g_array_new(FALSE, FALSE, sizeof(SelectionRange));
-  self->tooltip_controller = editor_tooltip_controller_new(GTK_WIDGET(self->view));
+  self->tooltip_controller = NULL;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   self->function_def_tag = gtk_text_buffer_create_tag(buffer, "function-def-highlight", "background", "#fef", NULL);
   self->function_use_tag = gtk_text_buffer_create_tag(buffer, "function-use-highlight", "background", "#eef", NULL);
@@ -249,8 +249,7 @@ editor_new_for_document(Project *project, Document *document)
   Editor *self = g_object_new(EDITOR_TYPE, NULL);
   self->project = project_ref(project);
   self->document = document;
-  if (self->tooltip_controller)
-    editor_tooltip_controller_set_project(self->tooltip_controller, project);
+  self->tooltip_controller = editor_tooltip_controller_new(GTK_WIDGET(self->view), project);
 
   const GString *existing = document_get_content(self->document);
   if (existing && existing->str) {
