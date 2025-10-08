@@ -8,15 +8,17 @@ static void test_describe(void) {
   StatusService *status_service;
   ReplSession *sess;
   Project *project = build_project(&sess, &rp, &status_service);
+  ProjectRepl *project_repl = project_get_repl(project);
+  g_assert_nonnull(project_repl);
 
+  eval_form(sess, "(defpackage :glide-test (:use :cl) (:export :foo :*bar*))");
+  eval_form(sess, "(in-package :glide-test)");
   eval_form(sess, "(defun foo () \"foo doc\" 42)");
   eval_form(sess, "(defparameter *bar* 42 \"bar doc\")");
-  eval_form(sess, "(export '(foo *bar*))");
+  eval_form(sess, "(in-package :cl-user)");
 
-  project_request_describe(project, "COMMON-LISP-USER", "FOO");
-  project_request_describe(project, "COMMON-LISP-USER", "*BAR*");
-  project_request_describe(project, "COMMON-LISP", "WHEN");
-  project_request_describe(project, "COMMON-LISP", "IF");
+  project_repl_request_package(project_repl, "GLIDE-TEST");
+  project_repl_request_package(project_repl, "COMMON-LISP");
 
   Function *fn = NULL;
   const gchar *var_doc = NULL;

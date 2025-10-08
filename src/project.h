@@ -9,6 +9,7 @@
 
 typedef struct _Project Project;
 typedef struct _ReplSession ReplSession;
+typedef struct _ProjectRepl ProjectRepl;
 
 typedef enum {
   PROJECT_CHANGE_EVENT_DOCUMENT_LOADED,
@@ -56,4 +57,5 @@ const gchar   *project_get_variable(Project *self, const gchar *name);
 gchar        **project_get_variable_names(Project *self, const gchar *package,
     guint *length);
 void           project_changed(Project *self);
+ProjectRepl   *project_get_repl(Project *self);
 
