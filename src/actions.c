@@ -348,8 +348,8 @@ show_editor_tooltip(App *self)
     return;
   }
 
-  EditorTooltipController *controller = editor_get_tooltip_controller (current);
-  if (!controller || !editor_tooltip_controller_show (controller))
+  EditorTooltipController *controller = editor_get_tooltip_controller(current);
+  if (!controller || !editor_tooltip_controller_show(controller))
     LOG(1, "Actions.show_editor_tooltip: no tooltip content");
 }
 
