@@ -16,6 +16,7 @@ SOURCES += \
   editor.c \
   editor_container.c \
   editor_manager.c \
+  editor_tooltip_controller.c \
   editor_tooltip_window.c \
   evaluate.c \
   file_add.c \
