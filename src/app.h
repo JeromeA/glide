@@ -19,7 +19,7 @@ G_BEGIN_DECLS
 #define GLIDE_TYPE (app_get_type())
 G_DECLARE_FINAL_TYPE(App, app, GLIDE, APP, GtkApplication)
 
-STATIC App *app_new (Preferences *prefs, ReplSession *glide, StatusService *status_service);
+STATIC App *app_new(Preferences *prefs, ReplSession *glide, StatusService *status_service);
 STATIC Editor *app_get_editor(App *self);
 STATIC EditorContainer *app_get_editor_container(App *self);
 STATIC EditorManager *app_get_editor_manager(App *self);

@@ -57,7 +57,7 @@ G_DEFINE_TYPE(App, app, GTK_TYPE_APPLICATION)
 
 /* ---  class_init ------------------------------------------------------- */
 static void
-app_activate (GApplication *app)
+app_activate(GApplication *app)
 {
   App *self = GLIDE_APP(app);
 
@@ -120,11 +120,11 @@ app_activate (GApplication *app)
 }
 
 static void
-app_startup (GApplication *app)
+app_startup(GApplication *app)
 {
   LOG(1, "App.startup");
   /* Chain up first */
-  G_APPLICATION_CLASS (app_parent_class)->startup (app);
+  G_APPLICATION_CLASS(app_parent_class)->startup(app);
   g_return_if_fail(glide_is_ui_thread());
   App *self = GLIDE_APP(app);
   self->project = project_new(self->glide);
@@ -146,7 +146,7 @@ app_startup (GApplication *app)
 }
 
 static void
-app_dispose (GObject *object)
+app_dispose(GObject *object)
 {
   App *self = GLIDE_APP(object);
 
@@ -166,15 +166,15 @@ app_dispose (GObject *object)
     self->preferences = NULL;
   }
   g_clear_pointer(&self->glide, repl_session_unref);
-  G_OBJECT_CLASS (app_parent_class)->dispose (object);
+  G_OBJECT_CLASS(app_parent_class)->dispose(object);
 }
 
 static void
-app_class_init (AppClass *klass)
+app_class_init(AppClass *klass)
 {
   LOG(1, "App.class_init");
-  GApplicationClass *app_class = G_APPLICATION_CLASS (klass);
-  GObjectClass      *obj_class = G_OBJECT_CLASS (klass);
+  GApplicationClass *app_class = G_APPLICATION_CLASS(klass);
+  GObjectClass      *obj_class = G_OBJECT_CLASS(klass);
 
   app_class->startup  = app_startup;
   app_class->activate = app_activate;
@@ -182,7 +182,7 @@ app_class_init (AppClass *klass)
 }
 
 static void
-app_init (App *self)
+app_init(App *self)
 {
   LOG(1, "App.init");
   /* Everything that needs only the *instance* goes here */
@@ -199,12 +199,12 @@ app_init (App *self)
 }
 
 STATIC App *
-app_new (Preferences *prefs, ReplSession *glide, StatusService *status_service)
+app_new(Preferences *prefs, ReplSession *glide, StatusService *status_service)
 {
   LOG(1, "App.new");
-  g_return_val_if_fail (glide, NULL);
+  g_return_val_if_fail(glide, NULL);
 
-  App *self = g_object_new (GLIDE_TYPE,
+  App *self = g_object_new(GLIDE_TYPE,
       /* GtkApplication properties */
       "application-id",    "org.example.Glide",
       "flags",             G_APPLICATION_HANDLES_OPEN,
@@ -221,7 +221,7 @@ STATIC Editor *
 app_get_editor(App *self)
 {
   LOG(1, "App.get_editor");
-  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
   if (!self->editor_container)
     return NULL;
   return editor_container_get_current_editor(self->editor_container);
@@ -416,16 +416,16 @@ app_update_recent_menu(App *self)
 
 
 STATIC Preferences *
-app_get_preferences (App *self)
+app_get_preferences(App *self)
 {
-  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
   return self->preferences;
 }
 
 STATIC ReplSession *
-app_get_glide (App *self)
+app_get_glide(App *self)
 {
-  g_return_val_if_fail (GLIDE_IS_APP (self), NULL);
+  g_return_val_if_fail(GLIDE_IS_APP(self), NULL);
   return self->glide;
 }
 
@@ -438,18 +438,18 @@ app_set_recent_menu(App *self, GMenu *menu)
 
 
 STATIC void
-app_quit (App *self)
+app_quit(App *self)
 {
   LOG(1, "App.quit");
-  g_return_if_fail (GLIDE_IS_APP (self));
-  g_application_quit (G_APPLICATION (self));
+  g_return_if_fail(GLIDE_IS_APP(self));
+  g_application_quit(G_APPLICATION(self));
 }
 
 STATIC void
-app_on_quit (App *self)
+app_on_quit(App *self)
 {
   LOG(1, "App.on_quit");
-  g_return_if_fail (GLIDE_IS_APP (self));
+  g_return_if_fail(GLIDE_IS_APP(self));
   Preferences *prefs = app_get_preferences(self);
   Document *document = app_get_current_document(self);
   if (prefs && document) {
@@ -467,6 +467,6 @@ app_on_quit (App *self)
   }
   if (!app_close_project(self, FALSE))
     return;
-  app_quit (self);
+  app_quit(self);
 }
 
