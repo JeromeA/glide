@@ -678,9 +678,6 @@ editor_on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean /*keyboard_m
   Editor *self = GLIDE_EDITOR(user_data);
   g_return_val_if_fail(self != NULL, FALSE);
 
-  if (!self->tooltip_controller)
-    return FALSE;
-
   return editor_tooltip_controller_query(self->tooltip_controller, self, widget, x, y);
 }
 
