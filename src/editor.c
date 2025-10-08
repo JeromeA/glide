@@ -1,15 +1,11 @@
 #include "editor.h"
+#include "editor_selection_manager.h"
 #include "editor_tooltip_controller.h"
 #include "project.h"
 #include "document.h"
 #include "util.h"
 
 static const gchar *EDITOR_TAB_LABEL_MODIFIED_CLASS = "editor-tab-modified";
-
-typedef struct {
-  gsize start;
-  gsize end;
-} SelectionRange;
 
 struct _Editor
 {
@@ -19,7 +15,7 @@ struct _Editor
   GtkSourceBuffer *buffer;
   Project *project;
   Document *document;
-  GArray *selection_stack;
+  EditorSelectionManager *selection_manager;
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
   GtkTextTag *error_tag;
@@ -145,7 +141,7 @@ editor_init(Editor *self)
   g_signal_connect(self->view, "leave-notify-event", G_CALLBACK(editor_on_leave_notify_event), self);
   self->project = NULL;
   self->document = NULL;
-  self->selection_stack = g_array_new(FALSE, FALSE, sizeof(SelectionRange));
+  self->selection_manager = editor_selection_manager_new();
   self->tooltip_controller = NULL;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   self->function_def_tag = gtk_text_buffer_create_tag(buffer, "function-def-highlight", "background", "#fef", NULL);
@@ -218,10 +214,7 @@ editor_dispose(GObject *object)
   self->ctrl_hover_tag = NULL;
   g_clear_object(&self->buffer);
   self->view = NULL;
-  if (self->selection_stack) {
-    g_array_free(self->selection_stack, TRUE);
-    self->selection_stack = NULL;
-  }
+  g_clear_object(&self->selection_manager);
   self->ctrl_hover_active = FALSE;
   g_clear_object(&self->ctrl_hover_cursor);
   g_clear_object(&self->ctrl_hover_window);
@@ -633,15 +626,13 @@ editor_on_mark_set(GtkTextBuffer *buffer, GtkTextIter * /*location*/, GtkTextMar
   editor_update_function_highlight(self);
 }
 
-static gboolean find_parent_range(GtkTextBuffer *buffer, Document *document, gsize start, gsize end,
-    gsize *new_start, gsize *new_end);
-
 gboolean
 editor_get_toplevel_range(Editor *self, gsize offset, gsize *start, gsize *end)
 {
   g_return_val_if_fail(GLIDE_IS_EDITOR(self), FALSE);
   g_return_val_if_fail(start != NULL, FALSE);
   g_return_val_if_fail(end != NULL, FALSE);
+  g_return_val_if_fail(self->selection_manager != NULL, FALSE);
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   if (!self->document)
     return FALSE;
@@ -655,7 +646,8 @@ editor_get_toplevel_range(Editor *self, gsize offset, gsize *start, gsize *end)
   gsize new_start;
   gsize new_end;
 
-  while (find_parent_range(buffer, self->document, cur_start, cur_end, &new_start, &new_end)) {
+  while (editor_selection_manager_find_parent_range(self->selection_manager, buffer, self->document,
+      cur_start, cur_end, &new_start, &new_end)) {
     cur_start = new_start;
     cur_end = new_end;
     if (cur_start == 0 && cur_end == len)
@@ -681,121 +673,25 @@ editor_on_query_tooltip(GtkWidget *widget, gint x, gint y, gboolean /*keyboard_m
   return editor_tooltip_controller_query(self->tooltip_controller, self, widget, x, y);
 }
 
-static gboolean
-find_parent_range(GtkTextBuffer *buffer, Document *document, gsize start, gsize end, gsize *new_start,
-    gsize *new_end)
-{
-  GtkTextIter end_iter;
-  gtk_text_buffer_get_end_iter(buffer, &end_iter);
-  gsize len = gtk_text_iter_get_offset(&end_iter);
-
-  LOG(1, "find_parent_range start=%zu end=%zu", start, end);
-
-  const Node *ast = document_get_ast(document);
-  const Node *node = node_find_containing_range(ast, start, end);
-  if (!node) {
-    LOG(1, "no node found");
-    return FALSE;
-  }
-
-  gsize node_start = node_get_start_offset(node);
-  gsize node_end = node_get_end_offset(node);
-  const Node *parent = node->parent;
-
-  while (node_start == start && node_end == end && parent) {
-    LOG(1, "parent has same range [%zu,%zu), climbing", node_start, node_end);
-    node = parent;
-    node_start = node_get_start_offset(node);
-    node_end = node_get_end_offset(node);
-    parent = node->parent;
-  }
-
-  if (!parent) {
-    LOG(1, "at root node, cannot extend");
-    return FALSE;
-  }
-
-  if (node_start == start && node_end == end) {
-    if (start == 0 && end == len) {
-      LOG(1, "at buffer range, cannot extend");
-      return FALSE;
-    }
-    *new_start = 0;
-    *new_end = len;
-    LOG(1, "extending to buffer [%zu,%zu)", *new_start, *new_end);
-    return TRUE;
-  }
-
-  *new_start = node_start;
-  *new_end = node_end;
-  LOG(1, "new range [%zu,%zu)", *new_start, *new_end);
-  return TRUE;
-}
-
-static void select_range(GtkTextBuffer *buffer, gsize start, gsize end)
-{
-  GtkTextIter it_start;
-  GtkTextIter it_end;
-  gtk_text_buffer_get_iter_at_offset(buffer, &it_start, start);
-  gtk_text_buffer_get_iter_at_offset(buffer, &it_end, end);
-  gtk_text_buffer_select_range(buffer, &it_start, &it_end);
-}
-
 void
 editor_extend_selection(Editor *self)
 {
   g_return_if_fail(GLIDE_IS_EDITOR(self));
-  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
-  GtkTextIter it_start;
-  GtkTextIter it_end;
-  if (!gtk_text_buffer_get_selection_bounds(buffer, &it_start, &it_end)) {
-    GtkTextMark *mark = gtk_text_buffer_get_insert(buffer);
-    gtk_text_buffer_get_iter_at_mark(buffer, &it_start, mark);
-    it_end = it_start;
-  }
-  gsize start = gtk_text_iter_get_offset(&it_start);
-  gsize end = gtk_text_iter_get_offset(&it_end);
-
-  LOG(1, "extend_selection start=%zu end=%zu stack_len=%u", start, end, self->selection_stack->len);
-
-  if (self->selection_stack->len == 0) {
-    SelectionRange original = { start, end };
-    g_array_append_val(self->selection_stack, original);
-  }
-
-  gsize new_start = start;
-  gsize new_end = end;
-  if (!find_parent_range(buffer, self->document, start, end, &new_start, &new_end)) {
-    LOG(1, "no parent range found, resetting");
-    SelectionRange orig = g_array_index(self->selection_stack, SelectionRange, 0);
-    select_range(buffer, orig.start, orig.end);
-    g_array_set_size(self->selection_stack, 0);
+  if (!self->selection_manager)
     return;
-  }
 
-  SelectionRange new_range = { new_start, new_end };
-  g_array_append_val(self->selection_stack, new_range);
-  select_range(buffer, new_start, new_end);
-  LOG(1, "selection extended to [%zu,%zu)", new_start, new_end);
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
+  editor_selection_manager_extend(self->selection_manager, buffer, self->document);
 }
 
 void
 editor_shrink_selection(Editor *self)
 {
   g_return_if_fail(GLIDE_IS_EDITOR(self));
-  if (!self->selection_stack || self->selection_stack->len == 0)
+  if (!self->selection_manager)
     return;
 
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
-  if (self->selection_stack->len <= 1) {
-    SelectionRange orig = g_array_index(self->selection_stack, SelectionRange, 0);
-    select_range(buffer, orig.start, orig.end);
-    g_array_set_size(self->selection_stack, 0);
-    return;
-  }
-
-  g_array_remove_index(self->selection_stack, self->selection_stack->len - 1);
-  SelectionRange prev = g_array_index(self->selection_stack, SelectionRange, self->selection_stack->len - 1);
-  select_range(buffer, prev.start, prev.end);
+  editor_selection_manager_shrink(self->selection_manager, buffer);
 }
 
