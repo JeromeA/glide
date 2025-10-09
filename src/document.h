@@ -26,9 +26,7 @@ typedef struct {
   gchar *message;
 } DocumentError;
 
-Document    *document_new(Project *project, const gchar *path,
-    DocumentState state);
-Document    *document_new_virtual(GString *content);
+Document    *document_new(Project *project, DocumentState state);
 void         document_free(Document *document);
 DocumentState document_get_state(Document *document);
 void         document_set_state(Document *document, DocumentState state);

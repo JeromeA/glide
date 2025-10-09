@@ -303,7 +303,8 @@ static void project_handle_function_section(Project *project,
   Document *document = NULL;
   Node *lambda_node = NULL;
   if (lambda_list) {
-    document = document_new_virtual(g_string_new(lambda_list));
+    document = document_new(NULL, DOCUMENT_LIVE);
+    document_set_content(document, g_string_new(lambda_list));
     const Node *ast = document_get_ast(document);
     if (ast && ast->children && ast->children->len > 0)
       lambda_node = g_array_index(ast->children, Node*, 0);
