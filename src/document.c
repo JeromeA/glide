@@ -20,22 +20,21 @@ struct _Document {
   GArray *errors; /* DocumentError */
 };
 
-static Document *document_create(Project *project, GString *content, const gchar *path, DocumentState state);
-static void document_assign_content(Document *document, GString *content);
+static Document *document_create_empty(Project *project, const gchar *path, DocumentState state);
 static void document_clear_tokens(Document *document);
 static void document_clear_ast(Document *document);
 static void document_set_tokens(Document *document, GArray *tokens);
 static void document_set_ast(Document *document, Node *ast);
 
-Document *document_new(Project *project, GString *content, const gchar *path, DocumentState state) {
+Document *document_new(Project *project, const gchar *path, DocumentState state) {
   g_return_val_if_fail(project != NULL, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
-  return document_create(project, content, path, state);
+  return document_create_empty(project, path, state);
 }
 
 Document *document_new_virtual(GString *content) {
-  Document *document = document_create(NULL, content, NULL, DOCUMENT_LIVE);
-  document_reparse(document);
+  Document *document = document_create_empty(NULL, NULL, DOCUMENT_LIVE);
+  document_set_content(document, content);
   return document;
 }
 
@@ -66,12 +65,13 @@ void document_set_state(Document *document, DocumentState state) {
 
 void document_set_content(Document *document, GString *content) {
   g_return_if_fail(document != NULL);
-  g_return_if_fail(glide_is_ui_thread());
+  if (document->project)
+    g_return_if_fail(glide_is_ui_thread());
   if (document->content) {
     g_string_free(document->content, TRUE);
     document->content = NULL;
   }
-  document_assign_content(document, content);
+  document->content = content ? content : g_string_new("");
   document_reparse(document);
 }
 
@@ -124,12 +124,10 @@ void document_set_path(Document *document, const gchar *path) {
   document->path = path ? g_strdup(path) : NULL;
 }
 
-Document *document_load(Project *project, const gchar *path) {
-  g_return_val_if_fail(project != NULL, NULL);
+GString *document_load_buffer(const gchar *path) {
   g_return_val_if_fail(path != NULL, NULL);
   g_return_val_if_fail(glide_is_ui_thread(), NULL);
-
-  LOG(1, "document_load path=%s", path);
+  LOG(1, "document_load_buffer path=%s", path);
 
   int fd = open(path, O_RDONLY, 0);
   if (fd == -1) {
@@ -170,10 +168,9 @@ Document *document_load(Project *project, const gchar *path) {
   close(fd);
 
   GString *text = g_string_new_len(content, total_read);
-  Document *document = document_create(project, text, path, DOCUMENT_LIVE);
   g_free(content);
 
-  return document;
+  return text;
 }
 
 const gchar *document_get_relative_path(Document *document) {
@@ -220,20 +217,16 @@ void document_add_error(Document *document, DocumentError error) {
   g_array_append_val(document->errors, stored);
 }
 
-static Document *document_create(Project *project, GString *content, const gchar *path, DocumentState state) {
+static Document *document_create_empty(Project *project, const gchar *path, DocumentState state) {
   Document *document = g_new0(Document, 1);
   document->project = project;
   document->state = state;
   document->path = path ? g_strdup(path) : NULL;
   document->errors = g_array_new(FALSE, FALSE, sizeof(DocumentError));
-  document_assign_content(document, content);
-  return document;
-}
-
-static void document_assign_content(Document *document, GString *content) {
-  document->content = content ? content : g_string_new("");
+  document->content = NULL;
   document->tokens = NULL;
   document->ast = NULL;
+  return document;
 }
 
 static void document_clear_tokens(Document *document) {
