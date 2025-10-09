@@ -12,7 +12,9 @@ static void document_set_text(Document *document, const gchar *text) {
 }
 
 static Document *create_virtual_file(const gchar *text) {
-  return document_new_virtual(g_string_new(text));
+  Document *document = document_new(NULL, DOCUMENT_LIVE);
+  document_set_content(document, g_string_new(text));
+  return document;
 }
 
 static Function *create_function_with_lambda(const gchar *name,

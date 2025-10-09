@@ -69,7 +69,8 @@ Document *project_add_document(Project *self, GString *content,
 
   if (!content)
     content = g_string_new("");
-  Document *document = document_new(self, path, state);
+  Document *document = document_new(self, state);
+  document_set_path(document, path);
   g_ptr_array_add(self->documents, document);
   document_set_content(document, content);
 
@@ -88,7 +89,8 @@ Document *project_add_loaded_document(Project *self, const gchar *path) {
   if (!content)
     return NULL;
 
-  Document *document = document_new(self, path, DOCUMENT_LIVE);
+  Document *document = document_new(self, DOCUMENT_LIVE);
+  document_set_path(document, path);
   g_ptr_array_add(self->documents, document);
   document_set_content(document, content);
   project_document_loaded(self, document);

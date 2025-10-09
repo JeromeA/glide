@@ -33,7 +33,8 @@ test_extend_and_shrink_nested_ranges(void)
   const gchar *text = "(foo (bar baz))";
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(gtk_source_buffer_new(NULL));
   gtk_text_buffer_set_text(buffer, text, -1);
-  Document *document = document_new_virtual(g_string_new(text));
+  Document *document = document_new(NULL, DOCUMENT_LIVE);
+  document_set_content(document, g_string_new(text));
   EditorSelectionManager *manager = editor_selection_manager_new();
 
   GtkTextIter iter;
