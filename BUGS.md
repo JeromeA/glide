@@ -514,3 +514,11 @@ before closing their pipes, so if a child process was still running, the reads
 blocked indefinitely and the test never progressed. The destroy routine now
 closes the pipes first, which breaks the blocking reads and allows the threads
 to join even when the child misbehaves.
+## Editor selection manager test trimmed the closing parenthesis
+
+`editor_selection_manager_extend()` correctly grows selections to cover the
+entire s-expression, including the closing parenthesis. The unit test expected
+the end offset one character too early, so the check failed even though the
+runtime behaviour was right. The test now matches the inclusive range the
+selection manager produces.
+

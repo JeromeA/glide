@@ -45,7 +45,7 @@ test_extend_and_shrink_nested_ranges(void)
   assert_selection(buffer, 6, 9);
 
   editor_selection_manager_extend(manager, buffer, document);
-  assert_selection(buffer, 5, 13);
+  assert_selection(buffer, 5, 14);
 
   editor_selection_manager_extend(manager, buffer, document);
   assert_selection(buffer, 0, 15);
@@ -57,7 +57,7 @@ test_extend_and_shrink_nested_ranges(void)
   gtk_text_buffer_place_cursor(buffer, &iter);
   editor_selection_manager_extend(manager, buffer, document);
   editor_selection_manager_extend(manager, buffer, document);
-  assert_selection(buffer, 5, 13);
+  assert_selection(buffer, 5, 14);
 
   editor_selection_manager_shrink(manager, buffer);
   assert_selection(buffer, 6, 9);

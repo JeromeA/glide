@@ -67,7 +67,7 @@ run: all
 :./analyser_test
 :./package_test
 :./status_service_test
-:./editor_selection_manager_test
+:xvfb-run -a ./editor_selection_manager_test
 :./editor_test
 
 clean:
