@@ -85,14 +85,12 @@ Document *project_add_loaded_document(Project *self, const gchar *path) {
 
   LOG(1, "project_add_loaded_document path=%s", path);
 
-  GString *content = document_load_buffer(path);
-  if (!content)
-    return NULL;
-
   Document *document = document_new(self, DOCUMENT_LIVE);
-  document_set_path(document, path);
+  if (!document_load_from_file(document, path)) {
+    document_free(document);
+    return NULL;
+  }
   g_ptr_array_add(self->documents, document);
-  document_set_content(document, content);
   project_document_loaded(self, document);
   return document;
 }

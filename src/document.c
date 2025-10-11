@@ -126,22 +126,23 @@ void document_set_path(Document *document, const gchar *path) {
   document->path = path ? g_strdup(path) : NULL;
 }
 
-GString *document_load_buffer(const gchar *path) {
-  g_return_val_if_fail(path != NULL, NULL);
-  g_return_val_if_fail(glide_is_ui_thread(), NULL);
-  LOG(1, "document_load_buffer path=%s", path);
+gboolean document_load_from_file(Document *document, const gchar *path) {
+  g_return_val_if_fail(document != NULL, FALSE);
+  g_return_val_if_fail(path != NULL, FALSE);
+  g_return_val_if_fail(glide_is_ui_thread(), FALSE);
+  LOG(1, "document_load_from_file path=%s", path);
 
   int fd = open(path, O_RDONLY, 0);
   if (fd == -1) {
     g_printerr("Failed to open file using syscalls: %s (errno: %d)\n", path, errno);
-    return NULL;
+    return FALSE;
   }
 
   struct stat sb;
   if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode)) {
     g_printerr("Not a regular file: %s\n", path);
     close(fd);
-    return NULL;
+    return FALSE;
   }
 
   off_t length = sb.st_size;
@@ -149,7 +150,7 @@ GString *document_load_buffer(const gchar *path) {
   if (!content) {
     g_printerr("Failed to allocate memory for file content.\n");
     close(fd);
-    return NULL;
+    return FALSE;
   }
 
   ssize_t total_read = 0;
@@ -159,7 +160,7 @@ GString *document_load_buffer(const gchar *path) {
       g_printerr("Error reading file: %s (errno: %d)\n", path, errno);
       g_free(content);
       close(fd);
-      return NULL;
+      return FALSE;
     } else if (r == 0) {
       break;
     }
@@ -171,8 +172,9 @@ GString *document_load_buffer(const gchar *path) {
 
   GString *text = g_string_new_len(content, total_read);
   g_free(content);
-
-  return text;
+  document_set_path(document, path);
+  document_set_content(document, text);
+  return TRUE;
 }
 
 const gchar *document_get_relative_path(Document *document) {
