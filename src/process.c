@@ -61,13 +61,22 @@ Process *process_ref(Process *self) {
 }
 
 static void process_destroy(Process *process) {
+  if (process->in_fd >= 0) {
+    close(process->in_fd);
+    process->in_fd = -1;
+  }
+  if (process->out_fd >= 0) {
+    close(process->out_fd);
+    process->out_fd = -1;
+  }
+  if (process->err_fd >= 0) {
+    close(process->err_fd);
+    process->err_fd = -1;
+  }
   if (process->out_thread)
     g_thread_join(process->out_thread);
   if (process->err_thread)
     g_thread_join(process->err_thread);
-  if (process->in_fd >= 0) close(process->in_fd);
-  if (process->out_fd >= 0) close(process->out_fd);
-  if (process->err_fd >= 0) close(process->err_fd);
   if (process->pid)
     g_spawn_close_pid(process->pid);
   g_strfreev(process->argv);
