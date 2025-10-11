@@ -41,17 +41,17 @@ static void on_out(GString *data, gpointer /*user*/) {
   g_string_append_len(output, data->str, data->len);
 }
 
-static void test_bc(void) {
-  Process *p = process_new("/usr/bin/bc");
+static void test_cat(void) {
+  Process *p = process_new("/usr/bin/cat");
   g_assert_nonnull(p);
   output = g_string_new(NULL);
   process_set_stdout_cb(p, on_out, NULL);
   process_start(p);
-  GString *cmd = g_string_new("1+2\n");
+  GString *cmd = g_string_new("hello world\n");
   process_write(p, cmd);
   g_string_free(cmd, TRUE);
   g_usleep(100000);
-  g_assert_nonnull(strstr(output->str, "3"));
+  g_assert_nonnull(strstr(output->str, "hello world"));
   cmd = g_string_new("quit\n");
   process_write(p, cmd);
   g_string_free(cmd, TRUE);
@@ -60,7 +60,7 @@ static void test_bc(void) {
 }
 
 static void test_no_callbacks(void) {
-  Process *p = process_new("/usr/bin/bc");
+  Process *p = process_new("/usr/bin/cat");
   g_assert_nonnull(p);
   process_start(p);
   GString *cmd = g_string_new("1+2\n");
@@ -113,7 +113,7 @@ static void test_partial_write(void) {
 
 int main(int argc, char *argv[]) {
   g_test_init(&argc, &argv, NULL);
-  g_test_add_func("/process/bc", test_bc);
+  g_test_add_func("/process/cat", test_cat);
   g_test_add_func("/process/no_callbacks", test_no_callbacks);
   g_test_add_func("/process/lisp_no_padding", test_lisp_no_padding);
   g_test_add_func("/process/partial_write", test_partial_write);
