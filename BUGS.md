@@ -505,3 +505,12 @@ generic underline styling, so readers could not tell which part of the call was
 undefined and the visual treatment matched other diagnostics. The analyser now
 attaches the error range to the callee symbol and the editor renders undefined
 functions in red text, making the problem location and severity clear.
+
+## Process tests hung while destroying children
+
+Running the process unit tests occasionally stalled after completing the second
+case. `process_destroy` waited for the stdout and stderr threads to finish
+before closing their pipes, so if a child process was still running, the reads
+blocked indefinitely and the test never progressed. The destroy routine now
+closes the pipes first, which breaks the blocking reads and allows the threads
+to join even when the child misbehaves.
