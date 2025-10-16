@@ -28,6 +28,7 @@ struct _Editor
   GdkCursor *ctrl_hover_cursor;
   GdkWindow *ctrl_hover_window;
   GtkWidget *tab_label;
+  gboolean auto_inserting;
 };
 
 G_DEFINE_TYPE(Editor, editor, GTK_TYPE_SCROLLED_WINDOW)
@@ -55,6 +56,8 @@ static void editor_update_ctrl_hover(Editor *self, GtkWidget *widget, GdkWindow 
 static void editor_set_ctrl_hover_cursor(Editor *self, GtkWidget *widget, GdkWindow *window);
 static void editor_update_tab_label(Editor *self);
 static void editor_apply_label_color(GtkWidget *label, gboolean modified);
+static void editor_on_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len,
+    gpointer user_data);
 
 static gboolean
 editor_on_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
@@ -157,6 +160,7 @@ editor_init(Editor *self)
   self->ctrl_hover_cursor = NULL;
   self->ctrl_hover_window = NULL;
   self->tab_label = NULL;
+  self->auto_inserting = FALSE;
   g_signal_connect(buffer, "mark-set", G_CALLBACK(editor_on_mark_set), self);
 }
 
@@ -252,6 +256,7 @@ editor_new_for_document(Project *project, Document *document)
   }
 
   gtk_text_buffer_set_modified(GTK_TEXT_BUFFER(self->buffer), FALSE);
+  g_signal_connect_after(self->buffer, "insert-text", G_CALLBACK(editor_on_insert_text), self);
   g_signal_connect(self->buffer, "changed", G_CALLBACK(on_buffer_changed), self);
   g_signal_connect(self->buffer, "modified-changed", G_CALLBACK(editor_on_buffer_modified_changed), self);
   editor_update_function_highlight(self);
@@ -333,6 +338,50 @@ editor_apply_label_color(GtkWidget *label, gboolean modified)
     gtk_style_context_add_class(context, EDITOR_TAB_LABEL_MODIFIED_CLASS);
   else
     gtk_style_context_remove_class(context, EDITOR_TAB_LABEL_MODIFIED_CLASS);
+}
+
+static void
+editor_on_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len, gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR(user_data);
+  g_return_if_fail(GLIDE_IS_EDITOR(self));
+  g_return_if_fail(buffer != NULL);
+  g_return_if_fail(location != NULL);
+
+  if (self->auto_inserting)
+    return;
+
+  if (!text || len <= 0)
+    return;
+
+  if (g_utf8_strlen(text, len) != 1)
+    return;
+
+  gunichar inserted = g_utf8_get_char(text);
+  gunichar closing = 0;
+
+  if (inserted == '(')
+    closing = ')';
+  else if (inserted == '"')
+    closing = '"';
+
+  if (closing == 0)
+    return;
+
+  gchar closing_str[7];
+  gint closing_len = g_unichar_to_utf8(closing, closing_str);
+  closing_str[closing_len] = '\0';
+
+  GtkTextIter iter = *location;
+  self->auto_inserting = TRUE;
+  gtk_text_buffer_insert(buffer, &iter, closing_str, closing_len);
+  self->auto_inserting = FALSE;
+
+  GtkTextMark *insert_mark = gtk_text_buffer_get_insert(buffer);
+  GtkTextIter cursor_iter;
+  gtk_text_buffer_get_iter_at_mark(buffer, &cursor_iter, insert_mark);
+  if (gtk_text_iter_backward_char(&cursor_iter))
+    gtk_text_buffer_place_cursor(buffer, &cursor_iter);
 }
 
 static void
