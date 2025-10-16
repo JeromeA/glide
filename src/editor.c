@@ -136,12 +136,8 @@ editor_init(Editor *self)
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(self), GTK_POLICY_AUTOMATIC, GTK_POLICY_AUTOMATIC);
   gtk_container_add(GTK_CONTAINER(self), GTK_WIDGET(self->view));
   gtk_widget_set_has_tooltip(GTK_WIDGET(self->view), TRUE);
-  g_signal_connect(self->view, "query-tooltip", G_CALLBACK(editor_on_query_tooltip), self);
   gtk_widget_add_events(GTK_WIDGET(self->view),
       GDK_BUTTON_PRESS_MASK | GDK_POINTER_MOTION_MASK | GDK_LEAVE_NOTIFY_MASK);
-  g_signal_connect(self->view, "button-press-event", G_CALLBACK(editor_on_button_press_event), self);
-  g_signal_connect(self->view, "motion-notify-event", G_CALLBACK(editor_on_motion_notify_event), self);
-  g_signal_connect(self->view, "leave-notify-event", G_CALLBACK(editor_on_leave_notify_event), self);
   self->project = NULL;
   self->document = NULL;
   self->selection_manager = editor_selection_manager_new();
@@ -161,7 +157,6 @@ editor_init(Editor *self)
   self->ctrl_hover_window = NULL;
   self->tab_label = NULL;
   self->auto_inserting = FALSE;
-  g_signal_connect(buffer, "mark-set", G_CALLBACK(editor_on_mark_set), self);
 }
 
 // Callback for when the GtkTextBuffer changes
@@ -256,9 +251,17 @@ editor_new_for_document(Project *project, Document *document)
   }
 
   gtk_text_buffer_set_modified(GTK_TEXT_BUFFER(self->buffer), FALSE);
-  g_signal_connect_after(self->buffer, "insert-text", G_CALLBACK(editor_on_insert_text), self);
-  g_signal_connect(self->buffer, "changed", G_CALLBACK(on_buffer_changed), self);
-  g_signal_connect(self->buffer, "modified-changed", G_CALLBACK(editor_on_buffer_modified_changed), self);
+  GtkWidget *view_widget = GTK_WIDGET(self->view);
+  g_signal_connect(view_widget, "query-tooltip", G_CALLBACK(editor_on_query_tooltip), self);
+  g_signal_connect(view_widget, "button-press-event", G_CALLBACK(editor_on_button_press_event), self);
+  g_signal_connect(view_widget, "motion-notify-event", G_CALLBACK(editor_on_motion_notify_event), self);
+  g_signal_connect(view_widget, "leave-notify-event", G_CALLBACK(editor_on_leave_notify_event), self);
+
+  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
+  g_signal_connect(buffer, "mark-set", G_CALLBACK(editor_on_mark_set), self);
+  g_signal_connect_after(buffer, "insert-text", G_CALLBACK(editor_on_insert_text), self);
+  g_signal_connect(buffer, "changed", G_CALLBACK(on_buffer_changed), self);
+  g_signal_connect(buffer, "modified-changed", G_CALLBACK(editor_on_buffer_modified_changed), self);
   editor_update_function_highlight(self);
   return GTK_WIDGET(self);
 }
