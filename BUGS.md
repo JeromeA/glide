@@ -522,3 +522,14 @@ the end offset one character too early, so the check failed even though the
 runtime behaviour was right. The test now matches the inclusive range the
 selection manager produces.
 
+## Auto-inserted delimiters invalidated iterators
+
+Typing `(` or `"` triggered the new auto-closing logic, which inserted the
+matching delimiter inside the `insert-text` signal handler. GTK invalidates
+all outstanding iterators after a buffer mutation, so the original `location`
+pointer handed to the signal became stale once the closing character was
+inserted. Returning with that invalid iterator made GTK warn that the buffer
+position was no longer valid. The handler now copies the updated iterator back
+into `location` after inserting the closing delimiter, keeping the iterator
+valid for the rest of the emission and eliminating the warning.
+

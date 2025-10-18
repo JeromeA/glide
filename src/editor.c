@@ -380,6 +380,8 @@ editor_on_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text,
   gtk_text_buffer_insert(buffer, &iter, closing_str, closing_len);
   self->auto_inserting = FALSE;
 
+  gtk_text_iter_assign(location, &iter);
+
   GtkTextMark *insert_mark = gtk_text_buffer_get_insert(buffer);
   GtkTextIter cursor_iter;
   gtk_text_buffer_get_iter_at_mark(buffer, &cursor_iter, insert_mark);
