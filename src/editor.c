@@ -3,6 +3,7 @@
 #include "editor_tooltip_controller.h"
 #include "project.h"
 #include "document.h"
+#include "document_sync.h"
 #include "util.h"
 
 static const gchar *EDITOR_TAB_LABEL_MODIFIED_CLASS = "editor-tab-modified";
@@ -15,6 +16,7 @@ struct _Editor
   GtkSourceBuffer *buffer;
   Project *project;
   Document *document;
+  DocumentSync *document_sync;
   EditorSelectionManager *selection_manager;
   GtkTextTag *function_def_tag;
   GtkTextTag *function_use_tag;
@@ -49,7 +51,6 @@ static void editor_clear_function_highlight(Editor *self);
 static void editor_highlight_nodes(Editor *self, GPtrArray *nodes, GtkTextTag *tag);
 static void editor_highlight_node(Editor *self, const Node *node, GtkTextTag *tag);
 static void editor_clear_errors(Editor *self);
-static void editor_update_document_from_buffer(Editor *self);
 static void editor_clear_ctrl_hover(Editor *self);
 static void editor_update_ctrl_hover(Editor *self, GtkWidget *widget, GdkWindow *window, gdouble x, gdouble y,
     gboolean ctrl_down);
@@ -140,6 +141,7 @@ editor_init(Editor *self)
       GDK_BUTTON_PRESS_MASK | GDK_POINTER_MOTION_MASK | GDK_LEAVE_NOTIFY_MASK);
   self->project = NULL;
   self->document = NULL;
+  self->document_sync = NULL;
   self->selection_manager = editor_selection_manager_new();
   self->tooltip_controller = NULL;
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
@@ -169,7 +171,7 @@ on_buffer_changed(GtkTextBuffer * /*buffer*/, gpointer user_data)
     return;
   }
 
-  editor_update_document_from_buffer(self);
+  editor_clear_ctrl_hover(self);
   editor_set_errors(self, document_get_errors(self->document));
   editor_update_function_highlight(self);
 }
@@ -194,6 +196,11 @@ editor_dispose(GObject *object)
 
   if (self->buffer)
     g_signal_handlers_disconnect_by_data(self->buffer, self);
+
+  if (self->document_sync) {
+    document_sync_free(self->document_sync);
+    self->document_sync = NULL;
+  }
 
   if (self->tab_label) {
     editor_apply_label_color(self->tab_label, FALSE);
@@ -243,12 +250,9 @@ editor_new_for_document(Project *project, Document *document)
   self->document = document;
   self->tooltip_controller = editor_tooltip_controller_new(GTK_WIDGET(self->view), project);
 
-  const GString *existing = document_get_content(self->document);
-  if (existing && existing->str) {
-    gtk_source_buffer_begin_not_undoable_action(self->buffer);
-    gtk_text_buffer_set_text(GTK_TEXT_BUFFER(self->buffer), existing->str, -1);
-    gtk_source_buffer_end_not_undoable_action(self->buffer);
-  }
+  GtkTextBuffer *text_buffer = GTK_TEXT_BUFFER(self->buffer);
+  self->document_sync = document_sync_new(self->document, text_buffer);
+  document_sync_update_buffer(self->document_sync);
 
   gtk_text_buffer_set_modified(GTK_TEXT_BUFFER(self->buffer), FALSE);
   GtkWidget *view_widget = GTK_WIDGET(self->view);
@@ -417,25 +421,6 @@ editor_clear_errors(Editor *self)
     gtk_text_buffer_remove_tag(buffer, self->error_tag, &start, &end);
   if (self->undefined_function_tag)
     gtk_text_buffer_remove_tag(buffer, self->undefined_function_tag, &start, &end);
-}
-
-static void
-editor_update_document_from_buffer(Editor *self)
-{
-  g_return_if_fail(GLIDE_IS_EDITOR(self));
-  g_return_if_fail(self->buffer != NULL);
-
-  editor_clear_ctrl_hover(self);
-
-  GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
-  GtkTextIter start;
-  GtkTextIter end;
-  gtk_text_buffer_get_start_iter(buffer, &start);
-  gtk_text_buffer_get_end_iter(buffer, &end);
-  gchar *text = gtk_text_buffer_get_text(buffer, &start, &end, FALSE);
-  GString *content = g_string_new(text ? text : "");
-  g_free(text);
-  document_set_content(self->document, content);
 }
 
 static void

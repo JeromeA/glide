@@ -13,6 +13,7 @@ SOURCES += \
   app.c \
   asdf.c \
   document.c \
+  document_sync.c \
   editor.c \
   editor_container.c \
   editor_manager.c \
