@@ -7,6 +7,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
+#include <string.h>
 #include <glib-object.h>
 #include "util.h"
 
@@ -34,7 +35,7 @@ Document *document_new(Project *project, DocumentState state) {
   document->state = state;
   document->path = NULL;
   document->errors = g_array_new(FALSE, FALSE, sizeof(DocumentError));
-  document->content = NULL;
+  document->content = g_string_new("");
   document->tokens = NULL;
   document->ast = NULL;
   return document;
@@ -74,6 +75,45 @@ void document_set_content(Document *document, GString *content) {
     document->content = NULL;
   }
   document->content = content ? content : g_string_new("");
+  document_reparse(document);
+}
+
+void document_insert_text(Document *document, gsize offset, const gchar *text, gssize length) {
+  g_return_if_fail(document != NULL);
+  g_return_if_fail(text != NULL);
+  if (document->project)
+    g_return_if_fail(glide_is_ui_thread());
+
+  g_return_if_fail(document->content != NULL);
+
+  gsize current_length = document->content->len;
+  g_return_if_fail(offset <= current_length);
+  g_return_if_fail(length >= 0);
+
+  gsize byte_length = (gsize)length;
+
+  if (byte_length == 0)
+    return;
+
+  g_string_insert_len(document->content, (gssize)offset, text, (gssize)byte_length);
+  document_reparse(document);
+}
+
+void document_delete_text(Document *document, gsize start, gsize end) {
+  g_return_if_fail(document != NULL);
+  if (document->project)
+    g_return_if_fail(glide_is_ui_thread());
+
+  g_return_if_fail(document->content != NULL);
+
+  g_return_if_fail(start <= end);
+  gsize current_length = document->content->len;
+  g_return_if_fail(end <= current_length);
+
+  if (start == end)
+    return;
+
+  g_string_erase(document->content, (gssize)start, (gssize)(end - start));
   document_reparse(document);
 }
 

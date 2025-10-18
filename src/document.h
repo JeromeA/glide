@@ -31,6 +31,8 @@ void         document_free(Document *document);
 DocumentState document_get_state(Document *document);
 void         document_set_state(Document *document, DocumentState state);
 void         document_set_content(Document *document, GString *content);
+void         document_insert_text(Document *document, gsize offset, const gchar *text, gssize length);
+void         document_delete_text(Document *document, gsize start, gsize end);
 void         document_reparse(Document *document);
 const GString *document_get_content(Document *document);
 const GArray  *document_get_tokens(Document *document);
