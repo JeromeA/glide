@@ -533,3 +533,14 @@ position was no longer valid. The handler now copies the updated iterator back
 into `location` after inserting the closing delimiter, keeping the iterator
 valid for the rest of the emission and eliminating the warning.
 
+## Skipping final closing parenthesis inserted another one
+
+Auto-closing parentheses stopped skipping the last existing `)` in a run. The
+handler advanced a copy of the cursor iterator with
+`gtk_text_iter_forward_char()` and aborted when the function returned `FALSE`.
+GTK reports `FALSE` when the iterator lands on the buffer end, which happens
+after moving past the final closing parenthesis, so the handler returned early
+and let GTK insert another `)`. The fix ignores the boolean return value and
+instead checks whether the iterator actually advanced, allowing skips even
+when the cursor ends up at the buffer end.
+
