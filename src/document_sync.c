@@ -70,12 +70,11 @@ document_sync_update_buffer(DocumentSync *self)
   g_return_if_fail(self->document != NULL);
   g_return_if_fail(self->buffer != NULL);
   g_return_if_fail(glide_is_ui_thread());
+  g_return_if_fail(!self->suppress_buffer_changed);
 
   const GString *existing = document_get_content(self->document);
   const gchar *text = (existing && existing->str) ? existing->str : "";
   gboolean is_source = GTK_SOURCE_IS_BUFFER(self->buffer);
-
-  g_return_if_fail(!self->suppress_buffer_changed);
   self->suppress_buffer_changed = TRUE;
   if (is_source)
     gtk_source_buffer_begin_not_undoable_action(GTK_SOURCE_BUFFER(self->buffer));
