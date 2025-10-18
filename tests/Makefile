@@ -52,7 +52,7 @@ status_service_test: status_service_test.c status_service.c $(COMMON)
 editor_selection_manager_test: editor_selection_manager_test.c editor_selection_manager.c project_index.c project.c project_repl.c asdf.c document.c analyse.c analyse_defpackage.c analyse_defun.c function.c node.c package.c lisp_lexer.c lisp_parser.c repl_session.c repl_process.c process.c status_service.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-editor_test: editor_test.c editor.c editor_selection_manager.c editor_tooltip_controller.c editor_tooltip_window.c project_index.c project.c project_repl.c asdf.c document.c analyse.c analyse_defpackage.c analyse_defun.c function.c node.c package.c lisp_lexer.c lisp_parser.c repl_session.c repl_process.c process.c status_service.c $(COMMON)
+editor_test: editor_test.c editor.c document_sync.c editor_selection_manager.c editor_tooltip_controller.c editor_tooltip_window.c project_index.c project.c project_repl.c asdf.c document.c analyse.c analyse_defpackage.c analyse_defun.c function.c node.c package.c lisp_lexer.c lisp_parser.c repl_session.c repl_process.c process.c status_service.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 run: all
