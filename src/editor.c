@@ -57,8 +57,11 @@ static void editor_update_ctrl_hover(Editor *self, GtkWidget *widget, GdkWindow 
 static void editor_set_ctrl_hover_cursor(Editor *self, GtkWidget *widget, GdkWindow *window);
 static void editor_update_tab_label(Editor *self);
 static void editor_apply_label_color(GtkWidget *label, gboolean modified);
-static void editor_on_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len,
+static void editor_on_insert_text_before(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len,
     gpointer user_data);
+static void editor_on_insert_text_after(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len,
+    gpointer user_data);
+static gboolean editor_parentheses_closed(GtkTextBuffer *buffer, GtkTextIter *location);
 
 static gboolean
 editor_on_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
@@ -263,7 +266,8 @@ editor_new_for_document(Project *project, Document *document)
 
   GtkTextBuffer *buffer = GTK_TEXT_BUFFER(self->buffer);
   g_signal_connect(buffer, "mark-set", G_CALLBACK(editor_on_mark_set), self);
-  g_signal_connect_after(buffer, "insert-text", G_CALLBACK(editor_on_insert_text), self);
+  g_signal_connect(buffer, "insert-text", G_CALLBACK(editor_on_insert_text_before), self);
+  g_signal_connect_after(buffer, "insert-text", G_CALLBACK(editor_on_insert_text_after), self);
   g_signal_connect(buffer, "changed", G_CALLBACK(on_buffer_changed), self);
   g_signal_connect(buffer, "modified-changed", G_CALLBACK(editor_on_buffer_modified_changed), self);
   editor_update_function_highlight(self);
@@ -348,7 +352,49 @@ editor_apply_label_color(GtkWidget *label, gboolean modified)
 }
 
 static void
-editor_on_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len, gpointer user_data)
+editor_on_insert_text_before(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len, gpointer user_data)
+{
+  Editor *self = GLIDE_EDITOR(user_data);
+  g_return_if_fail(GLIDE_IS_EDITOR(self));
+  g_return_if_fail(buffer != NULL);
+  g_return_if_fail(location != NULL);
+
+  if (self->auto_inserting)
+    return;
+
+  if (!text || len <= 0)
+    return;
+
+  if (g_utf8_strlen(text, len) != 1)
+    return;
+
+  gunichar inserted = g_utf8_get_char(text);
+
+  if (inserted != ')')
+    return;
+
+  if (gtk_text_iter_is_end(location))
+    return;
+
+  GtkTextIter next_iter = *location;
+  gunichar next_char = gtk_text_iter_get_char(&next_iter);
+
+  if (next_char != ')')
+    return;
+
+  if (!editor_parentheses_closed(buffer, location))
+    return;
+
+  GtkTextIter skip_iter = *location;
+  if (!gtk_text_iter_forward_char(&skip_iter))
+    return;
+
+  gtk_text_buffer_place_cursor(buffer, &skip_iter);
+  g_signal_stop_emission_by_name(buffer, "insert-text");
+}
+
+static void
+editor_on_insert_text_after(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len, gpointer user_data)
 {
   Editor *self = GLIDE_EDITOR(user_data);
   g_return_if_fail(GLIDE_IS_EDITOR(self));
@@ -391,6 +437,53 @@ editor_on_insert_text(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text,
   gtk_text_buffer_get_iter_at_mark(buffer, &cursor_iter, insert_mark);
   if (gtk_text_iter_backward_char(&cursor_iter))
     gtk_text_buffer_place_cursor(buffer, &cursor_iter);
+}
+
+static gboolean
+editor_parentheses_closed(GtkTextBuffer *buffer, GtkTextIter *location)
+{
+  g_return_val_if_fail(buffer != NULL, FALSE);
+  g_return_val_if_fail(location != NULL, FALSE);
+
+  GtkTextIter iter;
+  GtkTextIter end;
+  gtk_text_buffer_get_start_iter(buffer, &iter);
+  gtk_text_buffer_get_end_iter(buffer, &end);
+
+  gint balance = 0;
+
+  while (!gtk_text_iter_equal(&iter, location)) {
+    gunichar ch = gtk_text_iter_get_char(&iter);
+    if (ch == '(')
+      balance++;
+    else if (ch == ')') {
+      balance--;
+      if (balance < 0)
+        return FALSE;
+    }
+
+    gtk_text_iter_forward_char(&iter);
+  }
+
+  if (balance <= 0)
+    return FALSE;
+
+  while (!gtk_text_iter_equal(&iter, &end)) {
+    gunichar ch = gtk_text_iter_get_char(&iter);
+    if (ch == '(')
+      balance++;
+    else if (ch == ')') {
+      balance--;
+      if (balance == 0)
+        return TRUE;
+      if (balance < 0)
+        return FALSE;
+    }
+
+    gtk_text_iter_forward_char(&iter);
+  }
+
+  return FALSE;
 }
 
 static void
