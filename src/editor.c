@@ -386,7 +386,8 @@ editor_on_insert_text_before(GtkTextBuffer *buffer, GtkTextIter *location, gchar
     return;
 
   GtkTextIter skip_iter = *location;
-  if (!gtk_text_iter_forward_char(&skip_iter))
+  gtk_text_iter_forward_char(&skip_iter);
+  if (gtk_text_iter_equal(&skip_iter, location))
     return;
 
   gtk_text_buffer_place_cursor(buffer, &skip_iter);
