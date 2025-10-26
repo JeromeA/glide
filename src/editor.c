@@ -62,6 +62,8 @@ static void editor_on_insert_text_before(GtkTextBuffer *buffer, GtkTextIter *loc
 static void editor_on_insert_text_after(GtkTextBuffer *buffer, GtkTextIter *location, gchar *text, gint len,
     gpointer user_data);
 static gboolean editor_parentheses_closed(GtkTextBuffer *buffer, GtkTextIter *location);
+static gboolean editor_closing_quotes(GtkTextBuffer *buffer, GtkTextIter *location);
+static gboolean editor_iter_is_escaped(GtkTextBuffer *buffer, GtkTextIter *iter);
 
 static gboolean
 editor_on_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
@@ -370,7 +372,7 @@ editor_on_insert_text_before(GtkTextBuffer *buffer, GtkTextIter *location, gchar
 
   gunichar inserted = g_utf8_get_char(text);
 
-  if (inserted != ')')
+  if (inserted != ')' && inserted != '"')
     return;
 
   if (gtk_text_iter_is_end(location))
@@ -379,10 +381,8 @@ editor_on_insert_text_before(GtkTextBuffer *buffer, GtkTextIter *location, gchar
   GtkTextIter next_iter = *location;
   gunichar next_char = gtk_text_iter_get_char(&next_iter);
 
-  if (next_char != ')')
-    return;
-
-  if (!editor_parentheses_closed(buffer, location))
+  if (!((inserted == ')' && next_char == ')' && editor_parentheses_closed(buffer, location)) ||
+        (inserted == '"' && next_char == '"' && editor_closing_quotes(buffer, location))))
     return;
 
   GtkTextIter skip_iter = *location;
@@ -485,6 +485,50 @@ editor_parentheses_closed(GtkTextBuffer *buffer, GtkTextIter *location)
   }
 
   return FALSE;
+}
+
+static gboolean
+editor_iter_is_escaped(GtkTextBuffer *buffer, GtkTextIter *iter)
+{
+  g_return_val_if_fail(buffer != NULL, FALSE);
+  g_return_val_if_fail(iter != NULL, FALSE);
+
+  GtkTextIter scan = *iter;
+  gint backslashes = 0;
+
+  while (gtk_text_iter_backward_char(&scan)) {
+    gunichar previous = gtk_text_iter_get_char(&scan);
+    if (previous != '\\')
+      break;
+    backslashes++;
+  }
+
+  return (backslashes % 2) == 1;
+}
+
+static gboolean
+editor_closing_quotes(GtkTextBuffer *buffer, GtkTextIter *location)
+{
+  g_return_val_if_fail(buffer != NULL, FALSE);
+  g_return_val_if_fail(location != NULL, FALSE);
+
+  GtkTextIter iter;
+  gtk_text_buffer_get_start_iter(buffer, &iter);
+
+  gboolean inside = FALSE;
+
+  while (!gtk_text_iter_equal(&iter, location)) {
+    gunichar ch = gtk_text_iter_get_char(&iter);
+    if (ch == '"') {
+      GtkTextIter quote_iter = iter;
+      if (!editor_iter_is_escaped(buffer, &quote_iter))
+        inside = !inside;
+    }
+
+    gtk_text_iter_forward_char(&iter);
+  }
+
+  return inside;
 }
 
 static void
