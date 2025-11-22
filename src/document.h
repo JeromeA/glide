@@ -47,4 +47,3 @@ void         document_add_error(Document *document, DocumentError error);
 const GArray *document_get_errors(Document *document);
 Marker      *document_get_marker(Document *document, gsize offset);
 void         document_unref_marker(Document *document, Marker *marker);
-gboolean     document_is_marker_valid(Document *document, Marker *marker);

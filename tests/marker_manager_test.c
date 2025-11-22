@@ -38,11 +38,11 @@ static void test_delete_invalidates_and_shifts(void) {
 
   marker_manager_handle_delete(manager, 10, 20);
 
-  g_assert_true(marker_manager_is_valid(manager, before));
+  g_assert_true(marker_is_valid(before));
   g_assert_cmpuint(marker_get_offset(before), ==, 5);
-  g_assert_false(marker_manager_is_valid(manager, inside_one));
-  g_assert_false(marker_manager_is_valid(manager, inside_two));
-  g_assert_true(marker_manager_is_valid(manager, after));
+  g_assert_false(marker_is_valid(inside_one));
+  g_assert_false(marker_is_valid(inside_two));
+  g_assert_true(marker_is_valid(after));
   g_assert_cmpuint(marker_get_offset(after), ==, 20);
 
   marker_manager_free(manager);

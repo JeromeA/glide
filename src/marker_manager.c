@@ -115,8 +115,7 @@ gsize marker_get_offset(Marker *marker) {
   return marker_node_absolute_offset(node);
 }
 
-gboolean marker_manager_is_valid(MarkerManager *manager, Marker *marker) {
-  g_return_val_if_fail(manager != NULL, FALSE);
+gboolean marker_is_valid(Marker *marker) {
   g_return_val_if_fail(marker != NULL, FALSE);
   return marker->valid;
 }
