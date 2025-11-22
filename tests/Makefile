@@ -25,10 +25,10 @@ process_test: process_test.c process.c $(COMMON)
 repl_process_test: repl_process_test.c process.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-repl_session_test: repl_session_test.c repl_session.c repl_process.c process.c status_service.c lisp_lexer.c lisp_parser.c node.c package.c $(COMMON)
+repl_session_test: repl_session_test.c repl_session.c repl_process.c process.c status_service.c lisp_lexer.c lisp_parser.c node.c package.c document.c marker_manager.c project_stubs.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-lisp_parser_test: lisp_parser_test.c lisp_lexer.c lisp_parser.c node.c package.c $(COMMON)
+lisp_parser_test: lisp_parser_test.c lisp_lexer.c lisp_parser.c node.c package.c document.c marker_manager.c project_stubs.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 project_test: project_test.c project_index.c project.c project_repl.c asdf.c document.c marker_manager.c analyse.c \
@@ -51,7 +51,7 @@ analyser_test: analyser_test.c analyse.c analyse_defpackage.c analyse_defun.c fu
   status_service.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
-package_test: package_test.c package.c node.c $(COMMON)
+package_test: package_test.c package.c node.c ../src/marker_manager.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 status_service_test: status_service_test.c status_service.c $(COMMON)

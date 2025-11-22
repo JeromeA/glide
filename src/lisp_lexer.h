@@ -1,8 +1,11 @@
 #pragma once
 
 #include <glib.h>
+#include "marker_manager.h"
 
 G_BEGIN_DECLS
+
+typedef struct _Document Document;
 
 typedef enum {
   LISP_TOKEN_TYPE_NUMBER,
@@ -23,10 +26,10 @@ typedef enum {
 typedef struct {
   LispTokenType type;
   gchar *text;
-  gsize start_offset;
-  gsize end_offset;
+  Marker *start_marker;
+  Marker *end_marker;
 } LispToken;
 
-GArray    *lisp_lexer_lex(const GString *text);
+GArray    *lisp_lexer_lex(Document *document);
 
 G_END_DECLS

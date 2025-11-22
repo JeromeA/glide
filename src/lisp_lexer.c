@@ -2,17 +2,11 @@
 #include <glib.h>
 #include "util.h"
 #include "lisp_lexer.h"
+#include "document.h"
 
-static void lisp_token_free(gpointer token);
 static inline gunichar gstring_get_char(const GString *text, gsize offset);
 static inline gsize gstring_next_offset(const GString *text, gsize offset);
 static inline gchar *gstring_slice_dup(const GString *text, gsize start, gsize end);
-
-static void lisp_token_free(gpointer token) {
-  if (!token) return;
-  LispToken *t = token;
-  g_free(t->text);
-}
 
 static inline gunichar gstring_get_char(const GString *text, gsize offset) {
   if (!text || offset >= text->len)
@@ -38,11 +32,12 @@ static inline gchar *gstring_slice_dup(const GString *text, gsize start, gsize e
   return g_strndup(text->str + start, end - start);
 }
 
-GArray *lisp_lexer_lex(const GString *text) {
+GArray *lisp_lexer_lex(Document *document) {
+  g_return_val_if_fail(document != NULL, NULL);
+  const GString *text = document_get_content(document);
   g_return_val_if_fail(text != NULL, NULL);
 
   GArray *tokens = g_array_new(FALSE, TRUE, sizeof(LispToken));
-  g_array_set_clear_func(tokens, lisp_token_free);
 
   gsize len = text->len;
   gsize offset = 0;
@@ -50,38 +45,38 @@ GArray *lisp_lexer_lex(const GString *text) {
   while (offset < len) {
     gunichar current_char = gstring_get_char(text, offset);
     LispToken token = {0};
-    token.start_offset = offset;
+    gsize start_offset = offset;
 
     if (g_unichar_isspace(current_char)) {
       token.type = LISP_TOKEN_TYPE_WHITESPACE;
-      gsize end = offset;
-      while (end < len && g_unichar_isspace(gstring_get_char(text, end)))
-        end = gstring_next_offset(text, end);
-      token.end_offset = end;
-      offset = end;
+      gsize end_offset = offset;
+      while (end_offset < len && g_unichar_isspace(gstring_get_char(text, end_offset)))
+        end_offset = gstring_next_offset(text, end_offset);
+      token.end_marker = document_get_marker(document, end_offset);
+      offset = end_offset;
     } else if (current_char == ';') {
       token.type = LISP_TOKEN_TYPE_COMMENT;
-      gsize end = offset;
-      while (end < len && gstring_get_char(text, end) != '\n')
-        end = gstring_next_offset(text, end);
-      token.end_offset = end;
-      offset = end;
+      gsize end_offset = offset;
+      while (end_offset < len && gstring_get_char(text, end_offset) != '\n')
+        end_offset = gstring_next_offset(text, end_offset);
+      token.end_marker = document_get_marker(document, end_offset);
+      offset = end_offset;
     } else if (current_char == '(') {
       token.type = LISP_TOKEN_TYPE_LIST_START;
       offset = gstring_next_offset(text, offset);
-      token.end_offset = offset;
+      token.end_marker = document_get_marker(document, offset);
     } else if (current_char == ')') {
       token.type = LISP_TOKEN_TYPE_LIST_END;
       offset = gstring_next_offset(text, offset);
-      token.end_offset = offset;
+      token.end_marker = document_get_marker(document, offset);
     } else if (current_char == 0x27) {
       token.type = LISP_TOKEN_TYPE_QUOTE;
       offset = gstring_next_offset(text, offset);
-      token.end_offset = offset;
+      token.end_marker = document_get_marker(document, offset);
     } else if (current_char == '`') {
       token.type = LISP_TOKEN_TYPE_BACKQUOTE;
       offset = gstring_next_offset(text, offset);
-      token.end_offset = offset;
+      token.end_marker = document_get_marker(document, offset);
     } else if (current_char == ',') {
       gsize end = gstring_next_offset(text, offset);
       if (end < len && gstring_get_char(text, end) == '@') {
@@ -90,14 +85,14 @@ GArray *lisp_lexer_lex(const GString *text) {
       } else {
         token.type = LISP_TOKEN_TYPE_UNQUOTE;
       }
-      token.end_offset = end;
+      token.end_marker = document_get_marker(document, end);
       offset = end;
     } else if (current_char == ':') {
       token.type = LISP_TOKEN_TYPE_SYMBOL_SEPARATOR;
       gsize end = gstring_next_offset(text, offset);
       if (end < len && gstring_get_char(text, end) == ':')
         end = gstring_next_offset(text, end);
-      token.end_offset = end;
+      token.end_marker = document_get_marker(document, end);
       offset = end;
     } else if (current_char == '"') {
       gsize end = gstring_next_offset(text, offset);
@@ -117,7 +112,7 @@ GArray *lisp_lexer_lex(const GString *text) {
         end = gstring_next_offset(text, end);
       }
       token.type = found_end ? LISP_TOKEN_TYPE_STRING : LISP_TOKEN_TYPE_INCOMPLETE_STRING;
-      token.end_offset = end;
+      token.end_marker = document_get_marker(document, end);
       offset = end;
     } else {
       token.type = LISP_TOKEN_TYPE_SYMBOL;
@@ -128,11 +123,12 @@ GArray *lisp_lexer_lex(const GString *text) {
           break;
         end = gstring_next_offset(text, end);
       }
-      token.end_offset = end;
+      token.end_marker = document_get_marker(document, end);
       offset = end;
     }
 
-    token.text = gstring_slice_dup(text, token.start_offset, token.end_offset);
+    token.start_marker = document_get_marker(document, start_offset);
+    token.text = gstring_slice_dup(text, start_offset, marker_get_offset(token.end_marker));
     if (token.type == LISP_TOKEN_TYPE_SYMBOL) {
       gchar *endptr = NULL;
       g_ascii_strtod(token.text, &endptr);

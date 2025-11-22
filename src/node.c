@@ -66,8 +66,8 @@ gboolean node_is_toplevel(const Node *node) {
 
 gsize node_get_start_offset(const Node *node) {
   g_return_val_if_fail(node, 0);
-  if (node->start_token)
-    return node->start_token->start_offset;
+  if (node->start_token && node->start_token->start_marker)
+    return marker_get_offset(node->start_token->start_marker);
   if (!node->children || node->children->len == 0)
     return 0;
   Node *child = g_array_index(node->children, Node*, 0);
@@ -76,14 +76,14 @@ gsize node_get_start_offset(const Node *node) {
 
 gsize node_get_end_offset(const Node *node) {
   g_return_val_if_fail(node, 0);
-  if (node->end_token)
-    return node->end_token->end_offset;
+  if (node->end_token && node->end_token->end_marker)
+    return marker_get_offset(node->end_token->end_marker);
   if (node->children && node->children->len > 0) {
     Node *child = g_array_index(node->children, Node*, node->children->len - 1);
     return node_get_end_offset(child);
   }
-  if (node->start_token)
-    return node->start_token->end_offset;
+  if (node->start_token && node->start_token->end_marker)
+    return marker_get_offset(node->start_token->end_marker);
   // A root node can be empty when the document is empty.
   return 0;
 }

@@ -147,9 +147,8 @@ void document_reparse(Document *document) {
   document_clear_ast(document);
   document_clear_tokens(document);
 
-  const GString *content = document->content;
-  if (content) {
-    GArray *tokens = lisp_lexer_lex(content);
+  if (document->content) {
+    GArray *tokens = lisp_lexer_lex(document);
     document_set_tokens(document, tokens);
 
     Node *ast = lisp_parser_parse(tokens, document);
@@ -270,6 +269,14 @@ void document_add_error(Document *document, DocumentError error) {
 static void document_clear_tokens(Document *document) {
   g_return_if_fail(document != NULL);
   if (!document->tokens) return;
+  for (guint i = 0; i < document->tokens->len; i++) {
+    LispToken *token = &g_array_index(document->tokens, LispToken, i);
+    if (token->start_marker)
+      document_unref_marker(document, token->start_marker);
+    if (token->end_marker)
+      document_unref_marker(document, token->end_marker);
+    g_free(token->text);
+  }
   g_array_free(document->tokens, TRUE);
   document->tokens = NULL;
 }

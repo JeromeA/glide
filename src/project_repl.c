@@ -38,8 +38,7 @@ typedef struct {
 typedef struct {
   Project *project;
   Node *expr;
-  Node *ast;
-  GArray *tokens;
+  Document *document;
 } PackageDefinitionData;
 
 typedef struct {
@@ -59,10 +58,8 @@ static gboolean analyse_defpackage_cb(gpointer data) {
   AnalyseContext ctx = { g_strdup("CL-USER"), FALSE };
   analyse_defpackage(pd->project, pd->expr, &ctx);
   g_free(ctx.package);
-  if (pd->tokens)
-    g_array_free(pd->tokens, TRUE);
-  if (pd->ast)
-    node_free_deep(pd->ast);
+  if (pd->document)
+    document_free(pd->document);
   g_free(pd);
   return G_SOURCE_REMOVE;
 }
@@ -178,8 +175,9 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   g_mutex_unlock(&interaction->lock);
   g_assert(res);
   GString *text = g_string_new(res);
-  GArray *tokens = lisp_lexer_lex(text);
-  Node *ast = lisp_parser_parse(tokens, NULL);
+  Document *document = document_new(NULL, DOCUMENT_DORMANT);
+  document_set_content(document, g_string_new(text->str));
+  Node *ast = (Node*)document_get_ast(document);
   g_assert(ast && ast->children && ast->children->len > 0);
   Node *expr = g_array_index(ast->children, Node*, 0);
   Node *name_node = (expr->children && expr->children->len > 1) ? g_array_index(expr->children, Node*, 1) : NULL;
@@ -191,8 +189,7 @@ static void project_on_package_definition(Interaction *interaction, gpointer use
   PackageDefinitionData *pd = g_new0(PackageDefinitionData, 1);
   pd->project = project;
   pd->expr = expr;
-  pd->ast = ast;
-  pd->tokens = tokens;
+  pd->document = document;
   g_main_context_invoke(NULL, analyse_defpackage_cb, pd);
   for (guint i = 0; i < exports->len; i++) {
     const gchar *sym = g_ptr_array_index(exports, i);

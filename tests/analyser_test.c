@@ -3,27 +3,23 @@
 #include "lisp_parser.h"
 #include "node.h"
 #include "project.h"
+#include "document.h"
 #include <glib.h>
 
 typedef struct {
-  GArray *tokens;
-  Node *ast;
+  Document *document;
 } ParseFixture;
 
 static ParseFixture parse_fixture_new(const gchar *text) {
   ParseFixture fixture;
-  GString *content = g_string_new(text);
-  fixture.tokens = lisp_lexer_lex(content);
-  fixture.ast = lisp_parser_parse(fixture.tokens, NULL);
-  g_string_free(content, TRUE);
+  fixture.document = document_new(NULL, DOCUMENT_LIVE);
+  document_set_content(fixture.document, g_string_new(text));
   return fixture;
 }
 
 static void parse_fixture_free(ParseFixture *fixture) {
-  if (fixture->ast)
-    node_free_deep(fixture->ast);
-  if (fixture->tokens)
-    g_array_free(fixture->tokens, TRUE);
+  if (fixture->document)
+    document_free(fixture->document);
 }
 
 static void test_analyse(void) {
@@ -34,7 +30,7 @@ static void test_analyse(void) {
     "(defun bar ())\n"
     "(foo baz)";
   ParseFixture fixture = parse_fixture_new(text);
-  Node *ast = fixture.ast;
+  Node *ast = (Node*)document_get_ast(fixture.document);
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
@@ -72,7 +68,7 @@ static void test_nested_defpackage(void) {
     "(defpackage :top)\n"
     "(let () (defpackage :inner))";
   ParseFixture fixture = parse_fixture_new(text);
-  Node *ast = fixture.ast;
+  Node *ast = (Node*)document_get_ast(fixture.document);
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
@@ -94,7 +90,7 @@ static void test_nested_defun(void) {
     "(defun top ())\n"
     "(let () (defun inner ()))";
   ParseFixture fixture = parse_fixture_new(text);
-  Node *ast = fixture.ast;
+  Node *ast = (Node*)document_get_ast(fixture.document);
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
@@ -117,7 +113,7 @@ static void test_backquote_defpackage(void) {
   const gchar *text =
     "`(defpackage foo (:export ,(progn (defun inner ()) '(inner))))";
   ParseFixture fixture = parse_fixture_new(text);
-  Node *ast = fixture.ast;
+  Node *ast = (Node*)document_get_ast(fixture.document);
 
   Project *project = project_new(NULL);
   analyse_ast(project, ast);
