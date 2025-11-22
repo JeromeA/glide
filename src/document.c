@@ -298,14 +298,14 @@ const GArray *document_get_errors(Document *document) {
   return document->errors;
 }
 
-Marker *document_add_marker(Document *document, gsize offset) {
+Marker *document_get_marker(Document *document, gsize offset) {
   g_return_val_if_fail(document != NULL, NULL);
-  return marker_manager_add_marker(document->marker_manager, offset);
+  return marker_manager_get_marker(document->marker_manager, offset);
 }
 
-void document_remove_marker(Document *document, Marker *marker) {
+void document_unref_marker(Document *document, Marker *marker) {
   g_return_if_fail(document != NULL);
-  marker_manager_remove_marker(document->marker_manager, marker);
+  marker_manager_unref_marker(document->marker_manager, marker);
 }
 
 gboolean document_is_marker_valid(Document *document, Marker *marker) {

@@ -50,11 +50,11 @@ void marker_manager_free(MarkerManager *manager) {
   g_free(manager);
 }
 
-Marker *marker_manager_add_marker(MarkerManager *manager, gsize offset) {
+Marker *marker_manager_get_marker(MarkerManager *manager, gsize offset) {
   g_return_val_if_fail(manager != NULL, NULL);
 
-  MarkerNode *node = marker_node_new(offset);
   if (!manager->root) {
+    MarkerNode *node = marker_node_new(offset);
     manager->root = node;
     return &node->marker;
   }
@@ -63,36 +63,49 @@ Marker *marker_manager_add_marker(MarkerManager *manager, gsize offset) {
   gssize current_abs = current->marker.relative_offset;
   while (TRUE) {
     gssize node_abs = current_abs;
+    if ((gssize)offset == node_abs) {
+      current->marker.ref_count++;
+      return &current->marker;
+    }
+
     if ((gssize)offset < node_abs) {
       if (current->left) {
         current = current->left;
         current_abs = node_abs + current->marker.relative_offset;
         continue;
       }
+      MarkerNode *node = marker_node_new(offset);
       current->left = node;
       node->parent = current;
       node->marker.relative_offset = (gssize)offset - node_abs;
-      break;
+      marker_manager_rebalance_upwards(manager, node->parent);
+      return &node->marker;
     }
+
     if (current->right) {
       current = current->right;
       current_abs = node_abs + current->marker.relative_offset;
       continue;
     }
+
+    MarkerNode *node = marker_node_new(offset);
     current->right = node;
     node->parent = current;
     node->marker.relative_offset = (gssize)offset - node_abs;
-    break;
+    marker_manager_rebalance_upwards(manager, node->parent);
+    return &node->marker;
   }
-
-  marker_manager_rebalance_upwards(manager, node->parent);
-  return &node->marker;
 }
 
-void marker_manager_remove_marker(MarkerManager *manager, Marker *marker) {
+void marker_manager_unref_marker(MarkerManager *manager, Marker *marker) {
   g_return_if_fail(manager != NULL);
   g_return_if_fail(marker != NULL);
+  g_return_if_fail(marker->ref_count > 0);
   MarkerNode *node = marker_from_handle(marker);
+  node->marker.ref_count--;
+  if (node->marker.ref_count > 0)
+    return;
+
   marker_manager_remove_node(manager, node);
 }
 
@@ -143,6 +156,7 @@ static MarkerNode *marker_node_new(gsize offset) {
   MarkerNode *node = g_new0(MarkerNode, 1);
   node->marker.relative_offset = (gssize)offset;
   node->marker.valid = TRUE;
+  node->marker.ref_count = 1;
   node->height = 1;
   return node;
 }
