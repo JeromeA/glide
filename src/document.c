@@ -10,6 +10,7 @@
 #include <string.h>
 #include <glib-object.h>
 #include "util.h"
+#include "marker_manager.h"
 
 struct _Document {
   DocumentState state;
@@ -19,6 +20,7 @@ struct _Document {
   Node *ast; /* owned */
   Project *project;
   GArray *errors; /* DocumentError */
+  MarkerManager *marker_manager;
 };
 
 static void document_clear_tokens(Document *document);
@@ -38,6 +40,7 @@ Document *document_new(Project *project, DocumentState state) {
   document->content = g_string_new("");
   document->tokens = NULL;
   document->ast = NULL;
+  document->marker_manager = marker_manager_new(document);
   return document;
 }
 
@@ -51,6 +54,7 @@ void document_free(Document *document) {
     document_clear_errors(document);
     g_array_free(document->errors, TRUE);
   }
+  marker_manager_free(document->marker_manager);
   g_free(document->path);
   g_free(document);
 }
@@ -96,6 +100,7 @@ void document_insert_text(Document *document, gsize offset, const gchar *text, g
     return;
 
   g_string_insert_len(document->content, (gssize)offset, text, (gssize)byte_length);
+  marker_manager_handle_insert(document->marker_manager, offset, byte_length);
   document_reparse(document);
 }
 
@@ -114,6 +119,7 @@ void document_delete_text(Document *document, gsize start, gsize end) {
     return;
 
   g_string_erase(document->content, (gssize)start, (gssize)(end - start));
+  marker_manager_handle_delete(document->marker_manager, start, end);
   document_reparse(document);
 }
 
@@ -290,4 +296,19 @@ static void document_set_ast(Document *document, Node *ast) {
 const GArray *document_get_errors(Document *document) {
   g_return_val_if_fail(document != NULL, NULL);
   return document->errors;
+}
+
+Marker *document_add_marker(Document *document, gsize offset) {
+  g_return_val_if_fail(document != NULL, NULL);
+  return marker_manager_add_marker(document->marker_manager, offset);
+}
+
+void document_remove_marker(Document *document, Marker *marker) {
+  g_return_if_fail(document != NULL);
+  marker_manager_remove_marker(document->marker_manager, marker);
+}
+
+gboolean document_is_marker_valid(Document *document, Marker *marker) {
+  g_return_val_if_fail(document != NULL, FALSE);
+  return marker_manager_is_valid(document->marker_manager, marker);
 }

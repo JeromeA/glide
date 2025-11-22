@@ -21,6 +21,7 @@ SOURCES += \
   editor_tooltip_controller.c \
   editor_tooltip_window.c \
   evaluate.c \
+  marker_manager.c \
   file_add.c \
   file_delete.c \
   file_new.c \

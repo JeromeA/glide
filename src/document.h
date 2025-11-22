@@ -3,6 +3,7 @@
 #include <glib.h>
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
+#include "marker_manager.h"
 
 typedef struct _Project Project;
 
@@ -44,3 +45,6 @@ const gchar *document_get_relative_path(Document *document);
 void         document_clear_errors(Document *document);
 void         document_add_error(Document *document, DocumentError error);
 const GArray *document_get_errors(Document *document);
+Marker      *document_add_marker(Document *document, gsize offset);
+void         document_remove_marker(Document *document, Marker *marker);
+gboolean     document_is_marker_valid(Document *document, Marker *marker);
