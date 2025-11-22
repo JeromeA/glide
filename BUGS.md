@@ -544,3 +544,12 @@ and let GTK insert another `)`. The fix ignores the boolean return value and
 instead checks whether the iterator actually advanced, allowing skips even
 when the cursor ends up at the buffer end.
 
+## Editor test crashed on floating widget reference
+
+Running the editor unit tests under Xvfb aborted with the warning "A floating
+object was finalized." The tests create an `Editor` widget without adding it
+to a container, so the widget kept its initial floating reference and
+`g_object_unref` finalized it while still floating. The tests now sink the
+floating reference immediately after construction, allowing the final unref to
+dispose the widget cleanly during teardown.
+
