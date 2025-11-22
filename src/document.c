@@ -307,8 +307,3 @@ void document_unref_marker(Document *document, Marker *marker) {
   g_return_if_fail(document != NULL);
   marker_manager_unref_marker(document->marker_manager, marker);
 }
-
-gboolean document_is_marker_valid(Document *document, Marker *marker) {
-  g_return_val_if_fail(document != NULL, FALSE);
-  return marker_manager_is_valid(document->marker_manager, marker);
-}
