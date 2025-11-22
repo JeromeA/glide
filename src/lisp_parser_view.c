@@ -91,8 +91,8 @@ add_ast_node(LispParserView *self, const Node *node, GtkTreeIter *parent) {
   const GString *content = document_get_content(self->document);
 
   if (node->end_token && node->end_token != node->start_token) {
-    gsize start = node->start_token->start_offset;
-    gsize end = node->end_token->end_offset;
+    gsize start = node_get_start_offset(node);
+    gsize end = node_get_end_offset(node);
     if (!content || start >= end || end > content->len) {
       text = g_strdup("");
     } else {

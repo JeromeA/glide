@@ -1,36 +1,32 @@
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
 #include "node.h"
+#include "document.h"
 #include <glib.h>
 
 typedef struct {
-  GArray *tokens;
-  Node *ast;
+  Document *document;
 } ParserFixture;
 
 static ParserFixture parser_fixture_from_text(const gchar *text) {
   ParserFixture fixture;
-  GString *content = g_string_new(text);
-  fixture.tokens = lisp_lexer_lex(content);
-  fixture.ast = lisp_parser_parse(fixture.tokens, NULL);
-  g_string_free(content, TRUE);
+  fixture.document = document_new(NULL, DOCUMENT_LIVE);
+  document_set_content(fixture.document, g_string_new(text));
   return fixture;
 }
 
 static void parser_fixture_free(ParserFixture *fixture) {
-  if (fixture->ast)
-    node_free_deep(fixture->ast);
-  if (fixture->tokens)
-    g_array_free(fixture->tokens, TRUE);
+  if (fixture->document)
+    document_free(fixture->document);
 }
 
 static void test_empty_file(void) {
   ParserFixture fixture = parser_fixture_from_text("");
 
-  GArray *tokens = fixture.tokens;
+  const GArray *tokens = document_get_tokens(fixture.document);
   g_assert_cmpint(tokens->len, ==, 0);
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 0);
 
   parser_fixture_free(&fixture);
@@ -39,12 +35,12 @@ static void test_empty_file(void) {
 static void test_symbol(void) {
   ParserFixture fixture = parser_fixture_from_text("foo");
 
-  GArray *tokens = fixture.tokens;
+  const GArray *tokens = document_get_tokens(fixture.document);
   g_assert_cmpint(tokens->len, ==, 1);
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_SYMBOL);
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
   const Node *child = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
@@ -59,12 +55,12 @@ static void test_symbol(void) {
 static void test_number(void) {
   ParserFixture fixture = parser_fixture_from_text("42");
 
-  GArray *tokens = fixture.tokens;
+  const GArray *tokens = document_get_tokens(fixture.document);
   g_assert_cmpint(tokens->len, ==, 1);
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_NUMBER);
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
   const Node *child = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_NUMBER);
@@ -76,12 +72,12 @@ static void test_number(void) {
 static void test_atom_string(void) {
   ParserFixture fixture = parser_fixture_from_text("\"bar\"");
 
-  GArray *tokens = fixture.tokens;
+  const GArray *tokens = document_get_tokens(fixture.document);
   g_assert_cmpint(tokens->len, ==, 1);
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_STRING);
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
   const Node *child = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(child->type, ==, LISP_AST_NODE_TYPE_STRING);
@@ -93,7 +89,7 @@ static void test_atom_string(void) {
 static void test_empty_list(void) {
   ParserFixture fixture = parser_fixture_from_text("()");
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
 
   const Node *child = g_array_index(ast->children, Node*, 0);
@@ -106,7 +102,7 @@ static void test_empty_list(void) {
 static void test_list_with_elements(void) {
   ParserFixture fixture = parser_fixture_from_text("(a b)");
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
 
   const Node *list = g_array_index(ast->children, Node*, 0);
@@ -132,7 +128,7 @@ static void test_list_with_elements(void) {
 static void test_missing_closing_paren(void) {
   ParserFixture fixture = parser_fixture_from_text("(a b");
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
 
   const Node *list = g_array_index(ast->children, Node*, 0);
@@ -158,12 +154,12 @@ static void test_missing_closing_paren(void) {
 static void test_symbol_with_package(void) {
   ParserFixture fixture = parser_fixture_from_text("pkg:foo");
 
-  GArray *tokens = fixture.tokens;
+  const GArray *tokens = document_get_tokens(fixture.document);
   g_assert_cmpint(tokens->len, ==, 3);
   const LispToken *sep = &g_array_index(tokens, LispToken, 1);
   g_assert_cmpint(sep->type, ==, LISP_TOKEN_TYPE_SYMBOL_SEPARATOR);
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
   const Node *sym = g_array_index(ast->children, Node*, 0);
   g_assert_cmpint(sym->type, ==, LISP_AST_NODE_TYPE_SYMBOL);
@@ -184,12 +180,12 @@ static void test_symbol_with_package(void) {
 static void test_extra_closing_paren(void) {
   ParserFixture fixture = parser_fixture_from_text(")");
 
-  GArray *tokens = fixture.tokens;
+  const GArray *tokens = document_get_tokens(fixture.document);
   g_assert_cmpint(tokens->len, ==, 1);
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_LIST_END);
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 0);
 
   parser_fixture_free(&fixture);
@@ -198,12 +194,12 @@ static void test_extra_closing_paren(void) {
 static void test_comment(void) {
   ParserFixture fixture = parser_fixture_from_text("; a comment\n");
 
-  GArray *tokens = fixture.tokens;
+  const GArray *tokens = document_get_tokens(fixture.document);
   g_assert_cmpint(tokens->len, ==, 2);
   const LispToken *token = &g_array_index(tokens, LispToken, 0);
   g_assert_cmpint(token->type, ==, LISP_TOKEN_TYPE_COMMENT);
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 0);
 
   parser_fixture_free(&fixture);
@@ -212,7 +208,7 @@ static void test_comment(void) {
 static void test_reader_macros(void) {
   ParserFixture fixture = parser_fixture_from_text("'a `b ,c ,@d");
 
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 4);
 
   const Node *quote = g_array_index(ast->children, Node*, 0);
@@ -237,7 +233,7 @@ static void test_reader_macros(void) {
 static void test_node_to_string(void) {
   const gchar *text = " (  + 1 ; comment\n   (- 2 3) ) ; trailing\n";
   ParserFixture fixture = parser_fixture_from_text(text);
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
   const Node *list = g_array_index(ast->children, Node*, 0);
   gchar *s = node_to_string(list);
@@ -248,7 +244,7 @@ static void test_node_to_string(void) {
 
 static void test_node_to_string_symbol_uppercase(void) {
   ParserFixture fixture = parser_fixture_from_text("aaa");
-  const Node *ast = fixture.ast;
+  const Node *ast = document_get_ast(fixture.document);
   g_assert_cmpint(ast->children->len, ==, 1);
   const Node *sym = g_array_index(ast->children, Node*, 0);
   gchar *s = node_to_string(sym);

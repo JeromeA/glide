@@ -2,6 +2,7 @@
 #include "lisp_lexer.h"
 #include "lisp_parser.h"
 #include "node.h"
+#include "document.h"
 #include <glib/gstdio.h>
 
 struct _Asdf {
@@ -150,8 +151,9 @@ uint asdf_get_dependency_count(Asdf *self) {
 
 static void parse_file_contents(Asdf *self, const gchar *contents) {
   GString *text = g_string_new(contents ? contents : "");
-  GArray *tokens = lisp_lexer_lex(text);
-  Node *ast = lisp_parser_parse(tokens, NULL);
+  Document *document = document_new(NULL, DOCUMENT_DORMANT);
+  document_set_content(document, g_string_new(text->str));
+  Node *ast = (Node*)document_get_ast(document);
   if (!ast)
     goto cleanup;
 
@@ -210,10 +212,8 @@ static void parse_file_contents(Asdf *self, const gchar *contents) {
   }
 
 cleanup:
-  if (ast)
-    node_free_deep(ast);
-  if (tokens)
-    g_array_free(tokens, TRUE);
+  if (document)
+    document_free(document);
   g_string_free(text, TRUE);
 }
 
