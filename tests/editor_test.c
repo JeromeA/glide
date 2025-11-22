@@ -13,6 +13,7 @@ static void test_undo_pristine(void)
   Document *document = project_add_document(project, g_string_new("(a b)"), NULL, DOCUMENT_LIVE);
 
   GtkWidget *widget = editor_new_for_document(project, document);
+  g_object_ref_sink(widget);
   Editor *editor = GLIDE_EDITOR(widget);
   GtkSourceBuffer *buffer = editor_get_buffer(editor);
 
@@ -33,6 +34,7 @@ static void test_toplevel_range_eof_without_newline(void)
       DOCUMENT_LIVE);
 
   GtkWidget *widget = editor_new_for_document(project, document);
+  g_object_ref_sink(widget);
   Editor *editor = GLIDE_EDITOR(widget);
 
   gsize start;
