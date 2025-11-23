@@ -38,7 +38,7 @@ Document *document_new(Project *project, DocumentState state) {
   document->errors = g_array_new(FALSE, FALSE, sizeof(DocumentError));
   document->content = g_string_new("");
   document->ast = NULL;
-  document->marker_manager = marker_manager_new(document);
+  document->marker_manager = marker_manager_new();
   document->token_manager = token_manager_new(document->marker_manager);
   return document;
 }

@@ -2,7 +2,6 @@
 
 #include <glib.h>
 
-typedef struct _Document Document;
 typedef struct _MarkerManager MarkerManager;
 typedef struct _Marker Marker;
 
@@ -12,7 +11,7 @@ struct _Marker {
   guint ref_count;
 };
 
-MarkerManager *marker_manager_new(Document *document);
+MarkerManager *marker_manager_new(void);
 void           marker_manager_free(MarkerManager *manager);
 Marker        *marker_manager_get_marker(MarkerManager *manager, gsize offset);
 void           marker_manager_unref_marker(MarkerManager *manager, Marker *marker);
