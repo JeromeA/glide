@@ -5,12 +5,6 @@
 typedef struct _MarkerManager MarkerManager;
 typedef struct _Marker Marker;
 
-struct _Marker {
-  gssize relative_offset; /* relative to parent, or absolute when root */
-  gboolean valid;
-  guint ref_count;
-};
-
 MarkerManager *marker_manager_new(void);
 void           marker_manager_free(MarkerManager *manager);
 Marker        *marker_manager_get_marker(MarkerManager *manager, gsize offset);
