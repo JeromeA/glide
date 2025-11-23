@@ -1,12 +1,13 @@
 #include "marker_manager.h"
 #include "document.h"
 #include "util.h"
-#include <glib-object.h>
 
 typedef struct _MarkerNode MarkerNode;
 
 struct _MarkerNode {
-  Marker marker;
+  gssize relative_offset; /* relative to parent, or absolute when root */
+  gboolean valid;
+  guint ref_count;
   MarkerNode *left;
   MarkerNode *right;
   MarkerNode *parent;
@@ -56,54 +57,54 @@ Marker *marker_manager_get_marker(MarkerManager *manager, gsize offset) {
   if (!manager->root) {
     MarkerNode *node = marker_node_new(offset);
     manager->root = node;
-    return &node->marker;
+    return (Marker *)node;
   }
 
   MarkerNode *current = manager->root;
-  gssize current_abs = current->marker.relative_offset;
+  gssize current_abs = current->relative_offset;
   while (TRUE) {
     gssize node_abs = current_abs;
     if ((gssize)offset == node_abs) {
-      current->marker.ref_count++;
-      return &current->marker;
+      current->ref_count++;
+      return (Marker *)current;
     }
 
     if ((gssize)offset < node_abs) {
       if (current->left) {
         current = current->left;
-        current_abs = node_abs + current->marker.relative_offset;
+        current_abs = node_abs + current->relative_offset;
         continue;
       }
       MarkerNode *node = marker_node_new(offset);
       current->left = node;
       node->parent = current;
-      node->marker.relative_offset = (gssize)offset - node_abs;
+      node->relative_offset = (gssize)offset - node_abs;
       marker_manager_rebalance_upwards(manager, node->parent);
-      return &node->marker;
+      return (Marker *)node;
     }
 
     if (current->right) {
       current = current->right;
-      current_abs = node_abs + current->marker.relative_offset;
+      current_abs = node_abs + current->relative_offset;
       continue;
     }
 
     MarkerNode *node = marker_node_new(offset);
     current->right = node;
     node->parent = current;
-    node->marker.relative_offset = (gssize)offset - node_abs;
+    node->relative_offset = (gssize)offset - node_abs;
     marker_manager_rebalance_upwards(manager, node->parent);
-    return &node->marker;
+    return (Marker *)node;
   }
 }
 
 void marker_manager_unref_marker(MarkerManager *manager, Marker *marker) {
   g_return_if_fail(manager != NULL);
   g_return_if_fail(marker != NULL);
-  g_return_if_fail(marker->ref_count > 0);
   MarkerNode *node = marker_from_handle(marker);
-  node->marker.ref_count--;
-  if (node->marker.ref_count > 0)
+  g_return_if_fail(node->ref_count > 0);
+  node->ref_count--;
+  if (node->ref_count > 0)
     return;
 
   marker_manager_remove_node(manager, node);
@@ -117,7 +118,8 @@ gsize marker_get_offset(Marker *marker) {
 
 gboolean marker_is_valid(Marker *marker) {
   g_return_val_if_fail(marker != NULL, FALSE);
-  return marker->valid;
+  MarkerNode *node = marker_from_handle(marker);
+  return node->valid;
 }
 
 void marker_manager_handle_insert(MarkerManager *manager, gsize offset, gsize length) {
@@ -130,7 +132,7 @@ void marker_manager_handle_insert(MarkerManager *manager, gsize offset, gsize le
   if (!node)
     return;
 
-  node->marker.relative_offset += (gssize)length;
+  node->relative_offset += (gssize)length;
   marker_manager_rebalance_upwards(manager, node);
 }
 
@@ -141,21 +143,21 @@ void marker_manager_handle_delete(MarkerManager *manager, gsize start, gsize end
     return;
 
   gsize length = end - start;
-  gssize absolute = manager->root->marker.relative_offset;
+  gssize absolute = manager->root->relative_offset;
   marker_manager_mark_invalid(manager->root, absolute, start, end);
 
   MarkerNode *node = marker_manager_lower_bound(manager, end, NULL);
   if (node)
-    node->marker.relative_offset -= (gssize)length;
+    node->relative_offset -= (gssize)length;
 
   marker_manager_rebalance_upwards(manager, node ? node : manager->root);
 }
 
 static MarkerNode *marker_node_new(gsize offset) {
   MarkerNode *node = g_new0(MarkerNode, 1);
-  node->marker.relative_offset = (gssize)offset;
-  node->marker.valid = TRUE;
-  node->marker.ref_count = 1;
+  node->relative_offset = (gssize)offset;
+  node->valid = TRUE;
+  node->ref_count = 1;
   node->height = 1;
   return node;
 }
@@ -172,7 +174,7 @@ static gsize marker_node_absolute_offset(const MarkerNode *node) {
   gssize offset = 0;
   const MarkerNode *current = node;
   while (current) {
-    offset += current->marker.relative_offset;
+    offset += current->relative_offset;
     current = current->parent;
   }
   return (gsize)offset;
@@ -185,7 +187,7 @@ static MarkerNode *marker_manager_lower_bound(MarkerManager *manager, gsize offs
   if (!current)
     return NULL;
 
-  gssize current_abs = current->marker.relative_offset;
+  gssize current_abs = current->relative_offset;
   while (current) {
     gssize node_abs = current_abs;
     if ((gssize)offset <= node_abs) {
@@ -194,12 +196,12 @@ static MarkerNode *marker_manager_lower_bound(MarkerManager *manager, gsize offs
       if (!current->left)
         break;
       current = current->left;
-      current_abs = node_abs + current->marker.relative_offset;
+      current_abs = node_abs + current->relative_offset;
     } else {
       if (!current->right)
         break;
       current = current->right;
-      current_abs = node_abs + current->marker.relative_offset;
+      current_abs = node_abs + current->relative_offset;
     }
   }
 
@@ -213,16 +215,16 @@ static void marker_manager_mark_invalid(MarkerNode *node, gssize absolute, gsize
     return;
 
   if (absolute >= (gssize)start && absolute < (gssize)end)
-    node->marker.valid = FALSE;
+    node->valid = FALSE;
 
   if (node->left) {
-    gssize left_abs = absolute + node->left->marker.relative_offset;
+    gssize left_abs = absolute + node->left->relative_offset;
     if (left_abs < (gssize)end)
       marker_manager_mark_invalid(node->left, left_abs, start, end);
   }
 
   if (node->right) {
-    gssize right_abs = absolute + node->right->marker.relative_offset;
+    gssize right_abs = absolute + node->right->relative_offset;
     if (right_abs >= (gssize)start)
       marker_manager_mark_invalid(node->right, right_abs, start, end);
   }
@@ -232,7 +234,7 @@ static void marker_manager_replace_node(MarkerManager *manager, MarkerNode *node
   MarkerNode *parent = node->parent;
   if (child) {
     child->parent = parent;
-    child->marker.relative_offset += node->marker.relative_offset;
+    child->relative_offset += node->relative_offset;
   }
 
   if (!parent) {
@@ -269,7 +271,7 @@ static void marker_manager_remove_node(MarkerManager *manager, MarkerNode *node)
   successor->parent = node->parent;
   successor->left = node->left;
   successor->right = node->right;
-  successor->marker.relative_offset = node->marker.relative_offset;
+  successor->relative_offset = node->relative_offset;
 
   if (successor->left)
     successor->left->parent = successor;
@@ -285,15 +287,15 @@ static void marker_manager_remove_node(MarkerManager *manager, MarkerNode *node)
   }
 
   gssize successor_new_abs =
-      successor->parent ? (gssize)marker_node_absolute_offset(successor->parent) + successor->marker.relative_offset
-                        : successor->marker.relative_offset;
+      successor->parent ? (gssize)marker_node_absolute_offset(successor->parent) + successor->relative_offset
+                        : successor->relative_offset;
   if (successor->left) {
     gssize child_abs = marker_node_absolute_offset(successor->left);
-    successor->left->marker.relative_offset = child_abs - successor_new_abs;
+    successor->left->relative_offset = child_abs - successor_new_abs;
   }
   if (successor->right) {
     gssize child_abs = marker_node_absolute_offset(successor->right);
-    successor->right->marker.relative_offset = child_abs - successor_new_abs;
+    successor->right->relative_offset = child_abs - successor_new_abs;
   }
 
   rebalance_from = successor_parent && successor_parent != node ? successor_parent : successor;
@@ -305,19 +307,19 @@ static void marker_manager_remove_node(MarkerManager *manager, MarkerNode *node)
 static MarkerNode *marker_manager_rotate_left(MarkerManager *manager, MarkerNode *node) {
   MarkerNode *pivot = node->right;
   g_return_val_if_fail(pivot != NULL, node);
-  gssize pivot_rel = pivot->marker.relative_offset;
+  gssize pivot_rel = pivot->relative_offset;
 
   node->right = pivot->left;
   if (pivot->left) {
     pivot->left->parent = node;
-    pivot->left->marker.relative_offset += pivot_rel;
+    pivot->left->relative_offset += pivot_rel;
   }
 
   pivot->parent = node->parent;
-  pivot->marker.relative_offset += node->marker.relative_offset;
+  pivot->relative_offset += node->relative_offset;
 
   node->parent = pivot;
-  node->marker.relative_offset = -pivot_rel;
+  node->relative_offset = -pivot_rel;
 
   pivot->left = node;
 
@@ -337,19 +339,19 @@ static MarkerNode *marker_manager_rotate_left(MarkerManager *manager, MarkerNode
 static MarkerNode *marker_manager_rotate_right(MarkerManager *manager, MarkerNode *node) {
   MarkerNode *pivot = node->left;
   g_return_val_if_fail(pivot != NULL, node);
-  gssize pivot_rel = pivot->marker.relative_offset;
+  gssize pivot_rel = pivot->relative_offset;
 
   node->left = pivot->right;
   if (pivot->right) {
     pivot->right->parent = node;
-    pivot->right->marker.relative_offset += pivot_rel;
+    pivot->right->relative_offset += pivot_rel;
   }
 
   pivot->parent = node->parent;
-  pivot->marker.relative_offset += node->marker.relative_offset;
+  pivot->relative_offset += node->relative_offset;
 
   node->parent = pivot;
-  node->marker.relative_offset = -pivot_rel;
+  node->relative_offset = -pivot_rel;
 
   pivot->right = node;
 
@@ -401,6 +403,6 @@ static void marker_manager_rebalance_upwards(MarkerManager *manager, MarkerNode 
 }
 
 static MarkerNode *marker_from_handle(Marker *marker) {
-  return (MarkerNode *)((gchar *)marker - G_STRUCT_OFFSET(MarkerNode, marker));
+  return (MarkerNode *)marker;
 }
 
