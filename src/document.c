@@ -11,21 +11,20 @@
 #include <glib-object.h>
 #include "util.h"
 #include "marker_manager.h"
+#include "token_manager.h"
 
 struct _Document {
   DocumentState state;
   gchar *path;
   GString *content; /* owned */
-  GArray *tokens; /* owned, LispToken */
   Node *ast; /* owned */
   Project *project;
   GArray *errors; /* DocumentError */
   MarkerManager *marker_manager;
+  TokenManager *token_manager;
 };
 
-static void document_clear_tokens(Document *document);
 static void document_clear_ast(Document *document);
-static void document_set_tokens(Document *document, GArray *tokens);
 static void document_set_ast(Document *document, Node *ast);
 
 Document *document_new(Project *project, DocumentState state) {
@@ -38,16 +37,16 @@ Document *document_new(Project *project, DocumentState state) {
   document->path = NULL;
   document->errors = g_array_new(FALSE, FALSE, sizeof(DocumentError));
   document->content = g_string_new("");
-  document->tokens = NULL;
   document->ast = NULL;
   document->marker_manager = marker_manager_new(document);
+  document->token_manager = token_manager_new(document->marker_manager);
   return document;
 }
 
 void document_free(Document *document) {
   g_return_if_fail(document != NULL);
   document_clear_ast(document);
-  document_clear_tokens(document);
+  token_manager_clear(document->token_manager);
   if (document->content)
     g_string_free(document->content, TRUE);
   if (document->errors) {
@@ -55,6 +54,7 @@ void document_free(Document *document) {
     g_array_free(document->errors, TRUE);
   }
   marker_manager_free(document->marker_manager);
+  token_manager_free(document->token_manager);
   g_free(document->path);
   g_free(document);
 }
@@ -130,7 +130,7 @@ const GString *document_get_content(Document *document) {
 
 const GArray *document_get_tokens(Document *document) {
   g_return_val_if_fail(document != NULL, NULL);
-  return document->tokens;
+  return token_manager_get_tokens(document->token_manager);
 }
 
 const Node *document_get_ast(Document *document) {
@@ -145,11 +145,11 @@ void document_reparse(Document *document) {
 
   document_clear_errors(document);
   document_clear_ast(document);
-  document_clear_tokens(document);
+  token_manager_clear(document->token_manager);
 
   if (document->content) {
     GArray *tokens = lisp_lexer_lex(document);
-    document_set_tokens(document, tokens);
+    token_manager_set_tokens(document->token_manager, tokens);
 
     Node *ast = lisp_parser_parse(tokens, document);
     document_set_ast(document, ast);
@@ -264,27 +264,6 @@ void document_add_error(Document *document, DocumentError error) {
   DocumentError stored = error;
   stored.message = error.message ? g_strdup(error.message) : NULL;
   g_array_append_val(document->errors, stored);
-}
-
-static void document_clear_tokens(Document *document) {
-  g_return_if_fail(document != NULL);
-  if (!document->tokens) return;
-  for (guint i = 0; i < document->tokens->len; i++) {
-    LispToken *token = &g_array_index(document->tokens, LispToken, i);
-    if (token->start_marker)
-      document_unref_marker(document, token->start_marker);
-    if (token->end_marker)
-      document_unref_marker(document, token->end_marker);
-    g_free(token->text);
-  }
-  g_array_free(document->tokens, TRUE);
-  document->tokens = NULL;
-}
-
-static void document_set_tokens(Document *document, GArray *tokens) {
-  g_return_if_fail(document != NULL);
-  document_clear_tokens(document);
-  document->tokens = tokens;
 }
 
 static void document_clear_ast(Document *document) {

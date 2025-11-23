@@ -22,6 +22,7 @@ SOURCES += \
   editor_tooltip_window.c \
   evaluate.c \
   marker_manager.c \
+  token_manager.c \
   file_add.c \
   file_delete.c \
   file_new.c \
