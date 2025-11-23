@@ -2,7 +2,7 @@
 #include <glib.h>
 
 static void test_add_and_offsets(void) {
-  MarkerManager *manager = marker_manager_new(NULL);
+  MarkerManager *manager = marker_manager_new();
   Marker *first = marker_manager_get_marker(manager, 10);
   Marker *second = marker_manager_get_marker(manager, 20);
   Marker *third = marker_manager_get_marker(manager, 5);
@@ -15,7 +15,7 @@ static void test_add_and_offsets(void) {
 }
 
 static void test_insert_shifts_following_markers(void) {
-  MarkerManager *manager = marker_manager_new(NULL);
+  MarkerManager *manager = marker_manager_new();
   Marker *before = marker_manager_get_marker(manager, 5);
   Marker *pivot = marker_manager_get_marker(manager, 15);
   Marker *after = marker_manager_get_marker(manager, 25);
@@ -30,7 +30,7 @@ static void test_insert_shifts_following_markers(void) {
 }
 
 static void test_delete_invalidates_and_shifts(void) {
-  MarkerManager *manager = marker_manager_new(NULL);
+  MarkerManager *manager = marker_manager_new();
   Marker *before = marker_manager_get_marker(manager, 5);
   Marker *inside_one = marker_manager_get_marker(manager, 12);
   Marker *inside_two = marker_manager_get_marker(manager, 18);
@@ -49,7 +49,7 @@ static void test_delete_invalidates_and_shifts(void) {
 }
 
 static void test_unref_marker_keeps_tree_balanced(void) {
-  MarkerManager *manager = marker_manager_new(NULL);
+  MarkerManager *manager = marker_manager_new();
   Marker *root = marker_manager_get_marker(manager, 20);
   Marker *left = marker_manager_get_marker(manager, 10);
   Marker *right = marker_manager_get_marker(manager, 30);
@@ -67,7 +67,7 @@ static void test_unref_marker_keeps_tree_balanced(void) {
 }
 
 static void test_get_marker_reuses_existing(void) {
-  MarkerManager *manager = marker_manager_new(NULL);
+  MarkerManager *manager = marker_manager_new();
   Marker *first = marker_manager_get_marker(manager, 10);
   Marker *second = marker_manager_get_marker(manager, 10);
 

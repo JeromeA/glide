@@ -1,7 +1,4 @@
 #include "marker_manager.h"
-#include "document.h"
-#include "util.h"
-#include <glib-object.h>
 
 typedef struct _MarkerNode MarkerNode;
 
@@ -14,7 +11,6 @@ struct _MarkerNode {
 };
 
 struct _MarkerManager {
-  Document *document;
   MarkerNode *root;
 };
 
@@ -36,9 +32,8 @@ static int         marker_node_height(MarkerNode *node);
 static void        marker_node_update_height(MarkerNode *node);
 static int         marker_node_balance(MarkerNode *node);
 
-MarkerManager *marker_manager_new(Document *document) {
+MarkerManager *marker_manager_new(void) {
   MarkerManager *manager = g_new0(MarkerManager, 1);
-  manager->document = document;
   manager->root = NULL;
   return manager;
 }
