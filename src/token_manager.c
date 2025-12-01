@@ -163,11 +163,8 @@ static void token_manager_find_relex_indices(const GArray *tokens, gsize change_
   for (guint i = 0; i < tokens->len; i++) {
     const LispToken *token = &g_array_index(tokens, LispToken, i);
     gsize token_end = marker_get_offset(token->end_marker);
-    gsize boundary_end = token_end;
-    if (boundary_end < G_MAXSIZE)
-      boundary_end++;
-
-    if (token_manager_token_has_invalid_markers(token) || boundary_end > change_start) {
+    // Changing the character at token_end+1 affects this token.
+    if (token_manager_token_has_invalid_markers(token) || token_end + 1 >= change_start) {
       *start_index = i;
       break;
     }
@@ -176,11 +173,7 @@ static void token_manager_find_relex_indices(const GArray *tokens, gsize change_
   for (guint i = *start_index; i < tokens->len; i++) {
     const LispToken *token = &g_array_index(tokens, LispToken, i);
     gsize token_start = marker_get_offset(token->start_marker);
-    gsize boundary_start = change_end;
-    if (boundary_start < G_MAXSIZE)
-      boundary_start++;
-
-    if (!token_manager_token_has_invalid_markers(token) && token_start <= boundary_start) {
+    if (!token_manager_token_has_invalid_markers(token) && token_start <= change_end) {
       *end_index = i;
       break;
     }
