@@ -26,6 +26,8 @@ struct _Document {
 
 static void document_clear_ast(Document *document);
 static void document_set_ast(Document *document, Node *ast);
+static void document_reparse_range(Document *document, gsize start, gsize end);
+static void document_update_tokens(Document *document, gsize change_start, gsize change_end);
 
 Document *document_new(Project *project, DocumentState state) {
   if (project)
@@ -101,7 +103,7 @@ void document_insert_text(Document *document, gsize offset, const gchar *text, g
 
   g_string_insert_len(document->content, (gssize)offset, text, (gssize)byte_length);
   marker_manager_handle_insert(document->marker_manager, offset, byte_length);
-  document_reparse(document);
+  document_reparse_range(document, offset, offset + byte_length);
 }
 
 void document_delete_text(Document *document, gsize start, gsize end) {
@@ -120,7 +122,7 @@ void document_delete_text(Document *document, gsize start, gsize end) {
 
   g_string_erase(document->content, (gssize)start, (gssize)(end - start));
   marker_manager_handle_delete(document->marker_manager, start, end);
-  document_reparse(document);
+  document_reparse_range(document, start, start);
 }
 
 const GString *document_get_content(Document *document) {
@@ -146,17 +148,48 @@ void document_reparse(Document *document) {
   document_clear_errors(document);
   document_clear_ast(document);
   token_manager_clear(document->token_manager);
-
-  if (document->content) {
-    GArray *tokens = lisp_lexer_lex(document);
-    token_manager_set_tokens(document->token_manager, tokens);
-
+  const GString *text = document_get_content(document);
+  if (text) {
+    document_update_tokens(document, 0, text->len);
+    GArray *tokens = token_manager_peek_tokens(document->token_manager);
     Node *ast = lisp_parser_parse(tokens, document);
     document_set_ast(document, ast);
   }
 
   if (document->project)
     project_document_changed(document->project, document);
+}
+
+static void document_reparse_range(Document *document, gsize start, gsize end) {
+  g_return_if_fail(document != NULL);
+  if (document->project)
+    g_return_if_fail(glide_is_ui_thread());
+
+  document_clear_errors(document);
+  document_clear_ast(document);
+  document_update_tokens(document, start, end);
+
+  GArray *tokens = token_manager_peek_tokens(document->token_manager);
+  Node *ast = lisp_parser_parse(tokens, document);
+  document_set_ast(document, ast);
+
+  if (document->project)
+    project_document_changed(document->project, document);
+}
+
+static void document_update_tokens(Document *document, gsize change_start, gsize change_end) {
+  g_return_if_fail(document != NULL);
+
+  const GString *text = document_get_content(document);
+  g_return_if_fail(text != NULL);
+
+  gsize text_length = text->len;
+  g_return_if_fail(change_start <= text_length);
+  g_return_if_fail(change_end <= text_length);
+  g_return_if_fail(change_start <= change_end);
+
+  token_manager_update_tokens(document->token_manager, document, change_start, change_end,
+                              text_length);
 }
 
 const gchar *document_get_path(Document *document) {
