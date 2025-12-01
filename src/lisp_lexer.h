@@ -31,5 +31,6 @@ typedef struct {
 } LispToken;
 
 GArray    *lisp_lexer_lex(Document *document);
+GArray    *lisp_lexer_lex_range(Document *document, gsize start_offset, gsize end_offset);
 
 G_END_DECLS

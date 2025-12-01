@@ -11,7 +11,8 @@ COMMON = verbosity.c
 LDLIBS += `pkg-config --libs glib-2.0 gobject-2.0 gio-2.0 gtk+-3.0 gtksourceview-4`
 TESTS = preferences_test process_test repl_process_test repl_session_test lisp_parser_test \
   project_test project_repl_test asdf_test analyser_test package_test \
-  status_service_test editor_selection_manager_test editor_test marker_manager_test
+  status_service_test editor_selection_manager_test editor_test marker_manager_test \
+  document_relex_test
 CLEANABLES = $(TESTS)
 
 all: $(TESTS)
@@ -72,6 +73,10 @@ editor_test: editor_test.c editor.c document_sync.c editor_selection_manager.c e
 marker_manager_test: marker_manager_test.c marker_manager.c $(COMMON)
 :$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
+document_relex_test: document_relex_test.c document.c token_manager.c marker_manager.c lisp_lexer.c lisp_parser.c node.c \
+  package.c project_stubs.c $(COMMON)
+:$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
+
 run: all
 :./preferences_test
 :./process_test
@@ -86,6 +91,7 @@ run: all
 :./status_service_test
 :xvfb-run -a ./editor_selection_manager_test
 :./editor_test
+:./document_relex_test
 
 clean:
 :rm -f $(CLEANABLES)

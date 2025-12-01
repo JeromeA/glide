@@ -7,6 +7,8 @@
 static inline gunichar gstring_get_char(const GString *text, gsize offset);
 static inline gsize gstring_next_offset(const GString *text, gsize offset);
 static inline gchar *gstring_slice_dup(const GString *text, gsize start, gsize end);
+static GArray *lisp_lexer_lex_internal(Document *document, gsize start_offset,
+                                       gsize end_offset);
 
 static inline gunichar gstring_get_char(const GString *text, gsize offset) {
   if (!text || offset >= text->len)
@@ -33,6 +35,16 @@ static inline gchar *gstring_slice_dup(const GString *text, gsize start, gsize e
 }
 
 GArray *lisp_lexer_lex(Document *document) {
+  const GString *text = document_get_content(document);
+  g_return_val_if_fail(text != NULL, NULL);
+  return lisp_lexer_lex_internal(document, 0, text->len);
+}
+
+GArray *lisp_lexer_lex_range(Document *document, gsize start_offset, gsize end_offset) {
+  return lisp_lexer_lex_internal(document, start_offset, end_offset);
+}
+
+static GArray *lisp_lexer_lex_internal(Document *document, gsize start_offset, gsize end_offset) {
   g_return_val_if_fail(document != NULL, NULL);
   const GString *text = document_get_content(document);
   g_return_val_if_fail(text != NULL, NULL);
@@ -40,12 +52,17 @@ GArray *lisp_lexer_lex(Document *document) {
   GArray *tokens = g_array_new(FALSE, TRUE, sizeof(LispToken));
 
   gsize len = text->len;
-  gsize offset = 0;
+  if (end_offset > len)
+    end_offset = len;
+  if (start_offset > end_offset)
+    start_offset = end_offset;
 
-  while (offset < len) {
+  gsize offset = start_offset;
+
+  while (offset < len && offset < end_offset) {
     gunichar current_char = gstring_get_char(text, offset);
     LispToken token = {0};
-    gsize start_offset = offset;
+    gsize token_start_offset = offset;
 
     if (g_unichar_isspace(current_char)) {
       token.type = LISP_TOKEN_TYPE_WHITESPACE;
@@ -127,8 +144,8 @@ GArray *lisp_lexer_lex(Document *document) {
       offset = end;
     }
 
-    token.start_marker = document_get_marker(document, start_offset);
-    token.text = gstring_slice_dup(text, start_offset, marker_get_offset(token.end_marker));
+    token.start_marker = document_get_marker(document, token_start_offset);
+    token.text = gstring_slice_dup(text, token_start_offset, marker_get_offset(token.end_marker));
     if (token.type == LISP_TOKEN_TYPE_SYMBOL) {
       gchar *endptr = NULL;
       g_ascii_strtod(token.text, &endptr);
