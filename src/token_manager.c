@@ -89,12 +89,18 @@ void token_manager_replace_range(TokenManager *manager, guint start_index, guint
 }
 
 void token_manager_update_tokens(TokenManager *manager, Document *document, gsize change_start,
-                                 gsize change_end, gsize text_length) {
+                                 gsize change_end, gsize text_length,
+                                 gsize *token_change_start, gsize *token_change_end) {
   g_return_if_fail(manager != NULL);
   g_return_if_fail(document != NULL);
 
-  if (token_manager_tokens_empty(manager, document, text_length))
+  if (token_manager_tokens_empty(manager, document, text_length)) {
+    if (token_change_start)
+      *token_change_start = 0;
+    if (token_change_end)
+      *token_change_end = text_length;
     return;
+  }
 
   GArray *tokens = token_manager_peek_tokens(manager);
 
@@ -125,6 +131,10 @@ void token_manager_update_tokens(TokenManager *manager, Document *document, gsiz
     relex_start = change_start;
 
   GArray *replacement_tokens = lisp_lexer_lex_range(document, relex_start, relex_end);
+  if (token_change_start)
+    *token_change_start = relex_start;
+  if (token_change_end)
+    *token_change_end = relex_end;
   token_manager_replace_range(manager, start_index, end_index, replacement_tokens);
 }
 

@@ -16,5 +16,6 @@ void          token_manager_replace_range(TokenManager *manager, guint start_ind
                                           guint end_index, GArray *tokens);
 void          token_manager_update_tokens(TokenManager *manager, Document *document,
                                           gsize change_start, gsize change_end,
-                                          gsize text_length);
+                                          gsize text_length, gsize *token_change_start,
+                                          gsize *token_change_end);
 
