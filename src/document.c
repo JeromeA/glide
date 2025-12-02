@@ -27,7 +27,8 @@ struct _Document {
 static void document_clear_ast(Document *document);
 static void document_set_ast(Document *document, Node *ast);
 static void document_reparse_range(Document *document, gsize start, gsize end);
-static void document_update_tokens(Document *document, gsize change_start, gsize change_end);
+static void document_update_tokens(Document *document, gsize change_start, gsize change_end,
+                                   gsize *token_change_start, gsize *token_change_end);
 
 Document *document_new(Project *project, DocumentState state) {
   if (project)
@@ -146,13 +147,14 @@ void document_reparse(Document *document) {
     g_return_if_fail(glide_is_ui_thread());
 
   document_clear_errors(document);
-  document_clear_ast(document);
   token_manager_clear(document->token_manager);
   const GString *text = document_get_content(document);
   if (text) {
-    document_update_tokens(document, 0, text->len);
+    gsize token_change_start = 0;
+    gsize token_change_end = text->len;
+    document_update_tokens(document, 0, text->len, &token_change_start, &token_change_end);
     GArray *tokens = token_manager_peek_tokens(document->token_manager);
-    Node *ast = lisp_parser_parse(tokens, document);
+    Node *ast = lisp_parser_parse(tokens, document, NULL, token_change_start, token_change_end);
     document_set_ast(document, ast);
   }
 
@@ -166,18 +168,26 @@ static void document_reparse_range(Document *document, gsize start, gsize end) {
     g_return_if_fail(glide_is_ui_thread());
 
   document_clear_errors(document);
-  document_clear_ast(document);
-  document_update_tokens(document, start, end);
+  Node *previous_ast = document->ast;
+  gsize token_change_start = start;
+  gsize token_change_end = end;
+  document_update_tokens(document, start, end, &token_change_start, &token_change_end);
 
   GArray *tokens = token_manager_peek_tokens(document->token_manager);
-  Node *ast = lisp_parser_parse(tokens, document);
+  Node *ast = lisp_parser_parse(tokens,
+                                document,
+                                (token_change_start == 0 && token_change_end ==
+                                 document->content->len) ? NULL : previous_ast,
+                                token_change_start,
+                                token_change_end);
   document_set_ast(document, ast);
 
   if (document->project)
     project_document_changed(document->project, document);
 }
 
-static void document_update_tokens(Document *document, gsize change_start, gsize change_end) {
+static void document_update_tokens(Document *document, gsize change_start, gsize change_end,
+                                   gsize *token_change_start, gsize *token_change_end) {
   g_return_if_fail(document != NULL);
 
   const GString *text = document_get_content(document);
@@ -189,7 +199,7 @@ static void document_update_tokens(Document *document, gsize change_start, gsize
   g_return_if_fail(change_start <= change_end);
 
   token_manager_update_tokens(document->token_manager, document, change_start, change_end,
-                              text_length);
+                              text_length, token_change_start, token_change_end);
 }
 
 const gchar *document_get_path(Document *document) {
